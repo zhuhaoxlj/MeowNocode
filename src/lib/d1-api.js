@@ -250,26 +250,31 @@ export class D1ApiClient {
       
       console.log('API响应状态:', response.status, response.statusText);
       
+      // 如果返回401错误，说明已配置D1PASSWORD但需要鉴权
+      if (response.status === 401) {
+        return { available: true, requiresAuth: true };
+      }
+      
       // 检查响应类型
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         console.error('API返回了非JSON响应:', contentType);
         const text = await response.text();
         console.error('响应内容:', text.substring(0, 200));
-        return false;
+        return { available: false, requiresAuth: false };
       }
       
       const result = await response.json();
       console.log('API响应数据:', result);
       
       if (result.status === 'ok') {
-        return true;
+        return { available: true, requiresAuth: false };
       }
       
-      return false;
+      return { available: false, requiresAuth: false };
     } catch (error) {
       console.error('检查D1 API可用性失败:', error);
-      return false;
+      return { available: false, requiresAuth: false };
     }
   }
 }

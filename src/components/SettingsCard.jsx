@@ -27,6 +27,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
     background: false
   });
   const [isD1Available, setIsD1Available] = useState(false);
+  const [d1RequiresAuth, setD1RequiresAuth] = useState(false);
   const [fontLoading, setFontLoading] = useState(false);
   const [d1KeyInput, setD1KeyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -44,15 +45,23 @@ const SettingsCard = ({ isOpen, onClose }) => {
           // 在Cloudflare Workers环境中，DB会自动绑定到全局变量
           if (typeof DB !== 'undefined') {
             setIsD1Available(true);
+            setD1RequiresAuth(false);
             return;
           }
           
           // 尝试通过API检查D1数据库的可用性
-          const isAvailable = await D1ApiClient.checkAvailability();
-          setIsD1Available(isAvailable);
+          const result = await D1ApiClient.checkAvailability();
+          if (typeof result === 'object') {
+            setIsD1Available(result.available);
+            setD1RequiresAuth(result.requiresAuth);
+          } else {
+            setIsD1Available(result);
+            setD1RequiresAuth(false);
+          }
         } catch (error) {
           console.error('检查D1数据库可用性失败:', error);
           setIsD1Available(false);
+          setD1RequiresAuth(false);
         }
       };
       
@@ -702,22 +711,33 @@ const SettingsCard = ({ isOpen, onClose }) => {
                         <button
                           onClick={() => handleCloudProviderChange('d1')}
                           disabled={!isD1Available}
-                          className={`p-3 rounded-lg border-2 transition-colors ${
+                          className={`p-3 rounded-lg border-2 transition-colors relative ${
                             cloudProvider === 'd1'
                               ? 'border-current bg-current/10'
                               : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                           } ${!isD1Available ? 'opacity-50 cursor-not-allowed' : ''}`}
                           style={cloudProvider === 'd1' ? { borderColor: themeColor } : {}}
+                          title={isD1Available && !d1RequiresAuth ? "Cloudflare D1 可用" :
+                                 isD1Available && d1RequiresAuth ? "Cloudflare D1 可用，需要鉴权密钥" :
+                                 "Cloudflare D1 不可用"}
                         >
                           <div className="flex flex-col items-center space-y-1">
                             <Server className="h-6 w-6" style={cloudProvider === 'd1' ? { color: themeColor } : {}} />
                             <span className="text-xs font-medium">Cloudflare D1</span>
                           </div>
+                          {isD1Available && d1RequiresAuth && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></div>
+                          )}
                         </button>
                       </div>
                       {!isD1Available && cloudProvider === 'd1' && (
                         <p className="text-xs text-red-500">
                           Cloudflare D1 仅在 Cloudflare Workers/Pages 环境中可用
+                        </p>
+                      )}
+                      {isD1Available && d1RequiresAuth && (
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                          Cloudflare D1 需要鉴权密钥，请在下方输入密钥
                         </p>
                       )}
                     </div>
@@ -799,7 +819,9 @@ const SettingsCard = ({ isOpen, onClose }) => {
                                         输入D1鉴权密钥
                                       </p>
                                       <p className="text-xs text-blue-700 dark:text-blue-300">
-                                        输入密钥后才能使用D1数据库进行数据同步
+                                        {d1RequiresAuth
+                                          ? "检测到已配置D1鉴权密钥，请输入密钥以使用D1数据库进行数据同步"
+                                          : "输入密钥后才能使用D1数据库进行数据同步"}
                                       </p>
                                     </div>
                                   </div>
@@ -825,6 +847,11 @@ const SettingsCard = ({ isOpen, onClose }) => {
                                       {isVerifying ? '验证中...' : '验证'}
                                     </Button>
                                   </div>
+                                  {d1RequiresAuth && (
+                                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                                      提示：如果你不知道密钥，请联系部署者获取
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             ) : (
