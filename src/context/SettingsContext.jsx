@@ -184,13 +184,11 @@ export function SettingsProvider({ children }) {
       
       const baseUrl = await D1ApiClient.getBaseUrl();
       
-      // 确保baseUrl不为空
-      if (!baseUrl) {
-        setIsD1Authenticated(false);
-        return { success: false, message: '无法获取API基础URL' };
-      }
+      // 在Cloudflare Pages环境中，baseUrl可能是空字符串，这是正常的
+      // 我们不需要检查baseUrl是否为空，直接使用它
+      const url = `${baseUrl}/api/health`;
       
-      const response = await fetch(`${baseUrl}/api/health`, {
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
