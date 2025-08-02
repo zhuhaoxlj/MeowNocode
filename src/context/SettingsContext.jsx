@@ -157,7 +157,12 @@ export function SettingsProvider({ children }) {
   };
 
   const updateCloudProvider = (provider) => {
-    setCloudProvider(provider);
+    try {
+      setCloudProvider(provider);
+    } catch (error) {
+      console.error('更新云服务提供商失败:', error);
+      throw error;
+    }
   };
 
   const updateD1AuthKey = (key) => {
@@ -171,7 +176,20 @@ export function SettingsProvider({ children }) {
   // 验证D1鉴权密钥
   const verifyD1AuthKey = async (key) => {
     try {
+      // 确保key不为空
+      if (!key || !key.trim()) {
+        setIsD1Authenticated(false);
+        return { success: false, message: 'D1鉴权密钥不能为空' };
+      }
+      
       const baseUrl = await D1ApiClient.getBaseUrl();
+      
+      // 确保baseUrl不为空
+      if (!baseUrl) {
+        setIsD1Authenticated(false);
+        return { success: false, message: '无法获取API基础URL' };
+      }
+      
       const response = await fetch(`${baseUrl}/api/health`, {
         method: 'GET',
         headers: {
@@ -191,7 +209,7 @@ export function SettingsProvider({ children }) {
     } catch (error) {
       console.error('验证D1鉴权密钥失败:', error);
       setIsD1Authenticated(false);
-      return { success: false, message: '验证D1鉴权密钥时发生错误' };
+      return { success: false, message: '验证D1鉴权密钥时发生错误: ' + error.message };
     }
   };
 

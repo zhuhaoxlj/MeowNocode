@@ -80,32 +80,16 @@ npm run dev
    wrangler d1 execute meow-app-db --file=./d1-schema.sql --remote
    ```
 
-#### 部署到Cloudflare Workers
-1. 构建应用：
-   ```
-   npm run build
-   ```
-2. 部署到Cloudflare Workers：
-   ```
-   wrangler deploy
-   ```
-
 #### 部署到Cloudflare Pages
 1. 将你的代码推送到GitHub仓库
 2. 在Cloudflare控制台中连接你的GitHub仓库
 3. 配置构建设置：
    - 构建命令：`npm run build`
    - 构建输出目录：`dist`
-4. 确保项目中有以下文件（我们已为你创建好了）：
-   - `functions/api/health.js`：健康检查API端点
-   - `functions/api/init.js`：数据库初始化API端点
-   - `functions/api/memos.js`：memos数据操作API端点
-   - `functions/api/settings.js`：用户设置操作API端点
-   - 这些函数文件是Cloudflare Pages推荐的函数组织方式，每个文件处理一个特定的API端点
-5. 在Pages设置中，添加D1数据库绑定：
+4. 在Pages设置中，添加D1数据库绑定：
    - 变量名：`DB`
    - 数据库：选择你创建的D1数据库
-6. 添加环境变量（可选）：
+5. 添加环境变量（可选）：
    - `VITE_CF_PAGES`: `true`
    - `VITE_DEPLOYMENT_PLATFORM`: `cloudflare`
 

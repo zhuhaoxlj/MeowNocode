@@ -181,7 +181,12 @@ const SettingsCard = ({ isOpen, onClose }) => {
   };
 
   const handleCloudProviderChange = (provider) => {
-    updateCloudProvider(provider);
+    try {
+      updateCloudProvider(provider);
+    } catch (error) {
+      console.error('切换云服务提供商失败:', error);
+      setMessage({ type: 'error', text: '切换云服务提供商失败' });
+    }
   };
 
   const handleGitHubLogin = async () => {
@@ -196,7 +201,10 @@ const SettingsCard = ({ isOpen, onClose }) => {
   };
 
   const handleD1KeySubmit = async () => {
-    if (!d1KeyInput.trim()) return;
+    if (!d1KeyInput.trim()) {
+      setMessage({ type: 'error', text: '请输入D1鉴权密钥' });
+      return;
+    }
     
     setIsVerifying(true);
     try {
@@ -205,8 +213,14 @@ const SettingsCard = ({ isOpen, onClose }) => {
         type: result.success ? 'success' : 'error',
         text: result.message
       });
+      
+      // 如果验证成功，清空输入框
+      if (result.success) {
+        setD1KeyInput('');
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: '验证D1密钥失败' });
+      console.error('验证D1密钥失败:', error);
+      setMessage({ type: 'error', text: '验证D1密钥失败: ' + error.message });
     } finally {
       setIsVerifying(false);
     }
