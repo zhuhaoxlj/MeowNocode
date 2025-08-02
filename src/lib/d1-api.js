@@ -40,17 +40,17 @@ export class D1ApiClient {
   }
 
   // 同步用户数据到D1
-  static async syncUserData(userId, data, authKey) {
+  static async syncUserData(data, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
       // 同步memos
       for (const memo of data.memos) {
-        await this.upsertMemo(userId, memo, authKey);
+        await this.upsertMemo(memo, authKey);
       }
 
       // 同步用户设置
-      await this.upsertUserSettings(userId, {
+      await this.upsertUserSettings({
         pinnedMemos: data.pinnedMemos,
         themeColor: data.themeColor,
         darkMode: data.darkMode,
@@ -67,7 +67,7 @@ export class D1ApiClient {
   }
 
   // 从D1恢复用户数据
-  static async restoreUserData(userId, authKey) {
+  static async restoreUserData(authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -81,8 +81,8 @@ export class D1ApiClient {
         headers['Authorization'] = `Bearer ${authKey}`;
       }
       
-      // 获取用户的memos
-      const memosResponse = await fetch(`${baseUrl}/api/memos?userId=${userId}`, {
+      // 获取memos
+      const memosResponse = await fetch(`${baseUrl}/api/memos`, {
         method: 'GET',
         headers,
       });
@@ -90,7 +90,7 @@ export class D1ApiClient {
       const memosResult = await memosResponse.json();
       
       // 获取用户设置
-      const settingsResponse = await fetch(`${baseUrl}/api/settings?userId=${userId}`, {
+      const settingsResponse = await fetch(`${baseUrl}/api/settings`, {
         method: 'GET',
         headers,
       });
@@ -116,7 +116,7 @@ export class D1ApiClient {
   }
 
   // 插入或更新memo
-  static async upsertMemo(userId, memo, authKey) {
+  static async upsertMemo(memo, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -135,7 +135,7 @@ export class D1ApiClient {
       const createdAt = memo.timestamp || now;
       const updatedAt = memo.lastModified || memo.timestamp || now;
 
-      const response = await fetch(`${baseUrl}/api/memos?userId=${userId}`, {
+      const response = await fetch(`${baseUrl}/api/memos`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -161,7 +161,7 @@ export class D1ApiClient {
   }
 
   // 插入或更新用户设置
-  static async upsertUserSettings(userId, settings, authKey) {
+  static async upsertUserSettings(settings, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -175,7 +175,7 @@ export class D1ApiClient {
         headers['Authorization'] = `Bearer ${authKey}`;
       }
       
-      const response = await fetch(`${baseUrl}/api/settings?userId=${userId}`, {
+      const response = await fetch(`${baseUrl}/api/settings`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -202,7 +202,7 @@ export class D1ApiClient {
   }
 
   // 删除memo
-  static async deleteMemo(userId, memoId, authKey) {
+  static async deleteMemo(memoId, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -216,7 +216,7 @@ export class D1ApiClient {
         headers['Authorization'] = `Bearer ${authKey}`;
       }
       
-      const response = await fetch(`${baseUrl}/api/memos?userId=${userId}&memoId=${memoId}`, {
+      const response = await fetch(`${baseUrl}/api/memos?memoId=${memoId}`, {
         method: 'DELETE',
         headers,
       });

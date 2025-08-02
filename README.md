@@ -85,7 +85,7 @@ npm run dev
 2. 在Cloudflare控制台中连接你的GitHub仓库
 3. 配置构建设置：
    - 构建命令：`npm run build`
-   - 构建输出目录：`dist`
+   - 构建输出目录：`build`
 4. 在Pages设置中，添加D1数据库绑定：
    - 变量名：`DB`
    - 数据库：选择你创建的D1数据库

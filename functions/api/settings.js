@@ -3,7 +3,6 @@ export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const method = request.method;
-  const userId = url.searchParams.get('userId');
   
   // 设置CORS头
   const corsHeaders = {
@@ -30,20 +29,12 @@ export async function onRequest(context) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-  
-  if (!userId) {
-    return new Response(JSON.stringify({ error: '缺少userId参数' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
 
   try {
     if (method === 'GET') {
-      // 获取用户设置
+      // 获取用户设置（不区分用户）
       const settings = await env.DB
-        .prepare('SELECT * FROM user_settings WHERE user_id = ?')
-        .bind(userId)
+        .prepare('SELECT * FROM user_settings LIMIT 1')
         .first();
       
       return new Response(JSON.stringify({ success: true, data: settings }), {
@@ -56,14 +47,13 @@ export async function onRequest(context) {
       
       // 检查用户设置是否已存在
       const existingSettings = await env.DB
-        .prepare('SELECT * FROM user_settings WHERE user_id = ?')
-        .bind(userId)
+        .prepare('SELECT * FROM user_settings LIMIT 1')
         .first();
       
       if (existingSettings) {
         // 更新现有设置
         await env.DB
-          .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, updated_at = ? WHERE user_id = ?')
+          .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, updated_at = ?')
           .bind(
             JSON.stringify(pinned_memos || []),
             theme_color || '#818CF8',
@@ -71,16 +61,14 @@ export async function onRequest(context) {
             JSON.stringify(hitokoto_config || { enabled: true, types: ["a", "b", "c", "d", "i", "j", "k"] }),
             JSON.stringify(font_config || { selectedFont: "default" }),
             JSON.stringify(background_config || { imageUrl: "", brightness: 50, blur: 10 }),
-            new Date().toISOString(),
-            userId
+            new Date().toISOString()
           )
           .run();
       } else {
         // 插入新设置
         await env.DB
-          .prepare('INSERT INTO user_settings (user_id, pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .prepare('INSERT INTO user_settings (pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
           .bind(
-            userId,
             JSON.stringify(pinned_memos || []),
             theme_color || '#818CF8',
             dark_mode ? 1 : 0,
@@ -104,10 +92,10 @@ export async function onRequest(context) {
     }
   } catch (error) {
     console.error('处理用户设置请求失败:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
+    return new Response(JSON.stringify({
+      success: false,
       message: '处理用户设置请求失败',
-      error: error.message 
+      error: error.message
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

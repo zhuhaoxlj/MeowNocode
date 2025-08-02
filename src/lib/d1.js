@@ -42,7 +42,7 @@ export class D1DatabaseService {
   }
 
   // 同步用户数据到D1
-  static async syncUserData(userId) {
+  static async syncUserData() {
     try {
       const db = await this.getDB();
       
@@ -59,11 +59,11 @@ export class D1DatabaseService {
 
       // 同步memos
       for (const memo of localData.memos) {
-        await this.upsertMemo(userId, memo);
+        await this.upsertMemo(memo);
       }
 
       // 同步用户设置
-      await this.upsertUserSettings(userId, {
+      await this.upsertUserSettings({
         pinnedMemos: localData.pinnedMemos,
         themeColor: localData.themeColor,
         darkMode: localData.darkMode,
@@ -80,20 +80,18 @@ export class D1DatabaseService {
   }
 
   // 从D1恢复用户数据
-  static async restoreUserData(userId) {
+  static async restoreUserData() {
     try {
       const db = await this.getDB();
 
-      // 获取用户的memos
+      // 获取所有memos
       const { results: memos } = await db
-        .prepare('SELECT * FROM memos WHERE user_id = ? ORDER BY created_at DESC')
-        .bind(userId)
+        .prepare('SELECT * FROM memos ORDER BY created_at DESC')
         .all();
 
       // 获取用户设置
       const settings = await db
-        .prepare('SELECT * FROM user_settings WHERE user_id = ?')
-        .bind(userId)
+        .prepare('SELECT * FROM user_settings LIMIT 1')
         .first();
 
       // 恢复到本地存储
@@ -139,7 +137,7 @@ export class D1DatabaseService {
   }
 
   // 插入或更新memo
-  static async upsertMemo(userId, memo) {
+  static async upsertMemo(memo) {
     const db = await this.getDB();
     
     // 确保时间戳不为空，使用当前时间作为备用
@@ -149,39 +147,38 @@ export class D1DatabaseService {
 
     // 检查memo是否已存在
     const existingMemo = await db
-      .prepare('SELECT * FROM memos WHERE memo_id = ? AND user_id = ?')
-      .bind(memo.id, userId)
+      .prepare('SELECT * FROM memos WHERE memo_id = ?')
+      .bind(memo.id)
       .first();
 
     if (existingMemo) {
       // 更新现有memo
       await db
-        .prepare('UPDATE memos SET content = ?, tags = ?, updated_at = ? WHERE memo_id = ? AND user_id = ?')
-        .bind(memo.content, JSON.stringify(memo.tags || []), updatedAt, memo.id, userId)
+        .prepare('UPDATE memos SET content = ?, tags = ?, updated_at = ? WHERE memo_id = ?')
+        .bind(memo.content, JSON.stringify(memo.tags || []), updatedAt, memo.id)
         .run();
     } else {
       // 插入新memo
       await db
-        .prepare('INSERT INTO memos (memo_id, user_id, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(memo.id, userId, memo.content, JSON.stringify(memo.tags || []), createdAt, updatedAt)
+        .prepare('INSERT INTO memos (memo_id, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+        .bind(memo.id, memo.content, JSON.stringify(memo.tags || []), createdAt, updatedAt)
         .run();
     }
   }
 
   // 插入或更新用户设置
-  static async upsertUserSettings(userId, settings) {
+  static async upsertUserSettings(settings) {
     const db = await this.getDB();
     
     // 检查用户设置是否已存在
     const existingSettings = await db
-      .prepare('SELECT * FROM user_settings WHERE user_id = ?')
-      .bind(userId)
+      .prepare('SELECT * FROM user_settings LIMIT 1')
       .first();
 
     if (existingSettings) {
       // 更新现有设置
       await db
-        .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, updated_at = ? WHERE user_id = ?')
+        .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, updated_at = ?')
         .bind(
           JSON.stringify(settings.pinnedMemos),
           settings.themeColor,
@@ -189,16 +186,14 @@ export class D1DatabaseService {
           JSON.stringify(settings.hitokotoConfig),
           JSON.stringify(settings.fontConfig),
           JSON.stringify(settings.backgroundConfig),
-          new Date().toISOString(),
-          userId
+          new Date().toISOString()
         )
         .run();
     } else {
       // 插入新设置
       await db
-        .prepare('INSERT INTO user_settings (user_id, pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .prepare('INSERT INTO user_settings (pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .bind(
-          userId,
           JSON.stringify(settings.pinnedMemos),
           settings.themeColor,
           settings.darkMode === 'true',
@@ -213,34 +208,32 @@ export class D1DatabaseService {
   }
 
   // 删除memo
-  static async deleteMemo(userId, memoId) {
+  static async deleteMemo(memoId) {
     const db = await this.getDB();
     
     await db
-      .prepare('DELETE FROM memos WHERE user_id = ? AND memo_id = ?')
-      .bind(userId, memoId)
+      .prepare('DELETE FROM memos WHERE memo_id = ?')
+      .bind(memoId)
       .run();
   }
 
-  // 获取用户的所有memos
-  static async getUserMemos(userId) {
+  // 获取所有memos
+  static async getAllMemos() {
     const db = await this.getDB();
     
     const { results } = await db
-      .prepare('SELECT * FROM memos WHERE user_id = ? ORDER BY created_at DESC')
-      .bind(userId)
+      .prepare('SELECT * FROM memos ORDER BY created_at DESC')
       .all();
     
     return results;
   }
 
   // 获取用户设置
-  static async getUserSettings(userId) {
+  static async getUserSettings() {
     const db = await this.getDB();
     
     const settings = await db
-      .prepare('SELECT * FROM user_settings WHERE user_id = ?')
-      .bind(userId)
+      .prepare('SELECT * FROM user_settings LIMIT 1')
       .first();
     
     return settings;
@@ -255,13 +248,11 @@ export class D1DatabaseService {
       await db.prepare(`
         CREATE TABLE IF NOT EXISTS memos (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          memo_id TEXT NOT NULL,
-          user_id TEXT NOT NULL,
+          memo_id TEXT NOT NULL UNIQUE,
           content TEXT NOT NULL,
           tags TEXT DEFAULT '[]',
           created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE(memo_id, user_id)
+          updated_at TEXT NOT NULL
         )
       `).run();
 
@@ -269,7 +260,6 @@ export class D1DatabaseService {
       await db.prepare(`
         CREATE TABLE IF NOT EXISTS user_settings (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id TEXT NOT NULL UNIQUE,
           pinned_memos TEXT DEFAULT '[]',
           theme_color TEXT DEFAULT '#818CF8',
           dark_mode INTEGER DEFAULT 0,
@@ -282,9 +272,7 @@ export class D1DatabaseService {
       `).run();
 
       // 创建索引
-      await db.prepare('CREATE INDEX IF NOT EXISTS idx_memos_user_id ON memos(user_id)').run();
       await db.prepare('CREATE INDEX IF NOT EXISTS idx_memos_created_at ON memos(created_at)').run();
-      await db.prepare('CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)').run();
 
       return { success: true, message: 'D1数据库初始化成功' };
     } catch (error) {

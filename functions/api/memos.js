@@ -3,7 +3,6 @@ export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const method = request.method;
-  const userId = url.searchParams.get('userId');
   
   // 设置CORS头
   const corsHeaders = {
@@ -30,20 +29,12 @@ export async function onRequest(context) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-  
-  if (!userId) {
-    return new Response(JSON.stringify({ error: '缺少userId参数' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
 
   try {
     if (method === 'GET') {
-      // 获取用户的所有memos
+      // 获取所有memos（不区分用户）
       const { results } = await env.DB
-        .prepare('SELECT * FROM memos WHERE user_id = ? ORDER BY created_at DESC')
-        .bind(userId)
+        .prepare('SELECT * FROM memos ORDER BY created_at DESC')
         .all();
       
       return new Response(JSON.stringify({ success: true, data: results }), {
@@ -63,21 +54,21 @@ export async function onRequest(context) {
       
       // 检查memo是否已存在
       const existingMemo = await env.DB
-        .prepare('SELECT * FROM memos WHERE memo_id = ? AND user_id = ?')
-        .bind(memo_id, userId)
+        .prepare('SELECT * FROM memos WHERE memo_id = ?')
+        .bind(memo_id)
         .first();
       
       if (existingMemo) {
         // 更新现有memo
         await env.DB
-          .prepare('UPDATE memos SET content = ?, tags = ?, updated_at = ? WHERE memo_id = ? AND user_id = ?')
-          .bind(content, JSON.stringify(tags || []), updated_at || new Date().toISOString(), memo_id, userId)
+          .prepare('UPDATE memos SET content = ?, tags = ?, updated_at = ? WHERE memo_id = ?')
+          .bind(content, JSON.stringify(tags || []), updated_at || new Date().toISOString(), memo_id)
           .run();
       } else {
         // 插入新memo
         await env.DB
-          .prepare('INSERT INTO memos (memo_id, user_id, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-          .bind(memo_id, userId, content, JSON.stringify(tags || []), created_at || new Date().toISOString(), updated_at || new Date().toISOString())
+          .prepare('INSERT INTO memos (memo_id, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+          .bind(memo_id, content, JSON.stringify(tags || []), created_at || new Date().toISOString(), updated_at || new Date().toISOString())
           .run();
       }
       
@@ -96,8 +87,8 @@ export async function onRequest(context) {
       }
       
       await env.DB
-        .prepare('DELETE FROM memos WHERE user_id = ? AND memo_id = ?')
-        .bind(userId, memoId)
+        .prepare('DELETE FROM memos WHERE memo_id = ?')
+        .bind(memoId)
         .run();
       
       return new Response(JSON.stringify({ success: true, message: 'Memo删除成功' }), {
@@ -111,10 +102,10 @@ export async function onRequest(context) {
     }
   } catch (error) {
     console.error('处理memos请求失败:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
+    return new Response(JSON.stringify({
+      success: false,
       message: '处理memos请求失败',
-      error: error.message 
+      error: error.message
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

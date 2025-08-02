@@ -252,12 +252,6 @@ export function SettingsProvider({ children }) {
         return { success: false, message: '请先输入D1鉴权密钥进行验证' };
       }
 
-      // 生成一个基于时间戳的简单用户ID，用于D1数据库
-      const userId = localStorage.getItem('d1_user_id') || `d1_user_${Date.now()}`;
-      if (!localStorage.getItem('d1_user_id')) {
-        localStorage.setItem('d1_user_id', userId);
-      }
-
       // 获取本地数据
       const localData = {
         memos: JSON.parse(localStorage.getItem('memos') || '[]'),
@@ -271,13 +265,13 @@ export function SettingsProvider({ children }) {
 
       // 优先尝试使用API客户端（适用于Cloudflare Pages）
       try {
-        const result = await D1ApiClient.syncUserData(userId, localData, d1AuthKey);
+        const result = await D1ApiClient.syncUserData(localData, d1AuthKey);
         return result;
       } catch (apiError) {
         console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
         
         // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
-        const result = await D1DatabaseService.syncUserData(userId);
+        const result = await D1DatabaseService.syncUserData();
         return result;
       }
     } catch (error) {
@@ -293,15 +287,9 @@ export function SettingsProvider({ children }) {
         return { success: false, message: '请先输入D1鉴权密钥进行验证' };
       }
 
-      // 获取之前生成的用户ID
-      const userId = localStorage.getItem('d1_user_id');
-      if (!userId) {
-        throw new Error('未找到D1用户ID，请先同步数据到D1');
-      }
-
       // 优先尝试使用API客户端（适用于Cloudflare Pages）
       try {
-        const result = await D1ApiClient.restoreUserData(userId, d1AuthKey);
+        const result = await D1ApiClient.restoreUserData(d1AuthKey);
         
         if (result.success) {
           // 恢复到本地存储
@@ -347,7 +335,7 @@ export function SettingsProvider({ children }) {
         console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
         
         // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
-        const result = await D1DatabaseService.restoreUserData(userId);
+        const result = await D1DatabaseService.restoreUserData();
         return result;
       }
     } catch (error) {
