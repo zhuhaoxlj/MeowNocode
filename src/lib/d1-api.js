@@ -201,14 +201,29 @@ export class D1ApiClient {
   static async checkAvailability() {
     try {
       const baseUrl = await this.getBaseUrl();
-      const response = await fetch(`${baseUrl}/api/health`, {
+      const apiUrl = `${baseUrl}/api/health`;
+      console.log('正在检查D1 API可用性:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
+      console.log('API响应状态:', response.status, response.statusText);
+      
+      // 检查响应类型
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('API返回了非JSON响应:', contentType);
+        const text = await response.text();
+        console.error('响应内容:', text.substring(0, 200));
+        return false;
+      }
+      
       const result = await response.json();
+      console.log('API响应数据:', result);
       
       if (result.status === 'ok') {
         return true;

@@ -18,27 +18,36 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
     
-    try {
-      // 路由处理
-      if (path === '/api/health') {
-        return handleHealthCheck(env, corsHeaders);
-      } else if (path === '/api/init') {
-        return handleInitDatabase(env, corsHeaders);
-      } else if (path.startsWith('/api/memos')) {
-        return handleMemos(request, env, corsHeaders);
-      } else if (path.startsWith('/api/settings')) {
-        return handleSettings(request, env, corsHeaders);
-      } else {
-        // 静态文件处理（如果需要）
-        return handleStaticFiles(request, env, corsHeaders);
+    // 只处理API请求，其他请求交给静态文件处理
+    if (path.startsWith('/api/')) {
+      try {
+        // 路由处理
+        if (path === '/api/health') {
+          return handleHealthCheck(env, corsHeaders);
+        } else if (path === '/api/init') {
+          return handleInitDatabase(env, corsHeaders);
+        } else if (path.startsWith('/api/memos')) {
+          return handleMemos(request, env, corsHeaders);
+        } else if (path.startsWith('/api/settings')) {
+          return handleSettings(request, env, corsHeaders);
+        } else {
+          // 未知的API路径
+          return new Response(JSON.stringify({ error: 'API endpoint not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (error) {
+        console.error('Worker error:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
-    } catch (error) {
-      console.error('Worker error:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
     }
+    
+    // 对于非API请求，返回null让Cloudflare Pages处理静态文件
+    return null;
   }
 };
 

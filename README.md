@@ -85,9 +85,12 @@ npm run dev
 3. 配置构建设置：
    - 构建命令：`npm run build`
    - 构建输出目录：`dist`
-4. 确保项目根目录中有一个 `_worker.js` 文件（我们已为你创建好了）：
-   - 这个文件的作用是将我们的Worker代码与Cloudflare Pages集成
-   - 它导入了`worker.js`中的所有API端点，使前端应用能够通过HTTP请求访问D1数据库
+4. 确保项目中有以下文件（我们已为你创建好了）：
+   - `functions/api/health.js`：健康检查API端点
+   - `functions/api/init.js`：数据库初始化API端点
+   - `functions/api/memos.js`：memos数据操作API端点
+   - `functions/api/settings.js`：用户设置操作API端点
+   - 这些函数文件是Cloudflare Pages推荐的函数组织方式，每个文件处理一个特定的API端点
 5. 在Pages设置中，添加D1数据库绑定：
    - 变量名：`DB`
    - 数据库：选择你创建的D1数据库
