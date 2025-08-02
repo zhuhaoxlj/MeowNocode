@@ -13,7 +13,7 @@ import ImageUpload from './ImageUpload';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, isD1Authenticated, verifyD1AuthKey } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -28,6 +28,8 @@ const SettingsCard = ({ isOpen, onClose }) => {
   });
   const [isD1Available, setIsD1Available] = useState(false);
   const [fontLoading, setFontLoading] = useState(false);
+  const [d1KeyInput, setD1KeyInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
 
 
@@ -181,6 +183,23 @@ const SettingsCard = ({ isOpen, onClose }) => {
       }
     } catch (error) {
       setMessage({ type: 'error', text: '登录失败' });
+    }
+  };
+
+  const handleD1KeySubmit = async () => {
+    if (!d1KeyInput.trim()) return;
+    
+    setIsVerifying(true);
+    try {
+      const result = await verifyD1AuthKey(d1KeyInput.trim());
+      setMessage({
+        type: result.success ? 'success' : 'error',
+        text: result.message
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: '验证D1密钥失败' });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -770,19 +789,59 @@ const SettingsCard = ({ isOpen, onClose }) => {
                       <>
                         {isD1Available ? (
                           <div className="space-y-3">
-                            <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                              <div className="flex items-center space-x-2">
-                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                <span className="text-sm text-green-800 dark:text-green-200">
-                                  已连接到Cloudflare D1数据库
-                                </span>
+                            {!isD1Authenticated ? (
+                              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div className="flex flex-col space-y-3">
+                                  <div className="flex items-center space-x-3">
+                                    <Key className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                        输入D1鉴权密钥
+                                      </p>
+                                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                                        输入密钥后才能使用D1数据库进行数据同步
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Input
+                                      type="password"
+                                      value={d1KeyInput}
+                                      onChange={(e) => setD1KeyInput(e.target.value)}
+                                      placeholder="请输入D1鉴权密钥"
+                                      className="flex-1"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleD1KeySubmit();
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      onClick={handleD1KeySubmit}
+                                      disabled={isVerifying || !d1KeyInput.trim()}
+                                      size="sm"
+                                      className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      {isVerifying ? '验证中...' : '验证'}
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <div className="flex items-center space-x-2">
+                                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                  <span className="text-sm text-green-800 dark:text-green-200">
+                                    已连接到Cloudflare D1数据库并完成鉴权
+                                  </span>
+                                </div>
+                              </div>
+                            )}
 
                             <div className="flex space-x-2">
                               <Button
                                 onClick={handleD1Sync}
-                                disabled={isSyncing}
+                                disabled={isSyncing || !isD1Authenticated}
                                 size="sm"
                                 className="flex-1"
                                 style={{ backgroundColor: themeColor }}
@@ -792,7 +851,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
                               </Button>
                               <Button
                                 onClick={handleD1Restore}
-                                disabled={isSyncing}
+                                disabled={isSyncing || !isD1Authenticated}
                                 variant="outline"
                                 size="sm"
                                 className="flex-1"

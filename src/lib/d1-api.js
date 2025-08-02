@@ -1,4 +1,4 @@
-// D1数据库API客户端，用于在Cloudflare Pages环境中访问D1数据库
+ // D1数据库API客户端，用于在Cloudflare Pages环境中访问D1数据库
 export class D1ApiClient {
   static async getBaseUrl() {
     // 获取当前域名
@@ -14,14 +14,21 @@ export class D1ApiClient {
   }
 
   // 初始化数据库
-  static async initDatabase() {
+  static async initDatabase(authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果提供了鉴权密钥，添加到请求头
+      if (authKey) {
+        headers['Authorization'] = `Bearer ${authKey}`;
+      }
+      
       const response = await fetch(`${baseUrl}/api/init`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       
       const result = await response.json();
@@ -33,13 +40,13 @@ export class D1ApiClient {
   }
 
   // 同步用户数据到D1
-  static async syncUserData(userId, data) {
+  static async syncUserData(userId, data, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
       // 同步memos
       for (const memo of data.memos) {
-        await this.upsertMemo(userId, memo);
+        await this.upsertMemo(userId, memo, authKey);
       }
 
       // 同步用户设置
@@ -50,7 +57,7 @@ export class D1ApiClient {
         hitokotoConfig: data.hitokotoConfig,
         fontConfig: data.fontConfig,
         backgroundConfig: data.backgroundConfig
-      });
+      }, authKey);
 
       return { success: true, message: '数据同步到D1成功' };
     } catch (error) {
@@ -60,16 +67,24 @@ export class D1ApiClient {
   }
 
   // 从D1恢复用户数据
-  static async restoreUserData(userId) {
+  static async restoreUserData(userId, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
+      
+      // 设置请求头
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果提供了鉴权密钥，添加到请求头
+      if (authKey) {
+        headers['Authorization'] = `Bearer ${authKey}`;
+      }
       
       // 获取用户的memos
       const memosResponse = await fetch(`${baseUrl}/api/memos?userId=${userId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       
       const memosResult = await memosResponse.json();
@@ -77,9 +92,7 @@ export class D1ApiClient {
       // 获取用户设置
       const settingsResponse = await fetch(`${baseUrl}/api/settings?userId=${userId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       
       const settingsResult = await settingsResponse.json();
@@ -103,9 +116,19 @@ export class D1ApiClient {
   }
 
   // 插入或更新memo
-  static async upsertMemo(userId, memo) {
+  static async upsertMemo(userId, memo, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
+      
+      // 设置请求头
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果提供了鉴权密钥，添加到请求头
+      if (authKey) {
+        headers['Authorization'] = `Bearer ${authKey}`;
+      }
       
       // 确保时间戳不为空，使用当前时间作为备用
       const now = new Date().toISOString();
@@ -114,9 +137,7 @@ export class D1ApiClient {
 
       const response = await fetch(`${baseUrl}/api/memos?userId=${userId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           memo_id: memo.id,
           content: memo.content,
@@ -140,15 +161,23 @@ export class D1ApiClient {
   }
 
   // 插入或更新用户设置
-  static async upsertUserSettings(userId, settings) {
+  static async upsertUserSettings(userId, settings, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
+      // 设置请求头
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果提供了鉴权密钥，添加到请求头
+      if (authKey) {
+        headers['Authorization'] = `Bearer ${authKey}`;
+      }
+      
       const response = await fetch(`${baseUrl}/api/settings?userId=${userId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           pinned_memos: settings.pinnedMemos,
           theme_color: settings.themeColor,
@@ -173,15 +202,23 @@ export class D1ApiClient {
   }
 
   // 删除memo
-  static async deleteMemo(userId, memoId) {
+  static async deleteMemo(userId, memoId, authKey) {
     try {
       const baseUrl = await this.getBaseUrl();
       
+      // 设置请求头
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果提供了鉴权密钥，添加到请求头
+      if (authKey) {
+        headers['Authorization'] = `Bearer ${authKey}`;
+      }
+      
       const response = await fetch(`${baseUrl}/api/memos?userId=${userId}&memoId=${memoId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       
       const result = await response.json();

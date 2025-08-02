@@ -1,14 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, User, Github, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, User, Github, Settings as SettingsIcon, Key, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 
 const UserAvatar = ({ onOpenSettings }) => {
   const { user, isAuthenticated, loginWithGitHub, logout, getUserAvatarUrl, getUserDisplayName } = useAuth();
-  const { cloudSyncEnabled } = useSettings();
+  const { cloudSyncEnabled, cloudProvider, isD1Authenticated, verifyD1AuthKey } = useSettings();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isD1KeyInputOpen, setIsD1KeyInputOpen] = useState(false);
+  const [d1KeyInput, setD1KeyInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const dropdownRef = useRef(null);
   const avatarRef = useRef(null);
 
@@ -31,7 +35,28 @@ const UserAvatar = ({ onOpenSettings }) => {
     if (isAuthenticated) {
       setIsDropdownOpen(!isDropdownOpen);
     } else {
-      handleLogin();
+      if (cloudProvider === 'd1') {
+        setIsD1KeyInputOpen(!isD1KeyInputOpen);
+      } else {
+        handleLogin();
+      }
+    }
+  };
+
+  const handleD1KeySubmit = async () => {
+    if (!d1KeyInput.trim()) return;
+    
+    setIsVerifying(true);
+    try {
+      const result = await verifyD1AuthKey(d1KeyInput.trim());
+      if (result.success) {
+        setIsD1KeyInputOpen(false);
+        setD1KeyInput('');
+      }
+    } catch (error) {
+      console.error('验证D1密钥失败:', error);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -65,17 +90,75 @@ const UserAvatar = ({ onOpenSettings }) => {
   };
 
   if (!isAuthenticated) {
-    // 未登录状态 - 显示登录按钮
+    // 未登录状态 - 显示登录按钮或D1密钥输入按钮
     return (
-      <button
-        ref={avatarRef}
-        onClick={handleLogin}
-        className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-        aria-label="GitHub登录"
-        title="GitHub登录"
-      >
-        <Github className="h-5 w-5" />
-      </button>
+      <div className="relative">
+        <button
+          ref={avatarRef}
+          onClick={handleAvatarClick}
+          className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:ring-2 hover:ring-offset-2 ${
+            cloudProvider === 'd1'
+              ? isD1Authenticated
+                ? 'bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-300 hover:ring-green-500 dark:hover:ring-green-400'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 hover:ring-blue-500 dark:hover:ring-blue-400'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 hover:ring-blue-500 dark:hover:ring-blue-400'
+          }`}
+          aria-label={cloudProvider === 'd1' ? "D1鉴权密钥" : "GitHub登录"}
+          title={cloudProvider === 'd1' ? (isD1Authenticated ? "D1已鉴权" : "输入D1鉴权密钥") : "GitHub登录"}
+        >
+          {cloudProvider === 'd1' ? (
+            isD1Authenticated ? (
+              <Check className="h-5 w-5" />
+            ) : (
+              <Key className="h-5 w-5" />
+            )
+          ) : (
+            <Github className="h-5 w-5" />
+          )}
+        </button>
+
+        {/* D1密钥输入框 */}
+        {cloudProvider === 'd1' && isD1KeyInputOpen && (
+          <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 z-50">
+            <div className="mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                D1鉴权密钥
+              </label>
+              <Input
+                type="password"
+                value={d1KeyInput}
+                onChange={(e) => setD1KeyInput(e.target.value)}
+                placeholder="请输入D1鉴权密钥"
+                className="w-full"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleD1KeySubmit();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsD1KeyInputOpen(false);
+                  setD1KeyInput('');
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleD1KeySubmit}
+                disabled={isVerifying || !d1KeyInput.trim()}
+              >
+                {isVerifying ? '验证中...' : '验证'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
 

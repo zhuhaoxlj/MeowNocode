@@ -26,6 +26,8 @@ export function SettingsProvider({ children }) {
   });
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [cloudProvider, setCloudProvider] = useState('supabase'); // 'supabase' 或 'd1'
+  const [d1AuthKey, setD1AuthKey] = useState('');
+  const [isD1Authenticated, setIsD1Authenticated] = useState(false);
 
   useEffect(() => {
     // 从localStorage加载一言设置
@@ -77,6 +79,26 @@ export function SettingsProvider({ children }) {
         console.warn('Failed to parse cloud provider config:', error);
       }
     }
+
+    // 从localStorage加载D1鉴权密钥
+    const savedD1AuthKey = localStorage.getItem('d1AuthKey');
+    if (savedD1AuthKey) {
+      try {
+        setD1AuthKey(savedD1AuthKey);
+      } catch (error) {
+        console.warn('Failed to parse D1 auth key:', error);
+      }
+    }
+
+    // 从localStorage加载D1鉴权状态
+    const savedD1Authenticated = localStorage.getItem('isD1Authenticated');
+    if (savedD1Authenticated) {
+      try {
+        setIsD1Authenticated(JSON.parse(savedD1Authenticated));
+      } catch (error) {
+        console.warn('Failed to parse D1 auth status:', error);
+      }
+    }
   }, []);
 
 
@@ -106,6 +128,16 @@ export function SettingsProvider({ children }) {
     localStorage.setItem('cloudProvider', cloudProvider);
   }, [cloudProvider]);
 
+  useEffect(() => {
+    // 保存D1鉴权密钥到localStorage
+    localStorage.setItem('d1AuthKey', d1AuthKey);
+  }, [d1AuthKey]);
+
+  useEffect(() => {
+    // 保存D1鉴权状态到localStorage
+    localStorage.setItem('isD1Authenticated', JSON.stringify(isD1Authenticated));
+  }, [isD1Authenticated]);
+
 
 
   const updateHitokotoConfig = (newConfig) => {
@@ -126,6 +158,41 @@ export function SettingsProvider({ children }) {
 
   const updateCloudProvider = (provider) => {
     setCloudProvider(provider);
+  };
+
+  const updateD1AuthKey = (key) => {
+    setD1AuthKey(key);
+  };
+
+  const updateD1Authenticated = (authenticated) => {
+    setIsD1Authenticated(authenticated);
+  };
+
+  // 验证D1鉴权密钥
+  const verifyD1AuthKey = async (key) => {
+    try {
+      const baseUrl = await D1ApiClient.getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+      });
+      
+      if (response.ok) {
+        setD1AuthKey(key);
+        setIsD1Authenticated(true);
+        return { success: true, message: 'D1鉴权密钥验证成功' };
+      } else {
+        setIsD1Authenticated(false);
+        return { success: false, message: 'D1鉴权密钥验证失败' };
+      }
+    } catch (error) {
+      console.error('验证D1鉴权密钥失败:', error);
+      setIsD1Authenticated(false);
+      return { success: false, message: '验证D1鉴权密钥时发生错误' };
+    }
   };
 
 
@@ -164,6 +231,11 @@ export function SettingsProvider({ children }) {
   // D1同步功能
   const syncToD1 = async () => {
     try {
+      // 检查是否已通过D1鉴权
+      if (!isD1Authenticated || !d1AuthKey) {
+        return { success: false, message: '请先输入D1鉴权密钥进行验证' };
+      }
+
       // 生成一个基于时间戳的简单用户ID，用于D1数据库
       const userId = localStorage.getItem('d1_user_id') || `d1_user_${Date.now()}`;
       if (!localStorage.getItem('d1_user_id')) {
@@ -183,7 +255,7 @@ export function SettingsProvider({ children }) {
 
       // 优先尝试使用API客户端（适用于Cloudflare Pages）
       try {
-        const result = await D1ApiClient.syncUserData(userId, localData);
+        const result = await D1ApiClient.syncUserData(userId, localData, d1AuthKey);
         return result;
       } catch (apiError) {
         console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
@@ -200,6 +272,11 @@ export function SettingsProvider({ children }) {
 
   const restoreFromD1 = async () => {
     try {
+      // 检查是否已通过D1鉴权
+      if (!isD1Authenticated || !d1AuthKey) {
+        return { success: false, message: '请先输入D1鉴权密钥进行验证' };
+      }
+
       // 获取之前生成的用户ID
       const userId = localStorage.getItem('d1_user_id');
       if (!userId) {
@@ -208,7 +285,7 @@ export function SettingsProvider({ children }) {
 
       // 优先尝试使用API客户端（适用于Cloudflare Pages）
       try {
-        const result = await D1ApiClient.restoreUserData(userId);
+        const result = await D1ApiClient.restoreUserData(userId, d1AuthKey);
         
         if (result.success) {
           // 恢复到本地存储
@@ -275,6 +352,11 @@ export function SettingsProvider({ children }) {
       updateCloudSyncEnabled,
       cloudProvider,
       updateCloudProvider,
+      d1AuthKey,
+      updateD1AuthKey,
+      isD1Authenticated,
+      updateD1Authenticated,
+      verifyD1AuthKey,
       syncToSupabase,
       restoreFromSupabase,
       syncToD1,
