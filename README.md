@@ -62,7 +62,7 @@ npm run dev
 #### 初始化D1数据库
 1. 执行以下命令初始化数据库：
    ```
-   wrangler d1 execute meow-app-db --file=./d1-schema.sql
+   wrangler d1 execute meow-app-db --file=./d1-schema.sql --remote
    ```
 
 #### 配置wrangler.toml
