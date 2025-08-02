@@ -59,15 +59,15 @@ npm run dev
    ```
 2. 记下输出的database_id
 
+#### 配置wrangler.toml
+1. 编辑`wrangler.toml`文件，将`your-database-id`替换为上一步获取的database_id
+2. 根据需要配置自定义域名和环境变量
+
 #### 初始化D1数据库
 1. 执行以下命令初始化数据库：
    ```
    wrangler d1 execute meow-app-db --file=./d1-schema.sql --remote
    ```
-
-#### 配置wrangler.toml
-1. 编辑`wrangler.toml`文件，将`your-database-id`替换为上一步获取的database_id
-2. 根据需要配置自定义域名和环境变量
 
 #### 部署到Cloudflare Workers
 1. 构建应用：
@@ -84,10 +84,16 @@ npm run dev
 2. 在Cloudflare控制台中连接你的GitHub仓库
 3. 配置构建设置：
    - 构建命令：`npm run build`
-   - 构建输出目录：`build`
-4. 在Pages设置中，添加D1数据库绑定：
+   - 构建输出目录：`dist`
+4. 确保项目根目录中有一个 `_worker.js` 文件（我们已为你创建好了）：
+   - 这个文件的作用是将我们的Worker代码与Cloudflare Pages集成
+   - 它导入了`worker.js`中的所有API端点，使前端应用能够通过HTTP请求访问D1数据库
+5. 在Pages设置中，添加D1数据库绑定：
    - 变量名：`DB`
    - 数据库：选择你创建的D1数据库
+6. 添加环境变量（可选）：
+   - `VITE_CF_PAGES`: `true`
+   - `VITE_DEPLOYMENT_PLATFORM`: `cloudflare`
 
 ## 使用指南
 

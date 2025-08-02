@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DatabaseService } from '@/lib/database';
 import { D1DatabaseService } from '@/lib/d1';
+import { D1ApiClient } from '@/lib/d1-api';
 import { useAuth } from './AuthContext';
 
 const SettingsContext = createContext();
@@ -169,8 +170,28 @@ export function SettingsProvider({ children }) {
         localStorage.setItem('d1_user_id', userId);
       }
 
-      const result = await D1DatabaseService.syncUserData(userId);
-      return result;
+      // 获取本地数据
+      const localData = {
+        memos: JSON.parse(localStorage.getItem('memos') || '[]'),
+        pinnedMemos: JSON.parse(localStorage.getItem('pinnedMemos') || '[]'),
+        themeColor: localStorage.getItem('themeColor') || '#818CF8',
+        darkMode: localStorage.getItem('darkMode') || 'false',
+        hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
+        fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
+        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}')
+      };
+
+      // 优先尝试使用API客户端（适用于Cloudflare Pages）
+      try {
+        const result = await D1ApiClient.syncUserData(userId, localData);
+        return result;
+      } catch (apiError) {
+        console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
+        
+        // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
+        const result = await D1DatabaseService.syncUserData(userId);
+        return result;
+      }
     } catch (error) {
       console.error('同步到D1失败:', error);
       return { success: false, message: error.message };
@@ -185,8 +206,57 @@ export function SettingsProvider({ children }) {
         throw new Error('未找到D1用户ID，请先同步数据到D1');
       }
 
-      const result = await D1DatabaseService.restoreUserData(userId);
-      return result;
+      // 优先尝试使用API客户端（适用于Cloudflare Pages）
+      try {
+        const result = await D1ApiClient.restoreUserData(userId);
+        
+        if (result.success) {
+          // 恢复到本地存储
+          if (result.data.memos && result.data.memos.length > 0) {
+            const localMemos = result.data.memos.map(memo => ({
+              id: memo.memo_id,
+              content: memo.content,
+              tags: JSON.parse(memo.tags || '[]'),
+              timestamp: memo.created_at,
+              lastModified: memo.updated_at,
+              createdAt: memo.created_at,
+              updatedAt: memo.updated_at
+            }));
+            localStorage.setItem('memos', JSON.stringify(localMemos));
+          }
+
+          if (result.data.settings) {
+            if (result.data.settings.pinned_memos) {
+              localStorage.setItem('pinnedMemos', result.data.settings.pinned_memos);
+            }
+            if (result.data.settings.theme_color) {
+              localStorage.setItem('themeColor', result.data.settings.theme_color);
+            }
+            if (result.data.settings.dark_mode !== null) {
+              localStorage.setItem('darkMode', result.data.settings.dark_mode.toString());
+            }
+            if (result.data.settings.hitokoto_config) {
+              localStorage.setItem('hitokotoConfig', result.data.settings.hitokoto_config);
+            }
+            if (result.data.settings.font_config) {
+              localStorage.setItem('fontConfig', result.data.settings.font_config);
+            }
+            if (result.data.settings.background_config) {
+              localStorage.setItem('backgroundConfig', result.data.settings.background_config);
+            }
+          }
+          
+          return { success: true, message: '从D1恢复数据成功，请刷新页面查看' };
+        }
+        
+        throw new Error(result.message || '恢复数据失败');
+      } catch (apiError) {
+        console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
+        
+        // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
+        const result = await D1DatabaseService.restoreUserData(userId);
+        return result;
+      }
     } catch (error) {
       console.error('从D1恢复失败:', error);
       return { success: false, message: error.message };

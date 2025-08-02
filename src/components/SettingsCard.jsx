@@ -8,6 +8,7 @@ import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Datab
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
+import { D1ApiClient } from '@/lib/d1-api';
 import ImageUpload from './ImageUpload';
 
 const SettingsCard = ({ isOpen, onClose }) => {
@@ -35,21 +36,22 @@ const SettingsCard = ({ isOpen, onClose }) => {
       setTempColor(themeColor);
       setMessage({ type: '', text: '' });
       
-      // 检查是否在Cloudflare环境中运行
-      const checkD1Availability = () => {
-        // 在Cloudflare Workers环境中，DB会自动绑定到全局变量
-        if (typeof DB !== 'undefined') {
-          setIsD1Available(true);
-          return;
+      // 检查D1数据库的可用性
+      const checkD1Availability = async () => {
+        try {
+          // 在Cloudflare Workers环境中，DB会自动绑定到全局变量
+          if (typeof DB !== 'undefined') {
+            setIsD1Available(true);
+            return;
+          }
+          
+          // 尝试通过API检查D1数据库的可用性
+          const isAvailable = await D1ApiClient.checkAvailability();
+          setIsD1Available(isAvailable);
+        } catch (error) {
+          console.error('检查D1数据库可用性失败:', error);
+          setIsD1Available(false);
         }
-        
-        // 检查是否在Cloudflare Pages环境中
-        if (import.meta.env.VITE_CF_PAGES === 'true') {
-          setIsD1Available(true);
-          return;
-        }
-        
-        setIsD1Available(false);
       };
       
       checkD1Availability();
