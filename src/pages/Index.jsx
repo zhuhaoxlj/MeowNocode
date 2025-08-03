@@ -4,6 +4,7 @@ import RightSidebar from '@/components/RightSidebar';
 import MainContent from '@/components/MainContent';
 import MobileSidebar from '@/components/MobileSidebar';
 import SettingsCard from '@/components/SettingsCard';
+import ShareDialog from '@/components/ShareDialog';
 import { useSettings } from '@/context/SettingsContext';
 
 const Index = () => {
@@ -30,6 +31,8 @@ const Index = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [selectedMemo, setSelectedMemo] = useState(null);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -367,6 +370,13 @@ const Index = () => {
           setEditContent(memoToEdit.content);
         }
         break;
+      case 'share':
+        const memoToShare = [...memos, ...pinnedMemos].find(memo => memo.id === memoId);
+        if (memoToShare) {
+          setSelectedMemo(memoToShare);
+          setIsShareDialogOpen(true);
+        }
+        break;
       case 'delete':
         setMemos(memos.filter(memo => memo.id !== memoId));
         setPinnedMemos(pinnedMemos.filter(memo => memo.id !== memoId));
@@ -616,6 +626,13 @@ const Index = () => {
       <SettingsCard
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* 分享图对话框 */}
+      <ShareDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        memo={selectedMemo}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, MoreVertical, ArrowUp, Send, X } from 'lucide-react';
+import { Clock, MoreVertical, ArrowUp, Send, X, Share2, Image } from 'lucide-react';
 import MemoEditor from '@/components/MemoEditor';
 import ContentRenderer from '@/components/ContentRenderer';
 import { useTheme } from '@/context/ThemeContext';
@@ -192,6 +192,15 @@ const MemoList = ({
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                             <span className="truncate">编辑</span>
+                          </button>
+
+                          {/* 分享图按钮 */}
+                          <button
+                            onClick={(e) => onMenuAction(e, memo.id, 'share')}
+                            className="block w-full text-left px-3 py-2 sm:px-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                          >
+                            <Image className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <span className="truncate">分享图</span>
                           </button>
 
                           {/* 删除按钮 */}
