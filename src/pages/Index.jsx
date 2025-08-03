@@ -4,9 +4,7 @@ import RightSidebar from '@/components/RightSidebar';
 import MainContent from '@/components/MainContent';
 import MobileSidebar from '@/components/MobileSidebar';
 import SettingsCard from '@/components/SettingsCard';
-import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
-import { X } from 'lucide-react';
 
 const Index = () => {
   // State management
@@ -24,6 +22,12 @@ const Index = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLeftSidebarHidden, setIsLeftSidebarHidden] = useState(false);
   const [isRightSidebarHidden, setIsRightSidebarHidden] = useState(false);
+  const [isLeftSidebarPinned, setIsLeftSidebarPinned] = useState(true);
+  const [isRightSidebarPinned, setIsRightSidebarPinned] = useState(true);
+  const [isLeftSidebarHovered, setIsLeftSidebarHovered] = useState(false);
+  const [isRightSidebarHovered, setIsRightSidebarHovered] = useState(false);
+  const [isAppLoaded, setIsAppLoaded] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
@@ -34,7 +38,6 @@ const Index = () => {
   const memosContainerRef = useRef(null);
 
   // Context
-  const { darkMode, themeColor } = useTheme();
   const { backgroundConfig } = useSettings();
 
   // 控制移动端侧栏打开时的页面滚动
@@ -49,6 +52,86 @@ const Index = () => {
       document.body.style.overflow = '';
     };
   }, [isMobileSidebarOpen]);
+
+  // 处理左侧栏鼠标悬停事件
+  useEffect(() => {
+    let hoverTimer;
+    
+    const handleMouseMove = (e) => {
+      if (!isLeftSidebarPinned) {
+        if (e.clientX < 50) {
+          // 清除之前的定时器
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+          }
+          // 设置新的定时器，延迟显示侧栏
+          hoverTimer = setTimeout(() => {
+            setIsLeftSidebarHovered(true);
+          }, 150);
+        } else if (e.clientX > 350 && isLeftSidebarHovered) {
+          // 清除之前的定时器
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+          }
+          // 设置新的定时器，延迟隐藏侧栏
+          hoverTimer = setTimeout(() => {
+            setIsLeftSidebarHovered(false);
+          }, 200);
+        }
+      }
+    };
+
+    if (!isLeftSidebarPinned) {
+      document.addEventListener('mousemove', handleMouseMove);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+      }
+    };
+  }, [isLeftSidebarPinned, isLeftSidebarHovered]);
+
+  // 处理右侧栏鼠标悬停事件
+  useEffect(() => {
+    let hoverTimer;
+    
+    const handleMouseMove = (e) => {
+      if (!isRightSidebarPinned) {
+        if (e.clientX > window.innerWidth - 50) {
+          // 清除之前的定时器
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+          }
+          // 设置新的定时器，延迟显示侧栏
+          hoverTimer = setTimeout(() => {
+            setIsRightSidebarHovered(true);
+          }, 150);
+        } else if (e.clientX < window.innerWidth - 350 && isRightSidebarHovered) {
+          // 清除之前的定时器
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+          }
+          // 设置新的定时器，延迟隐藏侧栏
+          hoverTimer = setTimeout(() => {
+            setIsRightSidebarHovered(false);
+          }, 200);
+        }
+      }
+    };
+
+    if (!isRightSidebarPinned) {
+      document.addEventListener('mousemove', handleMouseMove);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+      }
+    };
+  }, [isRightSidebarPinned, isRightSidebarHovered]);
 
   // 监听memos列表滚动，控制回到顶部按钮显示
   useEffect(() => {
@@ -77,6 +160,8 @@ const Index = () => {
   useEffect(() => {
     const savedMemos = localStorage.getItem('memos');
     const savedPinned = localStorage.getItem('pinnedMemos');
+    const savedLeftSidebarPinned = localStorage.getItem('isLeftSidebarPinned');
+    const savedRightSidebarPinned = localStorage.getItem('isRightSidebarPinned');
     
     if (savedMemos) {
       try {
@@ -103,6 +188,28 @@ const Index = () => {
         console.error('Failed to parse pinned memos from localStorage', e);
       }
     }
+
+    if (savedLeftSidebarPinned !== null) {
+      try {
+        setIsLeftSidebarPinned(JSON.parse(savedLeftSidebarPinned));
+      } catch (e) {
+        console.error('Failed to parse left sidebar pinned state from localStorage', e);
+      }
+    }
+
+    if (savedRightSidebarPinned !== null) {
+      try {
+        setIsRightSidebarPinned(JSON.parse(savedRightSidebarPinned));
+      } catch (e) {
+        console.error('Failed to parse right sidebar pinned state from localStorage', e);
+      }
+    }
+    
+    // 设置应用已加载，避免初始动画
+    setTimeout(() => {
+      setIsAppLoaded(true);
+      setIsInitialLoad(false);
+    }, 100);
   }, []);
 
   // 保存数据到localStorage
@@ -110,6 +217,15 @@ const Index = () => {
     localStorage.setItem('memos', JSON.stringify(memos));
     localStorage.setItem('pinnedMemos', JSON.stringify(pinnedMemos));
   }, [memos, pinnedMemos]);
+
+  // 保存侧栏固定状态到localStorage
+  useEffect(() => {
+    localStorage.setItem('isLeftSidebarPinned', JSON.stringify(isLeftSidebarPinned));
+  }, [isLeftSidebarPinned]);
+
+  useEffect(() => {
+    localStorage.setItem('isRightSidebarPinned', JSON.stringify(isRightSidebarPinned));
+  }, [isRightSidebarPinned]);
 
   // 添加新memo
   const addMemo = () => {
@@ -416,6 +532,11 @@ const Index = () => {
           heatmapData={heatmapData}
           isLeftSidebarHidden={isLeftSidebarHidden}
           setIsLeftSidebarHidden={setIsLeftSidebarHidden}
+          isLeftSidebarPinned={isLeftSidebarPinned}
+          setIsLeftSidebarPinned={setIsLeftSidebarPinned}
+          isLeftSidebarHovered={isLeftSidebarHovered}
+          isAppLoaded={isAppLoaded}
+          isInitialLoad={isInitialLoad}
           onSettingsOpen={() => setIsSettingsOpen(true)}
           onDateClick={handleDateClick}
         />
@@ -427,6 +548,8 @@ const Index = () => {
           isRightSidebarHidden={isRightSidebarHidden}
           setIsLeftSidebarHidden={setIsLeftSidebarHidden}
           setIsRightSidebarHidden={setIsRightSidebarHidden}
+          isLeftSidebarPinned={isLeftSidebarPinned}
+          isRightSidebarPinned={isRightSidebarPinned}
           
           // Data
           searchQuery={searchQuery}
@@ -469,6 +592,11 @@ const Index = () => {
           setActiveTag={setActiveTag}
           isRightSidebarHidden={isRightSidebarHidden}
           setIsRightSidebarHidden={setIsRightSidebarHidden}
+          isRightSidebarPinned={isRightSidebarPinned}
+          setIsRightSidebarPinned={setIsRightSidebarPinned}
+          isRightSidebarHovered={isRightSidebarHovered}
+          isAppLoaded={isAppLoaded}
+          isInitialLoad={isInitialLoad}
         />
       </div>
 

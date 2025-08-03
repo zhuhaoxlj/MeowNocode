@@ -1,14 +1,19 @@
 import React from 'react';
-import { Calendar, Settings, ChevronLeft, Sun, Moon } from 'lucide-react';
+import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff } from 'lucide-react';
 import GitHubStyleHeatmap from '@/components/GitHubStyleHeatmap';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 
-const LeftSidebar = ({ 
-  heatmapData, 
-  isLeftSidebarHidden, 
-  setIsLeftSidebarHidden, 
+const LeftSidebar = ({
+  heatmapData,
+  isLeftSidebarHidden,
+  setIsLeftSidebarHidden,
+  isLeftSidebarPinned,
+  setIsLeftSidebarPinned,
+  isLeftSidebarHovered,
+  isAppLoaded,
+  isInitialLoad,
   onSettingsOpen,
   onDateClick
 }) => {
@@ -17,21 +22,29 @@ const LeftSidebar = ({
 
   return (
     <div
-      className={`hidden lg:flex flex-col border-r dark:border-gray-700 transition-all duration-500 ease-in-out ${
-        isLeftSidebarHidden
-          ? 'lg:w-0 lg:min-w-0 lg:max-w-0 overflow-hidden opacity-0 -translate-x-full'
-          : 'lg:w-1/5 lg:min-w-[240px] opacity-100 translate-x-0'
+      className={`hidden lg:flex flex-col ${isAppLoaded && !isInitialLoad ? 'transition-all duration-300 ease-in-out' : ''} ${
+        isLeftSidebarPinned
+          ? 'border-r dark:border-gray-700 lg:w-1/5 lg:min-w-[240px] opacity-100 translate-x-0'
+          : isLeftSidebarHovered
+            ? 'fixed left-0 top-16 z-30 m-4 rounded-2xl shadow-xl border dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm w-80 h-[calc(100vh-8rem)] max-h-[80vh] opacity-100 translate-x-0'
+            : isAppLoaded && !isInitialLoad
+              ? 'fixed left-0 top-16 z-30 m-4 rounded-2xl shadow-xl border dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm w-80 h-[calc(100vh-8rem)] max-h-[80vh] opacity-0 pointer-events-none -translate-x-full'
+              : 'fixed left-0 top-16 z-30 m-4 rounded-2xl shadow-xl border dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm w-80 h-[calc(100vh-8rem)] max-h-[80vh] opacity-0 pointer-events-none -translate-x-full'
       }`}
     >
-      <div className="p-4 flex-1 flex flex-col min-w-[240px] relative">
-        {/* 隐藏左侧栏按钮 */}
+      <div className={`p-4 flex-1 flex flex-col min-w-[240px] relative ${!isLeftSidebarPinned && isLeftSidebarHovered ? 'h-full overflow-hidden' : ''}`}>
+        {/* 固定/取消固定按钮 */}
         <button
-          onClick={() => setIsLeftSidebarHidden(true)}
-          className="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-110"
-          aria-label="隐藏左侧栏"
-          title="隐藏左侧栏"
+          onClick={() => setIsLeftSidebarPinned(!isLeftSidebarPinned)}
+          className="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all duration-300 ease-in-out hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-110"
+          aria-label={isLeftSidebarPinned ? "取消固定左侧栏" : "固定左侧栏"}
+          title={isLeftSidebarPinned ? "取消固定左侧栏" : "固定左侧栏"}
         >
-          <ChevronLeft className="h-4 w-4" />
+          {isLeftSidebarPinned ? (
+            <Pin className="h-4 w-4 transition-transform duration-300 ease-in-out" />
+          ) : (
+            <PinOff className="h-4 w-4 transition-transform duration-300 ease-in-out" />
+          )}
         </button>
 
         <div className="flex items-center mb-4">
@@ -43,7 +56,7 @@ const LeftSidebar = ({
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <GitHubStyleHeatmap data={heatmapData} onDateClick={onDateClick} />
+          <GitHubStyleHeatmap data={heatmapData} onDateClick={onDateClick} isSidebarHovered={!isLeftSidebarPinned && isLeftSidebarHovered} />
         </div>
 
         {/* 底部按钮区域 */}

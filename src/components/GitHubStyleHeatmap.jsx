@@ -3,7 +3,7 @@ import { format, subDays, eachDayOfInterval, isSameDay, getYear, getMonth } from
 import { zhCN } from 'date-fns/locale';
 import { useTheme } from '@/context/ThemeContext';
 
-const GitHubStyleHeatmap = ({ data = [], onDateClick }) => {
+const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }) => {
   const [events, setEvents] = useState({});
   const [tooltip, setTooltip] = useState({ show: false, content: '', x: 0, y: 0 });
   const { darkMode } = useTheme();
@@ -116,7 +116,7 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick }) => {
 
   // 显示提示
   const showTooltip = (e, date, count) => {
-    let content = `${date}\n`;
+    let content = `${date}<br/>`;
 
     if (count === 0) {
       content += '无想法';
@@ -124,11 +124,82 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick }) => {
       content += `${count}条想法`;
     }
 
+    // 计算工具提示位置，确保显示在格子附近
+    const tooltipWidth = 120; // 预估的工具提示宽度
+    const tooltipHeight = 40; // 预估的工具提示高度
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 获取格子的位置和尺寸
+    const rect = e.target.getBoundingClientRect();
+
+    // 计算tooltip位置
+    let x, y;
+
+    if (isSidebarHovered) {
+      // 当侧栏悬停时，使用相对于容器的定位
+      const heatmapContainer = e.target.closest('.heatmap-container');
+      const containerRect = heatmapContainer ? heatmapContainer.getBoundingClientRect() : { left: 0, top: 0 };
+
+      // 相对于容器的位置
+      x = rect.left - containerRect.left + rect.width / 2 - tooltipWidth / 2;
+      y = rect.top - containerRect.top - tooltipHeight - 10;
+
+      // 确保tooltip不会超出容器边界
+      const containerWidth = heatmapContainer ? heatmapContainer.offsetWidth : 300;
+      const containerHeight = heatmapContainer ? heatmapContainer.offsetHeight : 200;
+
+      // 水平边界检查
+      if (x < 5) {
+        x = 5;
+      } else if (x + tooltipWidth > containerWidth - 5) {
+        x = containerWidth - tooltipWidth - 5;
+      }
+
+      // 垂直边界检查 - 如果会超出上边界，则显示在格子下方
+      if (y < 5) {
+        y = rect.bottom - containerRect.top + 10;
+      }
+
+      // 如果显示在下方还会超出容器，则强制显示在上方
+      if (y + tooltipHeight > containerHeight - 5) {
+        y = rect.top - containerRect.top - tooltipHeight - 10;
+        // 如果还是超出，则显示在格子右侧
+        if (y < 5) {
+          x = rect.right - containerRect.left + 10;
+          y = rect.top - containerRect.top + rect.height / 2 - tooltipHeight / 2;
+
+          // 如果右侧也超出，则显示在左侧
+          if (x + tooltipWidth > containerWidth - 5) {
+            x = rect.left - containerRect.left - tooltipWidth - 10;
+          }
+        }
+      }
+    } else {
+      // 当侧栏固定时，使用固定定位（相对于视口）
+      x = rect.left + rect.width / 2 - tooltipWidth / 2;
+      y = rect.top - tooltipHeight - 10;
+
+      // 水平边界检查
+      if (x < 10) {
+        x = 10;
+      } else if (x + tooltipWidth > viewportWidth - 10) {
+        x = viewportWidth - tooltipWidth - 10;
+      }
+
+      // 垂直边界检查
+      if (y < 10) {
+        y = rect.bottom + 10;
+      } else if (y + tooltipHeight > viewportHeight - 10) {
+        y = rect.top - tooltipHeight - 10;
+      }
+    }
+
     setTooltip({
       show: true,
       content,
-      x: e.pageX + 10,
-      y: e.pageY - 10
+      x,
+      y
     });
   };
 
@@ -157,17 +228,17 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick }) => {
   };
 
   return (
-    <div className="mt-4 font-sans">
+    <div className="mt-4 font-sans relative heatmap-container">
       <div className="flex justify-between items-center mb-3">
         <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
           {getQuarterText()}
         </div>
-        
+
         <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
           <span>少</span>
           <div className="flex mx-1">
             {[0, 1, 2, 3, 4].map(level => (
-              <div 
+              <div
                 key={level}
                 className="w-2 h-2 mx-0.5 rounded-sm"
                 style={{ backgroundColor: getLevelColor(level) }}
@@ -186,14 +257,20 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick }) => {
         </div>
       </div>
 
-      <div 
-        className={`tooltip absolute bg-gray-900 text-white p-2 rounded text-xs pointer-events-none z-50 transition-opacity ${
+      <div
+        className={`tooltip ${isSidebarHovered ? 'absolute' : 'fixed'} bg-gray-900 dark:bg-gray-800 text-white p-2 rounded text-xs pointer-events-none transition-opacity whitespace-nowrap shadow-lg border border-gray-700 ${
           tooltip.show ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }}
-      >
-        {tooltip.content}
-      </div>
+        style={{
+          left: `${tooltip.x}px`,
+          top: `${tooltip.y}px`,
+          maxWidth: '200px',
+          zIndex: isSidebarHovered ? 60 : 50,
+          transform: tooltip.show ? 'scale(1)' : 'scale(0.95)',
+          transition: 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out'
+        }}
+        dangerouslySetInnerHTML={{ __html: tooltip.content }}
+      />
     </div>
   );
 };

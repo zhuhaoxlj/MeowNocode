@@ -11,6 +11,8 @@ const MainContent = ({
   isRightSidebarHidden,
   setIsLeftSidebarHidden,
   setIsRightSidebarHidden,
+  isLeftSidebarPinned,
+  isRightSidebarPinned,
   
   // Data
   searchQuery,
@@ -48,39 +50,14 @@ const MainContent = ({
   const { themeColor } = useTheme();
 
   return (
-    <div className={`flex-1 flex flex-col w-full transition-all duration-500 ease-in-out relative h-full lg:h-full ${
-      isLeftSidebarHidden && isRightSidebarHidden
-        ? 'lg:max-w-3xl lg:mx-auto'
-        : 'lg:max-w-2xl lg:mx-auto'
+    <div className={`flex-1 flex flex-col w-full relative h-full lg:h-full ${
+      isLeftSidebarPinned && isRightSidebarPinned
+        ? 'lg:max-w-2xl lg:mx-auto'
+        : isLeftSidebarPinned || isRightSidebarPinned
+          ? 'lg:max-w-3xl lg:mx-auto'
+          : 'lg:max-w-4xl lg:mx-auto px-4'
     }`}>
 
-      {/* 显示左侧栏按钮 - 仅在桌面端显示 */}
-      {isLeftSidebarHidden && (
-        <div className="hidden lg:block absolute top-4 -left-6 z-20 show-sidebar-btn">
-          <button
-            onClick={() => setIsLeftSidebarHidden(false)}
-            className="fixed-sidebar-btn flex items-center justify-center w-10 h-10 rounded-lg bg-gray-200/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 transition-all duration-300 hover:bg-gray-300/90 dark:hover:bg-gray-600/90 hover:scale-110"
-            aria-label="显示左侧栏"
-            title="显示左侧栏"
-          >
-            <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-          </button>
-        </div>
-      )}
-
-      {/* 显示右侧栏按钮 - 仅在桌面端显示 */}
-      {isRightSidebarHidden && (
-        <div className="hidden lg:block absolute top-4 -right-6 z-20 show-sidebar-btn">
-          <button
-            onClick={() => setIsRightSidebarHidden(false)}
-            className="fixed-sidebar-btn flex items-center justify-center w-10 h-10 rounded-lg bg-gray-200/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 transition-all duration-300 hover:bg-gray-300/90 dark:hover:bg-gray-600/90 hover:scale-110"
-            aria-label="显示右侧栏"
-            title="显示右侧栏"
-          >
-            <ChevronLeft className="h-4 w-4 transition-transform duration-200" />
-          </button>
-        </div>
-      )}
 
       {/* 顶部栏 */}
       <Header
