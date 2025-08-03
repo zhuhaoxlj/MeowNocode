@@ -10,6 +10,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
 import { D1ApiClient } from '@/lib/d1-api';
 import ImageUpload from './ImageUpload';
+import { toast } from 'sonner';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
@@ -18,7 +19,6 @@ const SettingsCard = ({ isOpen, onClose }) => {
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
 
-  const [message, setMessage] = useState({ type: '', text: '' });
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [expandedSections, setExpandedSections] = useState({
@@ -37,7 +37,6 @@ const SettingsCard = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       setTempColor(themeColor);
-      setMessage({ type: '', text: '' });
       
       // 检查D1数据库的可用性
       const checkD1Availability = async () => {
@@ -103,21 +102,21 @@ const SettingsCard = ({ isOpen, onClose }) => {
   // Supabase同步处理函数
   const handleSupabaseSync = async () => {
     if (!isAuthenticated) {
-      setMessage({ type: 'error', text: '请先登录GitHub账号' });
+      toast.error('请先登录GitHub账号');
       return;
     }
 
     setIsSyncing(true);
-    setMessage({ type: '', text: '' });
 
     try {
       const result = await syncToSupabase();
-      setMessage({
-        type: result.success ? 'success' : 'error',
-        text: result.message
-      });
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: error.message });
+      toast.error(error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -125,21 +124,21 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
   const handleSupabaseRestore = async () => {
     if (!isAuthenticated) {
-      setMessage({ type: 'error', text: '请先登录GitHub账号' });
+      toast.error('请先登录GitHub账号');
       return;
     }
 
     setIsSyncing(true);
-    setMessage({ type: '', text: '' });
 
     try {
       const result = await restoreFromSupabase();
-      setMessage({
-        type: result.success ? 'success' : 'error',
-        text: result.message
-      });
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: error.message });
+      toast.error(error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -148,16 +147,16 @@ const SettingsCard = ({ isOpen, onClose }) => {
   // D1同步处理函数
   const handleD1Sync = async () => {
     setIsSyncing(true);
-    setMessage({ type: '', text: '' });
 
     try {
       const result = await syncToD1();
-      setMessage({
-        type: result.success ? 'success' : 'error',
-        text: result.message
-      });
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: error.message });
+      toast.error(error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -165,16 +164,16 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
   const handleD1Restore = async () => {
     setIsSyncing(true);
-    setMessage({ type: '', text: '' });
 
     try {
       const result = await restoreFromD1();
-      setMessage({
-        type: result.success ? 'success' : 'error',
-        text: result.message
-      });
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: error.message });
+      toast.error(error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -185,7 +184,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
       updateCloudProvider(provider);
     } catch (error) {
       console.error('切换云服务提供商失败:', error);
-      setMessage({ type: 'error', text: '切换云服务提供商失败' });
+      toast.error('切换云服务提供商失败');
     }
   };
 
@@ -193,34 +192,32 @@ const SettingsCard = ({ isOpen, onClose }) => {
     try {
       const result = await loginWithGitHub();
       if (!result.success) {
-        setMessage({ type: 'error', text: result.error });
+        toast.error(result.error);
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '登录失败' });
+      toast.error('登录失败');
     }
   };
 
   const handleD1KeySubmit = async () => {
     if (!d1KeyInput.trim()) {
-      setMessage({ type: 'error', text: '请输入D1鉴权密钥' });
+      toast.error('请输入D1鉴权密钥');
       return;
     }
     
     setIsVerifying(true);
     try {
       const result = await verifyD1AuthKey(d1KeyInput.trim());
-      setMessage({
-        type: result.success ? 'success' : 'error',
-        text: result.message
-      });
-      
-      // 如果验证成功，清空输入框
       if (result.success) {
+        toast.success(result.message);
+        // 如果验证成功，清空输入框
         setD1KeyInput('');
+      } else {
+        toast.error(result.message);
       }
     } catch (error) {
       console.error('验证D1密钥失败:', error);
-      setMessage({ type: 'error', text: '验证D1密钥失败: ' + error.message });
+      toast.error('验证D1密钥失败: ' + error.message);
     } finally {
       setIsVerifying(false);
     }
@@ -246,10 +243,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    setMessage({
-      type: 'success',
-      text: '本地数据导出成功'
-    });
+    toast.success('本地数据导出成功');
   };
 
   const handleImportLocalData = (e) => {
@@ -270,21 +264,12 @@ const SettingsCard = ({ isOpen, onClose }) => {
           localStorage.setItem('fontConfig', data.fontConfig || '{"selectedFont":"default"}');
           localStorage.setItem('backgroundConfig', data.backgroundConfig || '{"imageUrl":"","brightness":50,"blur":10}');
           
-          setMessage({
-            type: 'success',
-            text: '本地数据导入成功，请刷新页面查看'
-          });
+          toast.success('本地数据导入成功，请刷新页面查看');
         } else {
-          setMessage({
-            type: 'error',
-            text: '导入文件格式不正确'
-          });
+          toast.error('导入文件格式不正确');
         }
       } catch (error) {
-        setMessage({
-          type: 'error',
-          text: '解析文件失败: ' + error.message
-        });
+        toast.error('解析文件失败: ' + error.message);
       }
     };
     reader.readAsText(file);
@@ -366,21 +351,6 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
         {/* 滚动容器 - 添加了scrollbar-hidden类 */}
         <CardContent className="space-y-6 flex-1 overflow-y-auto scrollbar-hidden">
-          {/* 消息提示 */}
-          {message.text && (
-            <div className={`flex items-center space-x-2 p-3 rounded-lg ${
-              message.type === 'success'
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-            }`}>
-              {message.type === 'success' ? (
-                <CheckCircle className="h-4 w-4 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              )}
-              <span className="text-sm">{message.text}</span>
-            </div>
-          )}
 
           {/* 常规设置 */}
           {activeTab === 'general' && (
@@ -749,7 +719,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
                           Cloudflare D1 仅在 Cloudflare Workers/Pages 环境中可用
                         </p>
                       )}
-                      {isD1Available && d1RequiresAuth && (
+                      {cloudProvider === 'd1' && isD1Available && d1RequiresAuth && !isD1Authenticated && (
                         <p className="text-xs text-yellow-600 dark:text-yellow-400">
                           Cloudflare D1 需要鉴权密钥，请在下方输入密钥
                         </p>
