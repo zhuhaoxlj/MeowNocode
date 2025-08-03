@@ -74,7 +74,7 @@ const MemoList = ({
       {/* 滚动容器 */}
       <div
         ref={memosContainerRef}
-        className="flex-1 overflow-y-auto mobile-memos-container lg:mobile-memos-container-disabled px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6"
+        className="flex-1 overflow-y-auto mobile-memos-container lg:mobile-memos-container-disabled px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 min-h-[250px]"
       >
         {allMemos.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-gray-500">
