@@ -1,18 +1,18 @@
-# Meow App - 类似于flomo/memos的网页应用
-
+# Meow App
+![meow.png](https://pic.oneloved.top/2025-08/meow_1754192428959.png)
 Meow App 是一个简洁的笔记应用，支持本地存储和云端同步。你可以使用Supabase或Cloudflare D1作为云端数据库。
+## 特别感谢
+使用nocode<https://nocode.cn> 和vscode制作。
 
-## 环境安装指南
+## demo
+不含D1数据库（麻烦帮我冲一下UV和PV，球球了）：https://flomo.nocode.host/
+含D1数据库：https://memo.oneloved.top/
+D1公共实例的鉴权密钥是：`meow`。请勿上传不良信息和个人信息。
 
-### NVM 安装
+## 本地开发
+### 安装依赖
 ```
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-```
-
-### Node.js 16 安装
-```
-nvm install 16
-nvm use 16
+npm install
 ```
 
 ### 启动开发服务器
@@ -20,9 +20,9 @@ nvm use 16
 npm run dev
 ```
 
-## 部署选项
+## 部署
 
-### 1. 使用Supabase部署
+### 1. 静态网页托管+Supabase部署
 
 #### 配置Supabase
 1. 在 [Supabase](https://supabase.com) 创建一个新项目
@@ -72,7 +72,6 @@ npm run dev
 
 #### 配置wrangler.toml
 1. 编辑`wrangler.toml`文件，将`your-database-id`替换为上一步获取的database_id
-2. 根据需要配置自定义域名和环境变量
 
 #### 初始化D1数据库
 1. 执行以下命令初始化数据库：
@@ -89,9 +88,6 @@ npm run dev
 4. 在Pages设置中，添加D1数据库绑定：
    - 变量名：`DB`
    - 数据库：选择你创建的D1数据库
-5. 添加环境变量（可选）：
-   - `VITE_CF_PAGES`: `true`
-   - `VITE_DEPLOYMENT_PLATFORM`: `cloudflare`
 
 ## 使用指南
 
