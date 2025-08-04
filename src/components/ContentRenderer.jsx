@@ -119,31 +119,40 @@ const ContentRenderer = ({ content, activeTag, onTagClick }) => {
           );
         } else {
           // 渲染文本部分
-          if (!part.content.trim()) {
-            return <span key={index}>{part.content}</span>;
-          }
+          // 检查是否以空格开头
+          const startsWithSpace = /^\s/.test(part.content);
           
-          return (
-            <ReactMarkdown
-              key={index}
-              components={{
-                h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
-                h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
-                h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
-                p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
-                ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
-                ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
-                li: ({node, ...props}) => <li className="my-1" {...props} />,
-                strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
-                em: ({node, ...props}) => <em className="italic" {...props} />,
-                br: () => <br />,
-              }}
-              remarkPlugins={[]}
-              rehypePlugins={[]}
-            >
-              {renderMarkdownText(part.content)}
-            </ReactMarkdown>
-          );
+          if (startsWithSpace) {
+            // 如果以空格开头，直接渲染为span，保留所有空格
+            return (
+              <span key={index} className="whitespace-pre-wrap">
+                {part.content}
+              </span>
+            );
+          } else {
+            // 否则使用ReactMarkdown渲染
+            return (
+              <ReactMarkdown
+                key={index}
+                components={{
+                  h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
+                  p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
+                  ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
+                  li: ({node, ...props}) => <li className="my-1" {...props} />,
+                  strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                  em: ({node, ...props}) => <em className="italic" {...props} />,
+                  br: () => <br />,
+                }}
+                remarkPlugins={[]}
+                rehypePlugins={[]}
+              >
+                {renderMarkdownText(part.content)}
+              </ReactMarkdown>
+            );
+          }
         }
       })}
     </div>
