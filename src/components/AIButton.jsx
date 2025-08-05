@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bot } from 'lucide-react';
 import { useSettings } from '@/context/SettingsContext';
+import { useTheme } from '@/context/ThemeContext';
 
 const AIButton = ({ isSettingsOpen, isShareDialogOpen, isEditorFocused, onContinue, onOptimize, onChat }) => {
   const { aiConfig } = useSettings();
+  const { themeColor } = useTheme();
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -234,7 +236,7 @@ const AIButton = ({ isSettingsOpen, isShareDialogOpen, isEditorFocused, onContin
           bottom: positionInitialized.current ? 'auto' : '20px',
           width: '56px',
           height: '56px',
-          backgroundColor: '#818CF8',
+          backgroundColor: themeColor,
           color: 'white',
           transition: isDragging ? 'none' : 'all 0.2s ease',
           zIndex: showSubButtons || showChatButton ? 41 : 40

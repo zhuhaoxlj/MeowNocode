@@ -777,7 +777,7 @@ import { toast } from 'sonner';
     setIsAIDialogOpen(true);
   };
 
-  // 生成背景样式
+  // 生成背景样式 - 亮度滤镜只应用于背景图片
   const backgroundStyle = backgroundConfig.imageUrl ? {
     backgroundImage: `url(${backgroundConfig.imageUrl})`,
     backgroundSize: 'cover',
@@ -794,8 +794,15 @@ import { toast } from 'sonner';
   return (
     <div
       className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col lg:flex-row lg:overflow-hidden lg:h-screen relative"
-      style={backgroundStyle}
     >
+      {/* 背景图片层 - 亮度滤镜只应用于此层 */}
+      {backgroundConfig.imageUrl && (
+        <div
+          className="absolute inset-0 z-0"
+          style={backgroundStyle}
+        />
+      )}
+
       {/* 背景遮罩层 */}
       {backgroundConfig.imageUrl && (
         <div
