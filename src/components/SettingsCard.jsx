@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key } from 'lucide-react';
+import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, isD1Authenticated, verifyD1AuthKey } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, isD1Authenticated, verifyD1AuthKey, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -24,19 +24,26 @@ const SettingsCard = ({ isOpen, onClose }) => {
   const [expandedSections, setExpandedSections] = useState({
     hitokoto: false,
     font: false,
-    background: false
+    background: false,
+    ai: false,
+    keyboard: false
   });
   const [isD1Available, setIsD1Available] = useState(false);
   const [d1RequiresAuth, setD1RequiresAuth] = useState(false);
   const [fontLoading, setFontLoading] = useState(false);
   const [d1KeyInput, setD1KeyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [recordingShortcut, setRecordingShortcut] = useState(null);
+  const [tempShortcuts, setTempShortcuts] = useState(keyboardShortcuts);
+  const [pressedKeys, setPressedKeys] = useState(new Set());
+  const [recordingTimeout, setRecordingTimeout] = useState(null);
 
 
 
   useEffect(() => {
     if (isOpen) {
       setTempColor(themeColor);
+      setTempShortcuts(keyboardShortcuts);
       
       // 检查D1数据库的可用性
       const checkD1Availability = async () => {
@@ -66,7 +73,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
       
       checkD1Availability();
     }
-  }, [isOpen, themeColor]);
+  }, [isOpen, themeColor, keyboardShortcuts]);
 
   const handleCustomColorChange = (e) => {
     const color = e.target.value;
@@ -287,6 +294,159 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
     updateFontConfig({ selectedFont: fontName });
   };
+
+  // 处理快捷键录制
+  const handleShortcutRecord = (shortcutType) => {
+    setRecordingShortcut(shortcutType);
+  };
+
+  // 处理键盘事件录制快捷键
+  const handleKeyDown = (e) => {
+    if (!recordingShortcut) return;
+
+    e.preventDefault();
+    
+    const key = e.key;
+    const ctrlKey = e.ctrlKey || e.metaKey;
+    const altKey = e.altKey;
+    const shiftKey = e.shiftKey;
+
+    // 添加当前按下的键到集合中
+    setPressedKeys(prev => {
+      const newSet = new Set(prev);
+      newSet.add(key);
+      return newSet;
+    });
+
+    // 清除之前的超时
+    if (recordingTimeout) {
+      clearTimeout(recordingTimeout);
+      setRecordingTimeout(null);
+    }
+
+    // 设置新的超时，如果在500ms内没有新按键，则完成录制
+    const timeoutId = setTimeout(() => {
+      completeShortcutRecording();
+    }, 500);
+    setRecordingTimeout(timeoutId);
+  };
+
+  // 处理按键释放事件
+  const handleKeyUp = (e) => {
+    if (!recordingShortcut) return;
+
+    // 从集合中移除释放的键
+    setPressedKeys(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(e.key);
+      return newSet;
+    });
+
+    // 如果所有修饰键都释放了，完成录制
+    const ctrlKey = e.ctrlKey || e.metaKey;
+    const altKey = e.altKey;
+    const shiftKey = e.shiftKey;
+    
+    if (!ctrlKey && !altKey && !shiftKey && pressedKeys.size > 0) {
+      completeShortcutRecording();
+    }
+  };
+
+  // 完成快捷键录制
+  const completeShortcutRecording = () => {
+    if (!recordingShortcut || pressedKeys.size === 0) return;
+
+    // 检查按下的键中是否有修饰键
+    const hasCtrl = Array.from(pressedKeys).includes('Control') || Array.from(pressedKeys).includes('Meta');
+    const hasAlt = Array.from(pressedKeys).includes('Alt');
+    const hasShift = Array.from(pressedKeys).includes('Shift');
+
+    // 构建快捷键字符串
+    let shortcutString = '';
+    if (hasCtrl) shortcutString += 'Ctrl+';
+    if (hasAlt) shortcutString += 'Alt+';
+    if (hasShift) shortcutString += 'Shift+';
+    
+    // 找到主要按键（非修饰键）
+    const mainKey = Array.from(pressedKeys).find(key => 
+      !['Control', 'Alt', 'Shift', 'Meta'].includes(key)
+    );
+    
+    if (mainKey) {
+      // 处理特殊键名
+      const keyMap = {
+        ' ': 'Space',
+        ',': ',',
+        '.': '.',
+        'Tab': 'Tab',
+        'Enter': 'Enter',
+        'Escape': 'Escape',
+        'Backspace': 'Backspace',
+        'Delete': 'Delete',
+        'ArrowUp': 'ArrowUp',
+        'ArrowDown': 'ArrowDown',
+        'ArrowLeft': 'ArrowLeft',
+        'ArrowRight': 'ArrowRight',
+        'PageUp': 'PageUp',
+        'PageDown': 'PageDown',
+        'Home': 'Home',
+        'End': 'End'
+      };
+
+      const displayKey = keyMap[mainKey] || mainKey;
+      shortcutString += displayKey;
+
+      // 更新临时快捷键
+      setTempShortcuts(prev => ({
+        ...prev,
+        [recordingShortcut]: shortcutString
+      }));
+
+      // 更新实际快捷键配置
+      updateKeyboardShortcuts({
+        [recordingShortcut]: shortcutString
+      });
+    }
+
+    // 重置录制状态
+    setRecordingShortcut(null);
+    setPressedKeys(new Set());
+    if (recordingTimeout) {
+      clearTimeout(recordingTimeout);
+      setRecordingTimeout(null);
+    }
+  };
+
+  // 停止录制
+  const stopRecording = () => {
+    setRecordingShortcut(null);
+    setPressedKeys(new Set());
+    if (recordingTimeout) {
+      clearTimeout(recordingTimeout);
+      setRecordingTimeout(null);
+    }
+  };
+
+  // 添加全局键盘事件监听
+  useEffect(() => {
+    if (recordingShortcut) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keyup', handleKeyUp);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+      };
+    }
+  }, [recordingShortcut, pressedKeys, recordingTimeout]);
+
+  // 清理超时
+  useEffect(() => {
+    return () => {
+      if (recordingTimeout) {
+        clearTimeout(recordingTimeout);
+      }
+    };
+  }, [recordingTimeout]);
 
   // 切换折叠面板
   const toggleSection = (section) => {
@@ -638,6 +798,279 @@ const SettingsCard = ({ isOpen, onClose }) => {
                           )}
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI设置 - 折叠面板 */}
+              <div className="space-y-4">
+                <div
+                  className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => toggleSection('ai')}
+                >
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <Bot className="h-4 w-4 mr-2" />
+                    AI设置
+                  </Label>
+                  <button
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('ai');
+                    }}
+                  >
+                    {expandedSections.ai ?
+                      <ChevronUp className="h-4 w-4" /> :
+                      <ChevronDown className="h-4 w-4" />
+                    }
+                  </button>
+                </div>
+
+                {/* 折叠内容 - 添加平滑过渡动画 */}
+                {expandedSections.ai && (
+                  <div className="animate-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-4 pl-4 pr-2 pb-4">
+                      {/* AI启用开关 */}
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">启用AI功能</Label>
+                        <button
+                          onClick={() => updateAiConfig({ enabled: !aiConfig.enabled })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            aiConfig.enabled
+                              ? 'bg-blue-600'
+                              : 'bg-gray-200 dark:bg-gray-700'
+                          }`}
+                          style={aiConfig.enabled ? { backgroundColor: themeColor } : {}}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              aiConfig.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {/* AI配置选项 */}
+                      {aiConfig.enabled && (
+                        <div className="space-y-4">
+                          {/* Base URL设置 */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">API Base URL</Label>
+                            <Input
+                              type="text"
+                              value={aiConfig.baseUrl}
+                              onChange={(e) => updateAiConfig({ baseUrl: e.target.value })}
+                              placeholder="https://api.openai.com/v1"
+                              className="w-full"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              兼容OpenAI格式的API地址，例如：https://api.openai.com/v1
+                            </p>
+                          </div>
+
+                         {/* 模型设置 */}
+                         <div className="space-y-2">
+                           <Label className="text-sm font-medium">模型名称</Label>
+                           <Input
+                             type="text"
+                             value={aiConfig.model}
+                             onChange={(e) => updateAiConfig({ model: e.target.value })}
+                             placeholder="gpt-3.5-turbo"
+                             className="w-full"
+                           />
+                           <p className="text-xs text-gray-500 dark:text-gray-400">
+                             输入您想使用的AI模型名称，例如：gpt-3.5-turbo、gpt-4、claude-3-sonnet-20240229等
+                           </p>
+                         </div>
+
+                         {/* API Key设置 */}
+                         <div className="space-y-2">
+                           <Label className="text-sm font-medium">API Key</Label>
+                           <Input
+                             type="password"
+                             value={aiConfig.apiKey}
+                             onChange={(e) => updateAiConfig({ apiKey: e.target.value })}
+                             placeholder="sk-..."
+                             className="w-full"
+                           />
+                           <p className="text-xs text-gray-500 dark:text-gray-400">
+                             您的API密钥将安全存储在本地浏览器中
+                           </p>
+                         </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 快捷键设置 - 折叠面板 */}
+              <div className="space-y-4">
+                <div
+                  className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => toggleSection('keyboard')}
+                >
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <Keyboard className="h-4 w-4 mr-2" />
+                    快捷键设置
+                  </Label>
+                  <button
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('keyboard');
+                    }}
+                  >
+                    {expandedSections.keyboard ?
+                      <ChevronUp className="h-4 w-4" /> :
+                      <ChevronDown className="h-4 w-4" />
+                    }
+                  </button>
+                </div>
+
+                {/* 折叠内容 - 添加平滑过渡动画 */}
+                {expandedSections.keyboard && (
+                  <div className="animate-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-4 pl-4 pr-2 pb-4">
+                      {/* 快捷键设置 */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">快捷键设置</Label>
+                        <div className="grid grid-cols-1 gap-3">
+                          {/* 切换侧栏快捷键 */}
+                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex flex-col space-y-1 flex-1">
+                              <span className="text-sm font-medium">取消/固定侧栏</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">切换左右侧栏的固定状态</span>
+                            </div>
+                            <button
+                              onClick={() => handleShortcutRecord('toggleSidebar')}
+                              className={`shortcut-recording px-3 py-2 text-sm rounded-lg border transition-colors text-left min-w-[100px] ${
+                                recordingShortcut === 'toggleSidebar'
+                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                              }`}
+                            >
+                              {recordingShortcut === 'toggleSidebar' ? (
+                                <div className="flex flex-col items-center space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs">录制中...</span>
+                                  </div>
+                                  {pressedKeys.size > 0 && (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                                      {Array.from(pressedKeys).map(key => {
+                                        const keyMap = {
+                                          'Control': 'Ctrl',
+                                          'Meta': 'Cmd',
+                                          'Alt': 'Alt',
+                                          'Shift': 'Shift',
+                                          ' ': 'Space'
+                                        };
+                                        return keyMap[key] || key;
+                                      }).join(' + ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+                                  {tempShortcuts.toggleSidebar}
+                                </kbd>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* AI对话快捷键 */}
+                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex flex-col space-y-1 flex-1">
+                              <span className="text-sm font-medium">AI对话</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">快速打开AI对话功能</span>
+                            </div>
+                            <button
+                              onClick={() => handleShortcutRecord('openAIDialog')}
+                              className={`shortcut-recording px-3 py-2 text-sm rounded-lg border transition-colors text-left min-w-[100px] ${
+                                recordingShortcut === 'openAIDialog'
+                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                              }`}
+                            >
+                              {recordingShortcut === 'openAIDialog' ? (
+                                <div className="flex flex-col items-center space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs">录制中...</span>
+                                  </div>
+                                  {pressedKeys.size > 0 && (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                                      {Array.from(pressedKeys).map(key => {
+                                        const keyMap = {
+                                          'Control': 'Ctrl',
+                                          'Meta': 'Cmd',
+                                          'Alt': 'Alt',
+                                          'Shift': 'Shift',
+                                          ' ': 'Space'
+                                        };
+                                        return keyMap[key] || key;
+                                      }).join(' + ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+                                  {tempShortcuts.openAIDialog}
+                                </kbd>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* 设置快捷键 */}
+                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex flex-col space-y-1 flex-1">
+                              <span className="text-sm font-medium">打开设置</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">快速打开设置面板</span>
+                            </div>
+                            <button
+                              onClick={() => handleShortcutRecord('openSettings')}
+                              className={`shortcut-recording px-3 py-2 text-sm rounded-lg border transition-colors text-left min-w-[100px] ${
+                                recordingShortcut === 'openSettings'
+                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                              }`}
+                            >
+                              {recordingShortcut === 'openSettings' ? (
+                                <div className="flex flex-col items-center space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs">录制中...</span>
+                                  </div>
+                                  {pressedKeys.size > 0 && (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                                      {Array.from(pressedKeys).map(key => {
+                                        const keyMap = {
+                                          'Control': 'Ctrl',
+                                          'Meta': 'Cmd',
+                                          'Alt': 'Alt',
+                                          'Shift': 'Shift',
+                                          ' ': 'Space'
+                                        };
+                                        return keyMap[key] || key;
+                                      }).join(' + ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+                                  {tempShortcuts.openSettings}
+                                </kbd>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        提示：点击快捷键框，然后按住修饰键（Ctrl、Alt、Shift）再按其他键进行录制。支持组合键如 Ctrl+Space、Alt+Enter 等。
+                      </p>
                     </div>
                   </div>
                 )}

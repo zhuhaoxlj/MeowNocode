@@ -13,7 +13,9 @@ const MemoEditor = ({
   maxLength = 5000,
   showCharCount = true,
   autoFocus = false,
-  className = ''
+  className = '',
+  onFocus,
+  onBlur
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
@@ -150,10 +152,12 @@ const MemoEditor = ({
   // 焦点事件
   const handleFocus = () => {
     setIsFocused(true);
+    onFocus?.();
   };
 
   const handleBlur = () => {
     setIsFocused(false);
+    onBlur?.();
   };
 
   // 当value变化时调整高度

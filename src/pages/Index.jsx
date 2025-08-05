@@ -5,9 +5,12 @@ import MainContent from '@/components/MainContent';
 import MobileSidebar from '@/components/MobileSidebar';
 import SettingsCard from '@/components/SettingsCard';
 import ShareDialog from '@/components/ShareDialog';
+import AIButton from '@/components/AIButton';
+import AIDialog from '@/components/AIDialog';
 import { useSettings } from '@/context/SettingsContext';
+import { toast } from 'sonner';
 
-const Index = () => {
+ const Index = () => {
   // State management
   const [memos, setMemos] = useState([]);
   const [newMemo, setNewMemo] = useState('');
@@ -33,6 +36,8 @@ const Index = () => {
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedMemo, setSelectedMemo] = useState(null);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -41,7 +46,7 @@ const Index = () => {
   const memosContainerRef = useRef(null);
 
   // Context
-  const { backgroundConfig } = useSettings();
+  const { backgroundConfig, aiConfig, keyboardShortcuts } = useSettings();
 
   // 控制移动端侧栏打开时的页面滚动
   useEffect(() => {
@@ -494,6 +499,92 @@ const Index = () => {
     };
   }, []);
 
+  // 自定义快捷键处理
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 避免在输入框中触发快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+      
+      // 如果正在录制快捷键，不触发快捷键功能
+      if (e.target.closest('.shortcut-recording')) {
+        return;
+      }
+
+      // 解析快捷键
+      const parseShortcut = (shortcut) => {
+        const parts = shortcut.split('+');
+        const key = parts[parts.length - 1];
+        const ctrlKey = parts.includes('Ctrl');
+        const altKey = parts.includes('Alt');
+        const shiftKey = parts.includes('Shift');
+        
+        // 处理特殊键名的映射
+        const keyMap = {
+          'Space': ' ',
+          'Tab': 'Tab',
+          'Enter': 'Enter',
+          'Escape': 'Escape',
+          'Backspace': 'Backspace',
+          'Delete': 'Delete',
+          'ArrowUp': 'ArrowUp',
+          'ArrowDown': 'ArrowDown',
+          'ArrowLeft': 'ArrowLeft',
+          'ArrowRight': 'ArrowRight',
+          'PageUp': 'PageUp',
+          'PageDown': 'PageDown',
+          'Home': 'Home',
+          'End': 'End'
+        };
+        
+        const mappedKey = keyMap[key] || key;
+        
+        return { key: mappedKey, ctrlKey, altKey, shiftKey };
+      };
+
+      // 检查快捷键是否匹配
+      const checkShortcut = (shortcut) => {
+        const { key, ctrlKey, altKey, shiftKey } = parseShortcut(shortcut);
+        const eCtrlKey = e.ctrlKey || e.metaKey;
+        
+        return (
+          e.key === key &&
+          eCtrlKey === ctrlKey &&
+          e.altKey === altKey &&
+          e.shiftKey === shiftKey
+        );
+      };
+
+      // 切换侧栏固定状态
+      if (checkShortcut(keyboardShortcuts.toggleSidebar)) {
+        e.preventDefault();
+        setIsLeftSidebarPinned(!isLeftSidebarPinned);
+        setIsRightSidebarPinned(!isRightSidebarPinned);
+        toast.success(isLeftSidebarPinned ? '侧栏已取消固定' : '侧栏已固定');
+      }
+
+      // 打开/关闭AI对话
+      if (checkShortcut(keyboardShortcuts.openAIDialog)) {
+        e.preventDefault();
+        setIsAIDialogOpen(prev => !prev);
+        toast.success(isAIDialogOpen ? 'AI对话已关闭' : 'AI对话已打开');
+      }
+
+      // 打开设置
+      if (checkShortcut(keyboardShortcuts.openSettings)) {
+        e.preventDefault();
+        setIsSettingsOpen(true);
+        toast.success('设置已打开');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLeftSidebarPinned, isRightSidebarPinned, isSettingsOpen, isAIDialogOpen, keyboardShortcuts]);
+
   // 处理热力图日期点击
   const handleDateClick = (dateStr) => {
     setActiveDate(dateStr === activeDate ? null : dateStr);
@@ -505,6 +596,185 @@ const Index = () => {
   const clearFilters = () => {
     setActiveTag(null);
     setActiveDate(null);
+  };
+
+  // 处理编辑器聚焦状态
+  const handleEditorFocus = () => {
+    setIsEditorFocused(true);
+  };
+
+  const handleEditorBlur = () => {
+    setIsEditorFocused(false);
+  };
+
+  // AI续写功能
+  const handleAIContinue = async () => {
+    if (!newMemo.trim()) {
+      toast.error('请先输入一些内容');
+      return;
+    }
+
+    if (!aiConfig.enabled || !aiConfig.baseUrl || !aiConfig.apiKey) {
+      toast.error('请先在设置中启用AI功能并配置API');
+      return;
+    }
+
+    try {
+      toast.loading('AI正在续写中...', { id: 'ai-continue' });
+      
+      // 确保 baseUrl 以 / 结尾，如果没有则添加
+      const baseUrl = aiConfig.baseUrl.endsWith('/') ? aiConfig.baseUrl : aiConfig.baseUrl + '/';
+      const url = `${baseUrl}chat/completions`;
+      
+            
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${aiConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: aiConfig.model || 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: '你是一个专业的写作助手，擅长续写用户的想法和笔记。请根据用户输入的内容，自然地续写下去，保持风格一致。不要重复用户已经说过的话，而是要在此基础上进行自然的延伸和扩展。'
+            },
+            {
+              role: 'user',
+              content: `请续写以下内容，保持原有风格和语调，不要重复原文：${newMemo}`
+            }
+          ],
+          max_tokens: 800,
+          temperature: 0.8,
+          top_p: 0.9,
+          frequency_penalty: 0.5,
+          presence_penalty: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('AI请求失败:', errorData);
+        console.error('响应状态:', response.status, response.statusText);
+        throw new Error(errorData.error?.message || `AI请求失败 (${response.status})`);
+      }
+
+      const data = await response.json();
+      
+      // 检查响应数据结构
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('AI响应结构异常:', data);
+        toast.error('AI响应结构异常', { id: 'ai-continue' });
+        return;
+      }
+      
+      const continuedText = data.choices[0].message.content;
+      
+      // 确保续写内容不为空且是字符串
+      if (continuedText && typeof continuedText === 'string' && continuedText.trim()) {
+        // 去除可能的换行符前缀和多余空格
+        const trimmedContinuedText = continuedText.trim();
+        
+        // 将续写内容追加到原文后面，添加适当的连接
+        const connector = newMemo.endsWith('。') || newMemo.endsWith('！') || newMemo.endsWith('？') ? ' ' : '';
+        setNewMemo(prev => prev + connector + trimmedContinuedText);
+        toast.success('AI续写完成', { id: 'ai-continue' });
+      } else {
+        console.error('AI返回内容为空或格式不正确:', continuedText);
+        toast.error('AI返回内容为空', { id: 'ai-continue' });
+      }
+    } catch (error) {
+      console.error('AI续写失败:', error);
+      toast.error('AI续写失败，请检查API配置', { id: 'ai-continue' });
+    }
+  };
+
+  // AI优化功能
+  const handleAIOptimize = async () => {
+    if (!newMemo.trim()) {
+      toast.error('请先输入一些内容');
+      return;
+    }
+
+    if (!aiConfig.enabled || !aiConfig.baseUrl || !aiConfig.apiKey) {
+      toast.error('请先在设置中启用AI功能并配置API');
+      return;
+    }
+
+    try {
+      toast.loading('AI正在优化中...', { id: 'ai-optimize' });
+      
+      // 确保 baseUrl 以 / 结尾，如果没有则添加
+      const baseUrl = aiConfig.baseUrl.endsWith('/') ? aiConfig.baseUrl : aiConfig.baseUrl + '/';
+      const url = `${baseUrl}chat/completions`;
+      
+            
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${aiConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: aiConfig.model || 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: '你是一个专业的文本优化助手，擅长改进用户的想法和笔记。请优化用户输入的内容，使其更加清晰、有条理和有表达力，但保持原意不变。改善语言表达，优化逻辑结构，让内容更加易读和有说服力。'
+            },
+            {
+              role: 'user',
+              content: `请优化以下内容，保持原意不变，但提升表达清晰度和逻辑性：${newMemo}`
+            }
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+          top_p: 0.9,
+          frequency_penalty: 0.3,
+          presence_penalty: 0.1
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('AI请求失败:', errorData);
+        console.error('响应状态:', response.status, response.statusText);
+        throw new Error(errorData.error?.message || `AI请求失败 (${response.status})`);
+      }
+
+      const data = await response.json();
+      
+      // 检查响应数据结构
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('AI响应结构异常:', data);
+        toast.error('AI响应结构异常', { id: 'ai-optimize' });
+        return;
+      }
+      
+      const optimizedText = data.choices[0].message.content;
+      
+      // 确保优化内容不为空且是字符串
+      if (optimizedText && typeof optimizedText === 'string' && optimizedText.trim()) {
+        // 去除可能的换行符前缀和后缀
+        const trimmedOptimizedText = optimizedText.trim();
+        
+        // 将优化内容替换原文
+        setNewMemo(trimmedOptimizedText);
+        toast.success('AI优化完成', { id: 'ai-optimize' });
+      } else {
+        console.error('AI返回内容为空或格式不正确:', optimizedText);
+        toast.error('AI返回内容为空', { id: 'ai-optimize' });
+      }
+    } catch (error) {
+      console.error('AI优化失败:', error);
+      toast.error('AI优化失败，请检查API配置', { id: 'ai-optimize' });
+    }
+  };
+
+  // AI对话功能
+  const handleAIChat = () => {
+    setIsAIDialogOpen(true);
   };
 
   // 生成背景样式
@@ -593,6 +863,8 @@ const Index = () => {
           onTagClick={setActiveTag}
           onScrollToTop={scrollToTop}
           clearFilters={clearFilters} // 传递清除筛选函数
+          onEditorFocus={handleEditorFocus}
+          onEditorBlur={handleEditorBlur}
         />
 
         {/* 右侧标签管理区 */}
@@ -633,6 +905,23 @@ const Index = () => {
         isOpen={isShareDialogOpen}
         onClose={() => setIsShareDialogOpen(false)}
         memo={selectedMemo}
+      />
+
+      {/* AI对话框 */}
+      <AIDialog
+        isOpen={isAIDialogOpen}
+        onClose={() => setIsAIDialogOpen(false)}
+        memos={[...memos, ...pinnedMemos]}
+      />
+
+      {/* AI按钮 */}
+      <AIButton
+        isSettingsOpen={isSettingsOpen}
+        isShareDialogOpen={isShareDialogOpen}
+        isEditorFocused={isEditorFocused}
+        onContinue={handleAIContinue}
+        onOptimize={handleAIOptimize}
+        onChat={handleAIChat}
       />
     </div>
   );

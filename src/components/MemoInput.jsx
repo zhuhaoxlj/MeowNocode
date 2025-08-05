@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
 import MemoEditor from '@/components/MemoEditor';
 
-const MemoInput = ({ newMemo, setNewMemo, onAddMemo }) => {
+const MemoInput = ({ newMemo, setNewMemo, onAddMemo, onEditorFocus, onEditorBlur }) => {
   return (
     <div className="flex-shrink-0 p-3 sm:p-4 lg:p-6 pb-0">
       <div className="relative">
@@ -15,6 +15,8 @@ const MemoInput = ({ newMemo, setNewMemo, onAddMemo }) => {
           maxLength={5000}
           showCharCount={true}
           autoFocus={false}
+          onFocus={onEditorFocus}
+          onBlur={onEditorBlur}
         />
         <Button
           onClick={onAddMemo}

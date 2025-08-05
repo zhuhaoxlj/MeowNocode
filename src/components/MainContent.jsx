@@ -45,7 +45,9 @@ const MainContent = ({
   onCancelEdit,
   onTagClick,
   onScrollToTop,
-  clearFilters // 新增清除筛选函数
+  clearFilters, // 新增清除筛选函数
+  onEditorFocus,
+  onEditorBlur
 }) => {
   const { themeColor } = useTheme();
 
@@ -72,6 +74,8 @@ const MainContent = ({
         newMemo={newMemo}
         setNewMemo={setNewMemo}
         onAddMemo={onAddMemo}
+        onEditorFocus={onEditorFocus}
+        onEditorBlur={onEditorBlur}
       />
 
       {/* Memos列表 */}

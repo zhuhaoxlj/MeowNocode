@@ -28,6 +28,18 @@ export function SettingsProvider({ children }) {
   const [cloudProvider, setCloudProvider] = useState('supabase'); // 'supabase' 或 'd1'
   const [d1AuthKey, setD1AuthKey] = useState('');
   const [isD1Authenticated, setIsD1Authenticated] = useState(false);
+  const [aiConfig, setAiConfig] = useState({
+    baseUrl: '',
+    apiKey: '',
+    model: 'gpt-3.5-turbo',
+    enabled: false
+  });
+
+  const [keyboardShortcuts, setKeyboardShortcuts] = useState({
+    toggleSidebar: 'Tab',
+    openAIDialog: 'Ctrl+Space',
+    openSettings: 'Ctrl+,'
+  });
 
   useEffect(() => {
     // 从localStorage加载一言设置
@@ -101,6 +113,30 @@ export function SettingsProvider({ children }) {
     }
   }, []);
 
+  // 从localStorage加载AI配置
+  useEffect(() => {
+    const savedAiConfig = localStorage.getItem('aiConfig');
+    if (savedAiConfig) {
+      try {
+        setAiConfig(JSON.parse(savedAiConfig));
+      } catch (error) {
+        console.warn('Failed to parse AI config:', error);
+      }
+    }
+  }, []);
+
+  // 从localStorage加载快捷键配置
+  useEffect(() => {
+    const savedKeyboardShortcuts = localStorage.getItem('keyboardShortcuts');
+    if (savedKeyboardShortcuts) {
+      try {
+        setKeyboardShortcuts(JSON.parse(savedKeyboardShortcuts));
+      } catch (error) {
+        console.warn('Failed to parse keyboard shortcuts config:', error);
+      }
+    }
+  }, []);
+
 
 
   useEffect(() => {
@@ -138,6 +174,16 @@ export function SettingsProvider({ children }) {
     localStorage.setItem('isD1Authenticated', JSON.stringify(isD1Authenticated));
   }, [isD1Authenticated]);
 
+  useEffect(() => {
+    // 保存AI配置到localStorage
+    localStorage.setItem('aiConfig', JSON.stringify(aiConfig));
+  }, [aiConfig]);
+
+  useEffect(() => {
+    // 保存快捷键配置到localStorage
+    localStorage.setItem('keyboardShortcuts', JSON.stringify(keyboardShortcuts));
+  }, [keyboardShortcuts]);
+
 
 
   const updateHitokotoConfig = (newConfig) => {
@@ -171,6 +217,14 @@ export function SettingsProvider({ children }) {
 
   const updateD1Authenticated = (authenticated) => {
     setIsD1Authenticated(authenticated);
+  };
+
+  const updateAiConfig = (newConfig) => {
+    setAiConfig(prev => ({ ...prev, ...newConfig }));
+  };
+
+  const updateKeyboardShortcuts = (newConfig) => {
+    setKeyboardShortcuts(prev => ({ ...prev, ...newConfig }));
   };
 
   // 验证D1鉴权密钥
@@ -364,7 +418,11 @@ export function SettingsProvider({ children }) {
       syncToSupabase,
       restoreFromSupabase,
       syncToD1,
-      restoreFromD1
+      restoreFromD1,
+      aiConfig,
+      updateAiConfig,
+      keyboardShortcuts,
+      updateKeyboardShortcuts
     }}>
       {children}
     </SettingsContext.Provider>
