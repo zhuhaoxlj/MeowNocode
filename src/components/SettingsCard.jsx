@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, isD1Authenticated, verifyD1AuthKey, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -28,11 +28,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
     ai: false,
     keyboard: false
   });
-  const [isD1Available, setIsD1Available] = useState(false);
-  const [d1RequiresAuth, setD1RequiresAuth] = useState(false);
   const [fontLoading, setFontLoading] = useState(false);
-  const [d1KeyInput, setD1KeyInput] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
   const [recordingShortcut, setRecordingShortcut] = useState(null);
   const [tempShortcuts, setTempShortcuts] = useState(keyboardShortcuts);
   const [pressedKeys, setPressedKeys] = useState(new Set());
@@ -45,33 +41,6 @@ const SettingsCard = ({ isOpen, onClose }) => {
       setTempColor(themeColor);
       setTempShortcuts(keyboardShortcuts);
       
-      // 检查D1数据库的可用性
-      const checkD1Availability = async () => {
-        try {
-          // 在Cloudflare Workers环境中，DB会自动绑定到全局变量
-          if (typeof DB !== 'undefined') {
-            setIsD1Available(true);
-            setD1RequiresAuth(false);
-            return;
-          }
-          
-          // 尝试通过API检查D1数据库的可用性
-          const result = await D1ApiClient.checkAvailability();
-          if (typeof result === 'object') {
-            setIsD1Available(result.available);
-            setD1RequiresAuth(result.requiresAuth);
-          } else {
-            setIsD1Available(result);
-            setD1RequiresAuth(false);
-          }
-        } catch (error) {
-          console.error('检查D1数据库可用性失败:', error);
-          setIsD1Available(false);
-          setD1RequiresAuth(false);
-        }
-      };
-      
-      checkD1Availability();
     }
   }, [isOpen, themeColor, keyboardShortcuts]);
 
@@ -206,29 +175,6 @@ const SettingsCard = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleD1KeySubmit = async () => {
-    if (!d1KeyInput.trim()) {
-      toast.error('请输入D1鉴权密钥');
-      return;
-    }
-    
-    setIsVerifying(true);
-    try {
-      const result = await verifyD1AuthKey(d1KeyInput.trim());
-      if (result.success) {
-        toast.success(result.message);
-        // 如果验证成功，清空输入框
-        setD1KeyInput('');
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      console.error('验证D1密钥失败:', error);
-      toast.error('验证D1密钥失败: ' + error.message);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
 
   const handleExportLocalData = () => {
     const data = {
@@ -1127,36 +1073,20 @@ const SettingsCard = ({ isOpen, onClose }) => {
                         </button>
                         <button
                           onClick={() => handleCloudProviderChange('d1')}
-                          disabled={!isD1Available}
                           className={`p-3 rounded-lg border-2 transition-colors relative ${
                             cloudProvider === 'd1'
                               ? 'border-current bg-current/10'
                               : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                          } ${!isD1Available ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          }`}
                           style={cloudProvider === 'd1' ? { borderColor: themeColor } : {}}
-                          title={isD1Available && !d1RequiresAuth ? "Cloudflare D1 可用" :
-                                 isD1Available && d1RequiresAuth ? "Cloudflare D1 可用，需要鉴权密钥" :
-                                 "Cloudflare D1 不可用"}
+                          title="Cloudflare D1 数据库"
                         >
                           <div className="flex flex-col items-center space-y-1">
                             <Server className="h-6 w-6" style={cloudProvider === 'd1' ? { color: themeColor } : {}} />
                             <span className="text-xs font-medium">Cloudflare D1</span>
                           </div>
-                          {isD1Available && d1RequiresAuth && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></div>
-                          )}
                         </button>
                       </div>
-                      {!isD1Available && cloudProvider === 'd1' && (
-                        <p className="text-xs text-red-500">
-                          Cloudflare D1 仅在 Cloudflare Workers/Pages 环境中可用
-                        </p>
-                      )}
-                      {cloudProvider === 'd1' && isD1Available && d1RequiresAuth && !isD1Authenticated && (
-                        <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                          Cloudflare D1 需要鉴权密钥，请在下方输入密钥
-                        </p>
-                      )}
                     </div>
 
                     {/* 根据选择的提供商显示不同的登录和同步选项 */}
@@ -1223,104 +1153,39 @@ const SettingsCard = ({ isOpen, onClose }) => {
                     )}
 
                     {cloudProvider === 'd1' && (
-                      <>
-                        {isD1Available ? (
-                          <div className="space-y-3">
-                            {!isD1Authenticated ? (
-                              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                <div className="flex flex-col space-y-3">
-                                  <div className="flex items-center space-x-3">
-                                    <Key className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                                    <div className="flex-1">
-                                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                                        输入D1鉴权密钥
-                                      </p>
-                                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                                        {d1RequiresAuth
-                                          ? "检测到已配置D1鉴权密钥，请输入密钥以使用D1数据库进行数据同步"
-                                          : "输入密钥后才能使用D1数据库进行数据同步"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex space-x-2">
-                                    <Input
-                                      type="password"
-                                      value={d1KeyInput}
-                                      onChange={(e) => setD1KeyInput(e.target.value)}
-                                      placeholder="请输入D1鉴权密钥"
-                                      className="flex-1"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          handleD1KeySubmit();
-                                        }
-                                      }}
-                                    />
-                                    <Button
-                                      onClick={handleD1KeySubmit}
-                                      disabled={isVerifying || !d1KeyInput.trim()}
-                                      size="sm"
-                                      className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                      {isVerifying ? '验证中...' : '验证'}
-                                    </Button>
-                                  </div>
-                                  {d1RequiresAuth && (
-                                    <p className="text-xs text-blue-600 dark:text-blue-400">
-                                      提示：如果你不知道密钥，请联系部署者获取
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                                <div className="flex items-center space-x-2">
-                                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                  <span className="text-sm text-green-800 dark:text-green-200">
-                                    已连接到Cloudflare D1数据库并完成鉴权
-                                  </span>
-                                </div>
-                              </div>
-                            )}
+                      <div className="space-y-3">
+                        <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            <span className="text-sm text-green-800 dark:text-green-200">
+                              已连接到 Cloudflare D1 数据库
+                            </span>
+                          </div>
+                        </div>
 
-                            <div className="flex space-x-2">
-                              <Button
-                                onClick={handleD1Sync}
-                                disabled={isSyncing || !isD1Authenticated}
-                                size="sm"
-                                className="flex-1"
-                                style={{ backgroundColor: themeColor }}
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                {isSyncing ? '同步中...' : '备份到D1'}
-                              </Button>
-                              <Button
-                                onClick={handleD1Restore}
-                                disabled={isSyncing || !isD1Authenticated}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                {isSyncing ? '恢复中...' : '从D1恢复'}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                            <div className="flex items-center space-x-3">
-                              <Server className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                                  Cloudflare D1 不可用
-                                </p>
-                                <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                                  请在 Cloudflare Workers/Pages 环境中部署应用，并绑定 D1 数据库
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </>
+                        <div className="flex space-x-2">
+                          <Button
+                            onClick={handleD1Sync}
+                            disabled={isSyncing}
+                            size="sm"
+                            className="flex-1"
+                            style={{ backgroundColor: themeColor }}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            {isSyncing ? '同步中...' : '备份到D1'}
+                          </Button>
+                          <Button
+                            onClick={handleD1Restore}
+                            disabled={isSyncing}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            {isSyncing ? '恢复中...' : '从D1恢复'}
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </>
                 )}
