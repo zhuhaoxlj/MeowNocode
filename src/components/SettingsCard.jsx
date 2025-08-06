@@ -67,7 +67,9 @@ const SettingsCard = ({ isOpen, onClose }) => {
   };
 
   const handleAvatarConfigChange = (field, value) => {
-    updateAvatarConfig({ [field]: value });
+    if (updateAvatarConfig) {
+      updateAvatarConfig({ [field]: value });
+    }
   };
 
   const handleHitokotoTypeToggle = (type) => {

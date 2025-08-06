@@ -39,7 +39,7 @@ const UserAvatar = ({ onOpenSettings }) => {
   // 获取头像URL的优先级：自定义头像 > GitHub头像 > 默认头像
   const getAvatarUrl = () => {
     // 优先使用用户设置的自定义头像
-    if (avatarConfig.imageUrl) {
+    if (avatarConfig && avatarConfig.imageUrl) {
       return avatarConfig.imageUrl;
     }
     
