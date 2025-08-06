@@ -1,0 +1,6 @@
+build
+node_modules
+.env
+wrangler.toml
+.claude
+package-lock.json
