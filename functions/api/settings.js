@@ -29,7 +29,7 @@ export async function onRequest(context) {
     } else if (method === 'POST') {
       // 创建或更新用户设置
       const body = await request.json();
-      const { pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config } = body;
+      const { pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, avatar_config } = body;
       
       // 检查用户设置是否已存在
       const existingSettings = await env.DB
@@ -39,7 +39,7 @@ export async function onRequest(context) {
       if (existingSettings) {
         // 更新现有设置
         await env.DB
-          .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, updated_at = ?')
+          .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, avatar_config = ?, updated_at = ?')
           .bind(
             JSON.stringify(pinned_memos || []),
             theme_color || '#818CF8',
@@ -47,13 +47,14 @@ export async function onRequest(context) {
             JSON.stringify(hitokoto_config || { enabled: true, types: ["a", "b", "c", "d", "i", "j", "k"] }),
             JSON.stringify(font_config || { selectedFont: "default" }),
             JSON.stringify(background_config || { imageUrl: "", brightness: 50, blur: 10 }),
+            JSON.stringify(avatar_config || { imageUrl: "" }),
             new Date().toISOString()
           )
           .run();
       } else {
         // 插入新设置
         await env.DB
-          .prepare('INSERT INTO user_settings (pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+          .prepare('INSERT INTO user_settings (pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, avatar_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
           .bind(
             JSON.stringify(pinned_memos || []),
             theme_color || '#818CF8',
@@ -61,6 +62,7 @@ export async function onRequest(context) {
             JSON.stringify(hitokoto_config || { enabled: true, types: ["a", "b", "c", "d", "i", "j", "k"] }),
             JSON.stringify(font_config || { selectedFont: "default" }),
             JSON.stringify(background_config || { imageUrl: "", brightness: 50, blur: 10 }),
+            JSON.stringify(avatar_config || { imageUrl: "" }),
             new Date().toISOString(),
             new Date().toISOString()
           )

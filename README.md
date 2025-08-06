@@ -7,7 +7,7 @@ Meow App 是一个简洁的笔记应用，支持本地存储和云端同步。�
 ## demo
 不含D1数据库（麻烦帮我冲一下UV和PV，球球了）：https://flomo.nocode.host/
 含D1数据库：https://memo.oneloved.top/
-D1公共实例的鉴权密钥是：`meow`。请勿上传不良信息和个人信息。
+D1公共实例的登录密钥是：`meow`。请勿上传不良信息和个人信息。
 
 ## 本地开发
 ### 安装依赖
@@ -59,16 +59,16 @@ npm run dev
    ```
 2. 记下输出的database_id
 
-#### 设置D1鉴权密钥
+#### 设置访问密钥
 1. 生成一个安全的密钥（可以使用以下命令）：
    ```
    openssl rand -base64 32
    ```
    或者使用在线工具生成一个随机字符串。
 2. 在Cloudflare Pages设置中，添加环境变量：
-   - 变量名：`D1PASSWORD`
+   - 变量名：`PASSWORD`
    - 变量值：你生成的密钥
-3. 这个密钥将用于保护你的D1数据库，防止未授权访问。
+3. 这个密钥将用于保护你的应用，防止未授权访问。
 
 #### 配置wrangler.toml
 1. 编辑`wrangler.toml`文件，将`your-database-id`替换为上一步获取的database_id

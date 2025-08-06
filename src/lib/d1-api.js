@@ -51,7 +51,8 @@ export class D1ApiClient {
         darkMode: data.darkMode,
         hitokotoConfig: data.hitokotoConfig,
         fontConfig: data.fontConfig,
-        backgroundConfig: data.backgroundConfig
+        backgroundConfig: data.backgroundConfig,
+        avatarConfig: data.avatarConfig
       });
 
       return { success: true, message: '数据同步到D1成功' };

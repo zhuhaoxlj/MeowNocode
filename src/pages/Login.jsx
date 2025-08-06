@@ -19,7 +19,7 @@ const Login = () => {
       return backgroundConfig.imageUrl;
     }
     // 默认背景图片
-    return 'https://pic.oneloved.top/2025-08/meow_1754197450654.png';
+    return 'https://s3.bmp.ovh/imgs/2025/08/06/a45ae94d48c17ed0.png';
   };
 
   const handleSubmit = async (e) => {

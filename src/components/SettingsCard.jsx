@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -24,7 +24,7 @@ const SettingsCard = ({ isOpen, onClose }) => {
   const [expandedSections, setExpandedSections] = useState({
     hitokoto: false,
     font: false,
-    background: false,
+    appearance: false,
     ai: false,
     keyboard: false
   });
@@ -64,6 +64,10 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
   const handleBackgroundConfigChange = (field, value) => {
     updateBackgroundConfig({ [field]: value });
+  };
+
+  const handleAvatarConfigChange = (field, value) => {
+    updateAvatarConfig({ [field]: value });
   };
 
   const handleHitokotoTypeToggle = (type) => {

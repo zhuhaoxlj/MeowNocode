@@ -24,6 +24,9 @@ export function SettingsProvider({ children }) {
     brightness: 50, // 0-100
     blur: 10 // 0-50 磨砂玻璃程度
   });
+  const [avatarConfig, setAvatarConfig] = useState({
+    imageUrl: '' // 用户自定义头像URL
+  });
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [cloudProvider, setCloudProvider] = useState('supabase'); // 'supabase' 或 'd1'
   const [aiConfig, setAiConfig] = useState({
@@ -67,6 +70,16 @@ export function SettingsProvider({ children }) {
         setBackgroundConfig(JSON.parse(savedBackgroundConfig));
       } catch (error) {
         console.warn('Failed to parse Background config:', error);
+      }
+    }
+
+    // 从localStorage加载头像设置
+    const savedAvatarConfig = localStorage.getItem('avatarConfig');
+    if (savedAvatarConfig) {
+      try {
+        setAvatarConfig(JSON.parse(savedAvatarConfig));
+      } catch (error) {
+        console.warn('Failed to parse Avatar config:', error);
       }
     }
 
@@ -134,6 +147,11 @@ export function SettingsProvider({ children }) {
   }, [backgroundConfig]);
 
   useEffect(() => {
+    // 保存头像设置到localStorage
+    localStorage.setItem('avatarConfig', JSON.stringify(avatarConfig));
+  }, [avatarConfig]);
+
+  useEffect(() => {
     // 保存云端同步设置到localStorage
     localStorage.setItem('cloudSyncEnabled', JSON.stringify(cloudSyncEnabled));
   }, [cloudSyncEnabled]);
@@ -166,6 +184,10 @@ export function SettingsProvider({ children }) {
 
   const updateBackgroundConfig = (newConfig) => {
     setBackgroundConfig(prev => ({ ...prev, ...newConfig }));
+  };
+
+  const updateAvatarConfig = (newConfig) => {
+    setAvatarConfig(prev => ({ ...prev, ...newConfig }));
   };
 
   const updateCloudSyncEnabled = (enabled) => {
