@@ -16,20 +16,6 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders });
   }
   
-  // 验证D1密钥
-  const authHeader = request.headers.get('Authorization');
-  const d1Password = env.D1PASSWORD;
-  
-  if (d1Password && (!authHeader || authHeader !== `Bearer ${d1Password}`)) {
-    return new Response(JSON.stringify({
-      success: false,
-      message: '未授权访问'
-    }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-
   try {
     if (method === 'GET') {
       // 获取所有memos（不区分用户）

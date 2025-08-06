@@ -14,17 +14,12 @@ export class D1ApiClient {
   }
 
   // 初始化数据库
-  static async initDatabase(authKey) {
+  static async initDatabase() {
     try {
       const baseUrl = await this.getBaseUrl();
       const headers = {
         'Content-Type': 'application/json',
       };
-      
-      // 如果提供了鉴权密钥，添加到请求头
-      if (authKey) {
-        headers['Authorization'] = `Bearer ${authKey}`;
-      }
       
       const response = await fetch(`${baseUrl}/api/init`, {
         method: 'POST',
@@ -40,13 +35,13 @@ export class D1ApiClient {
   }
 
   // 同步用户数据到D1
-  static async syncUserData(data, authKey) {
+  static async syncUserData(data) {
     try {
       const baseUrl = await this.getBaseUrl();
       
       // 同步memos
       for (const memo of data.memos) {
-        await this.upsertMemo(memo, authKey);
+        await this.upsertMemo(memo);
       }
 
       // 同步用户设置
@@ -57,7 +52,7 @@ export class D1ApiClient {
         hitokotoConfig: data.hitokotoConfig,
         fontConfig: data.fontConfig,
         backgroundConfig: data.backgroundConfig
-      }, authKey);
+      });
 
       return { success: true, message: '数据同步到D1成功' };
     } catch (error) {
@@ -67,7 +62,7 @@ export class D1ApiClient {
   }
 
   // 从D1恢复用户数据
-  static async restoreUserData(authKey) {
+  static async restoreUserData() {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -75,11 +70,6 @@ export class D1ApiClient {
       const headers = {
         'Content-Type': 'application/json',
       };
-      
-      // 如果提供了鉴权密钥，添加到请求头
-      if (authKey) {
-        headers['Authorization'] = `Bearer ${authKey}`;
-      }
       
       // 获取memos
       const memosResponse = await fetch(`${baseUrl}/api/memos`, {
@@ -116,7 +106,7 @@ export class D1ApiClient {
   }
 
   // 插入或更新memo
-  static async upsertMemo(memo, authKey) {
+  static async upsertMemo(memo) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -124,11 +114,6 @@ export class D1ApiClient {
       const headers = {
         'Content-Type': 'application/json',
       };
-      
-      // 如果提供了鉴权密钥，添加到请求头
-      if (authKey) {
-        headers['Authorization'] = `Bearer ${authKey}`;
-      }
       
       // 确保时间戳不为空，使用当前时间作为备用
       const now = new Date().toISOString();
@@ -161,7 +146,7 @@ export class D1ApiClient {
   }
 
   // 插入或更新用户设置
-  static async upsertUserSettings(settings, authKey) {
+  static async upsertUserSettings(settings) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -169,11 +154,6 @@ export class D1ApiClient {
       const headers = {
         'Content-Type': 'application/json',
       };
-      
-      // 如果提供了鉴权密钥，添加到请求头
-      if (authKey) {
-        headers['Authorization'] = `Bearer ${authKey}`;
-      }
       
       const response = await fetch(`${baseUrl}/api/settings`, {
         method: 'POST',
@@ -202,7 +182,7 @@ export class D1ApiClient {
   }
 
   // 删除memo
-  static async deleteMemo(memoId, authKey) {
+  static async deleteMemo(memoId) {
     try {
       const baseUrl = await this.getBaseUrl();
       
@@ -210,11 +190,6 @@ export class D1ApiClient {
       const headers = {
         'Content-Type': 'application/json',
       };
-      
-      // 如果提供了鉴权密钥，添加到请求头
-      if (authKey) {
-        headers['Authorization'] = `Bearer ${authKey}`;
-      }
       
       const response = await fetch(`${baseUrl}/api/memos?memoId=${memoId}`, {
         method: 'DELETE',
@@ -250,10 +225,6 @@ export class D1ApiClient {
       
       console.log('API响应状态:', response.status, response.statusText);
       
-      // 如果返回401错误，说明已配置D1PASSWORD但需要鉴权
-      if (response.status === 401) {
-        return { available: true, requiresAuth: true };
-      }
       
       // 检查响应类型
       const contentType = response.headers.get('content-type');

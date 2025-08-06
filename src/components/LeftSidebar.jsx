@@ -61,10 +61,8 @@ const LeftSidebar = ({
 
         {/* 底部按钮区域 */}
         <div className="mt-auto pt-4 flex items-center space-x-2">
-          {/* 用户头像 */}
-          {cloudSyncEnabled && (
-            <UserAvatar onOpenSettings={onSettingsOpen} />
-          )}
+          {/* 用户按钮 - 现在总是显示，不再依赖于cloudSyncEnabled */}
+          <UserAvatar onOpenSettings={onSettingsOpen} />
 
           {/* 设置按钮 */}
           <button
