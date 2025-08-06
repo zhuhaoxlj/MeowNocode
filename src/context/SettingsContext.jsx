@@ -253,7 +253,8 @@ export function SettingsProvider({ children }) {
         darkMode: localStorage.getItem('darkMode') || 'false',
         hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}')
+        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+        avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}')
       };
 
       // 优先尝试使用API客户端（适用于Cloudflare Pages）
@@ -313,6 +314,9 @@ export function SettingsProvider({ children }) {
             if (result.data.settings.background_config) {
               localStorage.setItem('backgroundConfig', result.data.settings.background_config);
             }
+            if (result.data.settings.avatar_config) {
+              localStorage.setItem('avatarConfig', result.data.settings.avatar_config);
+            }
           }
           
           return { success: true, message: '从D1恢复数据成功，请刷新页面查看' };
@@ -340,6 +344,8 @@ export function SettingsProvider({ children }) {
       updateFontConfig,
       backgroundConfig,
       updateBackgroundConfig,
+      avatarConfig,
+      updateAvatarConfig,
       cloudSyncEnabled,
       updateCloudSyncEnabled,
       cloudProvider,
