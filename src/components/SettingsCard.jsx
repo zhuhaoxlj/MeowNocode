@@ -588,21 +588,24 @@ const SettingsCard = ({ isOpen, onClose }) => {
                 )}
               </div>
 
-              {/* 背景设置 - 折叠面板 */}
+              {/* 外观设置 - 折叠面板 */}
               <div className="space-y-4">
                 <div
                   className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  onClick={() => toggleSection('background')}
+                  onClick={() => toggleSection('appearance')}
                 >
-                  <Label className="text-sm font-medium cursor-pointer">背景设置</Label>
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    外观设置
+                  </Label>
                   <button
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleSection('background');
+                      toggleSection('appearance');
                     }}
                   >
-                    {expandedSections.background ?
+                    {expandedSections.appearance ?
                       <ChevronUp className="h-4 w-4" /> :
                       <ChevronDown className="h-4 w-4" />
                     }
@@ -610,60 +613,79 @@ const SettingsCard = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* 折叠内容 - 添加平滑过渡动画 */}
-                {expandedSections.background && (
+                {expandedSections.appearance && (
                   <div className="animate-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-4 pl-4 pr-2 pb-4">
+                    <div className="space-y-6 pl-4 pr-2 pb-4">
+                      {/* 头像设置 */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">用户头像</Label>
+                        <ImageUpload
+                          value={avatarConfig?.imageUrl || ''}
+                          onChange={(url) => handleAvatarConfigChange('imageUrl', url)}
+                          onClear={() => handleAvatarConfigChange('imageUrl', '')}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {avatarConfig?.imageUrl
+                            ? '自定义头像将覆盖默认头像显示'
+                            : '未设置时将使用默认头像或GitHub头像（如果已登录GitHub）'
+                          }
+                        </p>
+                      </div>
+
+                      {/* 分割线 */}
+                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
                       {/* 背景图片设置 */}
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label className="text-sm font-medium">背景图片</Label>
                         <ImageUpload
                           value={backgroundConfig.imageUrl}
                           onChange={(url) => handleBackgroundConfigChange('imageUrl', url)}
                           onClear={() => handleBackgroundConfigChange('imageUrl', '')}
                         />
+
+                        {/* 只有当有背景图片时才显示效果调节 */}
+                        {backgroundConfig.imageUrl && (
+                          <div className="space-y-4">
+                            {/* 亮度调节 */}
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">
+                                亮度 ({backgroundConfig.brightness}%)
+                              </Label>
+                              <Slider
+                                value={[backgroundConfig.brightness]}
+                                onValueChange={(value) => handleBackgroundConfigChange('brightness', value[0])}
+                                max={100}
+                                min={0}
+                                step={1}
+                                className="w-full"
+                              />
+                            </div>
+
+                            {/* 磨砂玻璃效果调节 */}
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">
+                                磨砂玻璃效果 ({backgroundConfig.blur}px)
+                              </Label>
+                              <Slider
+                                value={[backgroundConfig.blur]}
+                                onValueChange={(value) => handleBackgroundConfigChange('blur', value[0])}
+                                max={50}
+                                min={0}
+                                step={1}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {backgroundConfig.imageUrl
+                            ? '调节亮度和磨砂玻璃效果，点击图片右上角×可移除背景'
+                            : '拖拽图片文件或粘贴图片链接来设置背景'
+                          }
+                        </p>
                       </div>
-
-                      {/* 只有当有背景图片时才显示效果调节 */}
-                      {backgroundConfig.imageUrl && (
-                        <div className="space-y-4">
-                          {/* 亮度调节 */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">
-                              亮度 ({backgroundConfig.brightness}%)
-                            </Label>
-                            <Slider
-                              value={[backgroundConfig.brightness]}
-                              onValueChange={(value) => handleBackgroundConfigChange('brightness', value[0])}
-                              max={100}
-                              min={0}
-                              step={1}
-                              className="w-full"
-                            />
-                          </div>
-
-                          {/* 磨砂玻璃效果调节 */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">
-                              磨砂玻璃效果 ({backgroundConfig.blur}px)
-                            </Label>
-                            <Slider
-                              value={[backgroundConfig.blur]}
-                              onValueChange={(value) => handleBackgroundConfigChange('blur', value[0])}
-                              max={50}
-                              min={0}
-                              step={1}
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {backgroundConfig.imageUrl
-                          ? '调节亮度和磨砂玻璃效果，点击图片右上角×可移除背景'
-                          : '拖拽图片文件或粘贴图片链接来设置背景'
-                        }
-                      </p>
                     </div>
                   </div>
                 )}
