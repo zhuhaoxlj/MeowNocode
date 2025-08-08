@@ -22,6 +22,9 @@ const CanvasMode = ({
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const panStartRef = useRef({ x: 0, y: 0 });
   const panTranslateStartRef = useRef({ x: 0, y: 0 });
+  
+  // 缩放提示tooltip
+  const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0 });
 
   // 合并所有 memos
   const allMemos = [...memos, ...pinnedMemos];
@@ -108,6 +111,40 @@ const CanvasMode = ({
     if (canvasSize.width > 0 && canvasSize.height > 0) initializeMemoPositions();
   }, [canvasSize]);
 
+  // 显示缩放提示
+  const showTooltip = (e) => {
+    const rect = e.target.getBoundingClientRect();
+    const tooltipWidth = 160;
+    const tooltipHeight = 30;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let x = rect.left + rect.width / 2 - tooltipWidth / 2;
+    let y = rect.top - tooltipHeight - 10;
+
+    // 边界检查
+    if (x < 10) {
+      x = 10;
+    } else if (x + tooltipWidth > viewportWidth - 10) {
+      x = viewportWidth - tooltipWidth - 10;
+    }
+
+    if (y < 10) {
+      y = rect.bottom + 10;
+    }
+
+    setTooltip({
+      show: true,
+      x,
+      y
+    });
+  };
+
+  // 隐藏缩放提示
+  const hideTooltip = () => {
+    setTooltip({ ...tooltip, show: false });
+  };
+
   // 画布缩放（滚轮 / Ctrl+滚轮 / 触控板）
   useEffect(() => {
     const el = canvasRef.current;
@@ -188,10 +225,14 @@ const CanvasMode = ({
           className="absolute inset-0 origin-top-left"
           style={{ transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`, transformOrigin: '0 0' }}
         >
-          {/* 网格背景随变换缩放 */}
+          {/* 网格背景随变换缩放 - 无限延申 */}
           <div
-            className="absolute inset-0"
+            className="absolute"
             style={{
+              width: '10000px',
+              height: '10000px',
+              left: '-5000px',
+              top: '-5000px',
               backgroundImage: `linear-gradient(rgba(107,114,128,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(107,114,128,0.08) 1px, transparent 1px)`,
               backgroundSize: '20px 20px',
               backgroundPosition: '0 0, 0 0'
@@ -199,7 +240,16 @@ const CanvasMode = ({
           />
 
           {/* 连接线（世界坐标） */}
-          <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+          <svg 
+            className="absolute pointer-events-none" 
+            style={{ 
+              zIndex: 1,
+              width: '10000px',
+              height: '10000px',
+              left: '-5000px',
+              top: '-5000px'
+            }}
+          >
             {connections.map((connection, index) => {
               const fromMemo = allMemos.find(m => m.id === connection.from);
               const toMemo = allMemos.find(m => m.id === connection.to);
@@ -250,11 +300,32 @@ const CanvasMode = ({
         <div className="absolute right-4 bottom-4 z-30 flex flex-col items-end gap-2">
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 shadow px-2 py-1 flex items-center gap-1">
             <button className="px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded" onClick={() => setScale(s => clamp(s * 0.9, 0.4, 2.5))}>-</button>
-            <div className="px-2 text-sm tabular-nums text-gray-600 dark:text-gray-300">{Math.round(scale * 100)}%</div>
+            <div 
+              className="px-2 text-sm tabular-nums text-gray-600 dark:text-gray-300 cursor-help relative"
+              onMouseEnter={showTooltip}
+              onMouseLeave={hideTooltip}
+            >
+              {Math.round(scale * 100)}%
+            </div>
             <button className="px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded" onClick={() => setScale(s => clamp(s * 1.1, 0.4, 2.5))}>+</button>
             <button className="ml-1 px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded" onClick={() => { setScale(1); setTranslate({ x: 0, y: 0 }); }}>重置</button>
           </div>
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 shadow px-2 py-1 text-xs text-gray-500">鼠标中键拖拽画布，Ctrl+滚轮缩放</div>
+        </div>
+
+        {/* 缩放提示tooltip */}
+        <div
+          className={`fixed bg-gray-900 dark:bg-gray-800 text-white p-2 rounded text-xs pointer-events-none transition-opacity whitespace-nowrap shadow-lg border border-gray-700 ${
+            tooltip.show ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            left: `${tooltip.x}px`,
+            top: `${tooltip.y}px`,
+            zIndex: 50,
+            transform: tooltip.show ? 'scale(1)' : 'scale(0.95)',
+            transition: 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out'
+          }}
+        >
+          鼠标中键拖拽画布，Ctrl+滚轮缩放
         </div>
       </div>
     </div>

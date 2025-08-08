@@ -17,6 +17,7 @@ const DraggableMemo = ({
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(memo.isNew || false);
   const [editContent, setEditContent] = useState(memo.content || '');
+  const [isNewAndUnsaved, setIsNewAndUnsaved] = useState(memo.isNew || false);
   const memoRef = useRef(null);
 
   // 拖拽相关 refs（避免频繁 setState）
@@ -44,6 +45,7 @@ const DraggableMemo = ({
   useEffect(() => {
     if (memo.isNew) {
       setIsEditing(true);
+      setIsNewAndUnsaved(true);
       onUpdate(memo.id, { isNew: false });
     }
   }, [memo.isNew, memo.id, onUpdate]);
@@ -151,8 +153,20 @@ const DraggableMemo = ({
   };
 
   const handleEdit = () => { setIsEditing(true); setShowMenu(false); };
-  const handleSave = () => { onUpdate(memo.id, { content: editContent, updatedAt: new Date().toISOString() }); setIsEditing(false); };
-  const handleCancel = () => { setEditContent(memo.content || ''); setIsEditing(false); };
+  const handleSave = () => { 
+    onUpdate(memo.id, { content: editContent, updatedAt: new Date().toISOString() }); 
+    setIsEditing(false);
+    setIsNewAndUnsaved(false); // 标记为已保存
+  };
+  const handleCancel = () => { 
+    // 如果是新建且未保存的memo，则删除该memo
+    if (isNewAndUnsaved) {
+      onDelete(memo.id);
+    } else {
+      setEditContent(memo.content || ''); 
+      setIsEditing(false); 
+    }
+  };
   const handleDelete = () => { onDelete(memo.id); setShowMenu(false); };
   const handleTogglePin = () => { onTogglePin(memo.id); setShowMenu(false); };
 
