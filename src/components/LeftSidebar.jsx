@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff } from 'lucide-react';
+import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff, Layout } from 'lucide-react';
 import GitHubStyleHeatmap from '@/components/GitHubStyleHeatmap';
 import UsageStats from '@/components/UsageStats';
 import UserAvatar from '@/components/UserAvatar';
@@ -17,6 +17,8 @@ const LeftSidebar = ({
   isLeftSidebarHovered,
   isAppLoaded,
   isInitialLoad,
+  isCanvasMode,
+  setIsCanvasMode,
   onSettingsOpen,
   onDateClick
 }) => {
@@ -75,6 +77,19 @@ const LeftSidebar = ({
             aria-label="打开设置"
           >
             <Settings className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
+          </button>
+
+          {/* 画布模式切换按钮 */}
+          <button
+            onClick={() => setIsCanvasMode(!isCanvasMode)}
+            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-600 ${
+              isCanvasMode 
+                ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+            }`}
+            aria-label={isCanvasMode ? "退出画布模式" : "进入画布模式"}
+          >
+            <Layout className="h-5 w-5 transition-transform duration-300" />
           </button>
 
           {/* 黑暗模式切换按钮 */}

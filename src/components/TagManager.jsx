@@ -74,21 +74,20 @@ const TagManager = ({ memos, activeTag, setActiveTag, showTitle = true }) => {
   };
 
   return (
-    <div className={`dark:text-gray-200 ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
+    <div className="dark:text-gray-200">
       {showTitle && (
         <div className="flex items-center justify-end mb-4 pr-2">
           <Tag
             className="h-5 w-5 mr-2 transition-colors duration-300"
             style={{ color: themeColor }}
           />
-          {/* 标题使用默认字体，不应用自定义字体 */}
-          <h2 className="text-lg font-semibold" style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif' }}>
+          <h2 className="text-lg font-semibold">
             标签管理
           </h2>
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className={`space-y-1 ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
         {sortedParentTags.length > 0 ? (
           sortedParentTags.map(parentTag => {
             const hasChildren = tagHierarchy[parentTag].length > 0;

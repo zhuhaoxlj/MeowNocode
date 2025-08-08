@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import LeftSidebar from '@/components/LeftSidebar';
 import RightSidebar from '@/components/RightSidebar';
 import MainContent from '@/components/MainContent';
+import CanvasMode from '@/components/CanvasMode';
 import MobileSidebar from '@/components/MobileSidebar';
 import SettingsCard from '@/components/SettingsCard';
 import ShareDialog from '@/components/ShareDialog';
@@ -38,6 +39,7 @@ import { toast } from 'sonner';
   const [selectedMemo, setSelectedMemo] = useState(null);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
+  const [isCanvasMode, setIsCanvasMode] = useState(false);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -170,6 +172,7 @@ import { toast } from 'sonner';
     const savedPinned = localStorage.getItem('pinnedMemos');
     const savedLeftSidebarPinned = localStorage.getItem('isLeftSidebarPinned');
     const savedRightSidebarPinned = localStorage.getItem('isRightSidebarPinned');
+    const savedCanvasMode = localStorage.getItem('isCanvasMode');
     
     if (savedMemos) {
       try {
@@ -212,6 +215,14 @@ import { toast } from 'sonner';
         console.error('Failed to parse right sidebar pinned state from localStorage', e);
       }
     }
+
+    if (savedCanvasMode !== null) {
+      try {
+        setIsCanvasMode(JSON.parse(savedCanvasMode));
+      } catch (e) {
+        console.error('Failed to parse canvas mode state from localStorage', e);
+      }
+    }
     
     // 设置应用已加载，避免初始动画
     setTimeout(() => {
@@ -234,6 +245,11 @@ import { toast } from 'sonner';
   useEffect(() => {
     localStorage.setItem('isRightSidebarPinned', JSON.stringify(isRightSidebarPinned));
   }, [isRightSidebarPinned]);
+
+  // 保存画布模式状态到localStorage
+  useEffect(() => {
+    localStorage.setItem('isCanvasMode', JSON.stringify(isCanvasMode));
+  }, [isCanvasMode]);
 
   // 添加新memo
   const addMemo = () => {
@@ -777,6 +793,63 @@ import { toast } from 'sonner';
     setIsAIDialogOpen(true);
   };
 
+  // 画布模式相关函数
+  const handleCanvasAddMemo = (memo) => {
+    // 检查是否为空内容，如果是则添加到pinnedMemos以便编辑
+    if (!memo.content.trim()) {
+      const pinnedMemo = {
+        ...memo,
+        isPinned: true,
+        pinnedAt: new Date().toISOString()
+      };
+      setPinnedMemos([pinnedMemo, ...pinnedMemos]);
+    } else {
+      setMemos([memo, ...memos]);
+    }
+  };
+
+  const handleCanvasUpdateMemo = (id, updates) => {
+    // 更新memos
+    const updatedMemos = memos.map(memo => 
+      memo.id === id ? { ...memo, ...updates } : memo
+    );
+    
+    // 更新pinnedMemos
+    const updatedPinned = pinnedMemos.map(memo => 
+      memo.id === id ? { ...memo, ...updates } : memo
+    );
+
+    setMemos(updatedMemos);
+    setPinnedMemos(updatedPinned);
+  };
+
+  const handleCanvasDeleteMemo = (id) => {
+    setMemos(memos.filter(memo => memo.id !== id));
+    setPinnedMemos(pinnedMemos.filter(memo => memo.id !== id));
+  };
+
+  const handleCanvasTogglePin = (id) => {
+    const memoInMemos = memos.find(memo => memo.id === id);
+    const memoInPinned = pinnedMemos.find(memo => memo.id === id);
+
+    if (memoInMemos) {
+      // 从普通memos移动到pinnedMemos
+      const pinnedMemo = {
+        ...memoInMemos,
+        isPinned: true,
+        pinnedAt: new Date().toISOString()
+      };
+      setPinnedMemos([pinnedMemo, ...pinnedMemos]);
+      setMemos(memos.filter(memo => memo.id !== id));
+    } else if (memoInPinned) {
+      // 从pinnedMemos移动到普通memos
+      const unpinnedMemo = { ...memoInPinned, isPinned: false };
+      delete unpinnedMemo.pinnedAt;
+      setMemos([unpinnedMemo, ...memos]);
+      setPinnedMemos(pinnedMemos.filter(memo => memo.id !== id));
+    }
+  };
+
   // 生成背景样式 - 亮度滤镜只应用于背景图片
   const backgroundStyle = backgroundConfig.imageUrl ? {
     backgroundImage: `url(${backgroundConfig.imageUrl})`,
@@ -826,55 +899,68 @@ import { toast } from 'sonner';
           isLeftSidebarHovered={isLeftSidebarHovered}
           isAppLoaded={isAppLoaded}
           isInitialLoad={isInitialLoad}
+          isCanvasMode={isCanvasMode}
+          setIsCanvasMode={setIsCanvasMode}
           onSettingsOpen={() => setIsSettingsOpen(true)}
           onDateClick={handleDateClick}
         />
 
         {/* 中央主内容区 */}
-        <MainContent
-          // Layout state
-          isLeftSidebarHidden={isLeftSidebarHidden}
-          isRightSidebarHidden={isRightSidebarHidden}
-          setIsLeftSidebarHidden={setIsLeftSidebarHidden}
-          setIsRightSidebarHidden={setIsRightSidebarHidden}
-          isLeftSidebarPinned={isLeftSidebarPinned}
-          isRightSidebarPinned={isRightSidebarPinned}
-          
-          // Data
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          newMemo={newMemo}
-          setNewMemo={setNewMemo}
-          filteredMemos={filteredMemos}
-          pinnedMemos={pinnedMemos}
-          activeMenuId={activeMenuId}
-          editingId={editingId}
-          editContent={editContent}
-          activeTag={activeTag}
-          activeDate={activeDate} // 传递日期筛选状态
-          showScrollToTop={showScrollToTop}
-          
-          // Refs
-          searchInputRef={searchInputRef}
-          memosContainerRef={memosContainerRef}
-          menuRefs={menuRefs}
-          
-          // Callbacks
-          onMobileMenuOpen={() => setIsMobileSidebarOpen(true)}
-          onAddMemo={addMemo}
-          onMenuAction={handleMenuAction}
-          onMenuContainerEnter={handleMenuContainerEnter}
-          onMenuContainerLeave={handleMenuContainerLeave}
-          onMenuButtonClick={handleMenuButtonClick}
-          onEditContentChange={setEditContent}
-          onSaveEdit={saveEdit}
-          onCancelEdit={cancelEdit}
-          onTagClick={setActiveTag}
-          onScrollToTop={scrollToTop}
-          clearFilters={clearFilters} // 传递清除筛选函数
-          onEditorFocus={handleEditorFocus}
-          onEditorBlur={handleEditorBlur}
-        />
+        {isCanvasMode ? (
+          <CanvasMode
+            memos={memos}
+            pinnedMemos={pinnedMemos}
+            onAddMemo={handleCanvasAddMemo}
+            onUpdateMemo={handleCanvasUpdateMemo}
+            onDeleteMemo={handleCanvasDeleteMemo}
+            onTogglePin={handleCanvasTogglePin}
+          />
+        ) : (
+          <MainContent
+            // Layout state
+            isLeftSidebarHidden={isLeftSidebarHidden}
+            isRightSidebarHidden={isRightSidebarHidden}
+            setIsLeftSidebarHidden={setIsLeftSidebarHidden}
+            setIsRightSidebarHidden={setIsRightSidebarHidden}
+            isLeftSidebarPinned={isLeftSidebarPinned}
+            isRightSidebarPinned={isRightSidebarPinned}
+            
+            // Data
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            newMemo={newMemo}
+            setNewMemo={setNewMemo}
+            filteredMemos={filteredMemos}
+            pinnedMemos={pinnedMemos}
+            activeMenuId={activeMenuId}
+            editingId={editingId}
+            editContent={editContent}
+            activeTag={activeTag}
+            activeDate={activeDate} // 传递日期筛选状态
+            showScrollToTop={showScrollToTop}
+            
+            // Refs
+            searchInputRef={searchInputRef}
+            memosContainerRef={memosContainerRef}
+            menuRefs={menuRefs}
+            
+            // Callbacks
+            onMobileMenuOpen={() => setIsMobileSidebarOpen(true)}
+            onAddMemo={addMemo}
+            onMenuAction={handleMenuAction}
+            onMenuContainerEnter={handleMenuContainerEnter}
+            onMenuContainerLeave={handleMenuContainerLeave}
+            onMenuButtonClick={handleMenuButtonClick}
+            onEditContentChange={setEditContent}
+            onSaveEdit={saveEdit}
+            onCancelEdit={cancelEdit}
+            onTagClick={setActiveTag}
+            onScrollToTop={scrollToTop}
+            clearFilters={clearFilters} // 传递清除筛选函数
+            onEditorFocus={handleEditorFocus}
+            onEditorBlur={handleEditorBlur}
+          />
+        )}
 
         {/* 右侧标签管理区 */}
         <RightSidebar
@@ -923,15 +1009,17 @@ import { toast } from 'sonner';
         memos={[...memos, ...pinnedMemos]}
       />
 
-      {/* AI按钮 */}
-      <AIButton
-        isSettingsOpen={isSettingsOpen}
-        isShareDialogOpen={isShareDialogOpen}
-        isEditorFocused={isEditorFocused}
-        onContinue={handleAIContinue}
-        onOptimize={handleAIOptimize}
-        onChat={handleAIChat}
-      />
+      {/* AI按钮 - 在画布模式下不显示 */}
+      {!isCanvasMode && (
+        <AIButton
+          isSettingsOpen={isSettingsOpen}
+          isShareDialogOpen={isShareDialogOpen}
+          isEditorFocused={isEditorFocused}
+          onContinue={handleAIContinue}
+          onOptimize={handleAIOptimize}
+          onChat={handleAIChat}
+        />
+      )}
     </div>
   );
 };
