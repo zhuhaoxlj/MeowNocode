@@ -817,6 +817,8 @@ import { toast } from 'sonner';
         {/* 左侧热力图区域 */}
         <LeftSidebar
           heatmapData={heatmapData}
+          memos={memos}
+          pinnedMemos={pinnedMemos}
           isLeftSidebarHidden={isLeftSidebarHidden}
           setIsLeftSidebarHidden={setIsLeftSidebarHidden}
           isLeftSidebarPinned={isLeftSidebarPinned}

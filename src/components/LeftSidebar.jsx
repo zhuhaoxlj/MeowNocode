@@ -1,12 +1,15 @@
 import React from 'react';
 import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff } from 'lucide-react';
 import GitHubStyleHeatmap from '@/components/GitHubStyleHeatmap';
+import UsageStats from '@/components/UsageStats';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 
 const LeftSidebar = ({
   heatmapData,
+  memos,
+  pinnedMemos,
   isLeftSidebarHidden,
   setIsLeftSidebarHidden,
   isLeftSidebarPinned,
@@ -57,6 +60,7 @@ const LeftSidebar = ({
 
         <div className="flex-1 overflow-hidden">
           <GitHubStyleHeatmap data={heatmapData} onDateClick={onDateClick} isSidebarHovered={!isLeftSidebarPinned && isLeftSidebarHovered} />
+          <UsageStats memos={memos} pinnedMemos={pinnedMemos} />
         </div>
 
         {/* 底部按钮区域 */}

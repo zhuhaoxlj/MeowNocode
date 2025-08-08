@@ -28,7 +28,7 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }
     return new Date().getFullYear();
   };
 
-  // 生成日历网格
+  // 生成日历网格 - 按季度显示
   const generateCalendar = () => {
     const grid = [];
     const currentYear = getCurrentYear();
@@ -89,6 +89,29 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }
     }
     
     return grid;
+  };
+
+  // 生成季度内的月份标签
+  const generateMonthLabels = () => {
+    const currentYear = getCurrentYear();
+    const currentQuarter = getCurrentQuarter();
+    const startMonth = (currentQuarter - 1) * 3;
+    const endMonth = startMonth + 2;
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const labels = [];
+    
+    // 为当前季度的三个月生成标签
+    for (let i = 0; i < 3; i++) {
+      const monthIndex = startMonth + i;
+      labels.push({
+        name: monthNames[monthIndex],
+        position: i, // 0, 1, 2 分别代表季度的第1、2、3个月
+        month: monthIndex + 1
+      });
+    }
+    
+    return labels;
   };
 
   // 根据等级获取颜色 - 添加黑暗模式支持
@@ -227,6 +250,10 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }
     return `${getCurrentYear()}年${quarterMonths[getCurrentQuarter()]}`;
   };
 
+  // 在return语句之前调用generateCalendar和generateMonthLabels
+  const grid = generateCalendar();
+  const monthLabels = generateMonthLabels();
+
   return (
     <div className="mt-4 font-sans relative heatmap-container">
       <div className="flex justify-between items-center mb-3">
@@ -250,10 +277,21 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }
         </div>
       </div>
 
-      {/* 修改热力图区域背景为透明 */}
+      {/* 月份标签 */}
+      <div className="px-2 mb-1">
+        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+          {monthLabels.map((label, index) => (
+            <div key={index} className="text-center">
+              {label.name}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 热力图区域背景为透明 */}
       <div className="px-2 bg-transparent rounded overflow-hidden">
         <div className="flex gap-1" style={{ minHeight: '110px' }}>
-          {generateCalendar()}
+          {grid}
         </div>
       </div>
 
