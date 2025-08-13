@@ -38,12 +38,17 @@ const LeftSidebar = ({
       }`}
     >
       <div className={`p-4 flex-1 flex flex-col min-w-[240px] relative ${!isLeftSidebarPinned && isLeftSidebarHovered ? 'h-full overflow-hidden' : ''}`}>
-        {/* 固定/取消固定按钮 */}
+        {/* 固定/取消固定按钮 - 画布模式下禁用 */}
         <button
           onClick={() => setIsLeftSidebarPinned(!isLeftSidebarPinned)}
-          className="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all duration-300 ease-in-out hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-110"
-          aria-label={isLeftSidebarPinned ? "取消固定左侧栏" : "固定左侧栏"}
-          title={isLeftSidebarPinned ? "取消固定左侧栏" : "固定左侧栏"}
+          disabled={isCanvasMode}
+          className={`absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 ease-in-out hover:scale-110 ${
+            isCanvasMode
+              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+          }`}
+          aria-label={isCanvasMode ? "画布模式下不可固定侧栏" : (isLeftSidebarPinned ? "取消固定左侧栏" : "固定左侧栏")}
+          title={isCanvasMode ? "画布模式下不可固定侧栏" : (isLeftSidebarPinned ? "取消固定左侧栏" : "固定左侧栏")}
         >
           {isLeftSidebarPinned ? (
             <Pin className="h-4 w-4 transition-transform duration-300 ease-in-out" />

@@ -258,115 +258,120 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
     e.preventDefault();
     
-    const key = e.key;
-    const ctrlKey = e.ctrlKey || e.metaKey;
-    const altKey = e.altKey;
-    const shiftKey = e.shiftKey;
-
-    // 添加当前按下的键到集合中
+    let key = e.key;
+    if (key === 'Control') key = 'Ctrl';
+    if (key === 'Meta') key = 'Ctrl';
+    if (key === 'Alt') key = 'Alt';
+    if (key === 'Shift') key = 'Shift';
+    
     setPressedKeys(prev => {
       const newSet = new Set(prev);
       newSet.add(key);
       return newSet;
     });
 
-    // 清除之前的超时
     if (recordingTimeout) {
       clearTimeout(recordingTimeout);
       setRecordingTimeout(null);
     }
-
-    // 设置新的超时，如果在500ms内没有新按键，则完成录制
-    const timeoutId = setTimeout(() => {
-      completeShortcutRecording();
-    }, 500);
-    setRecordingTimeout(timeoutId);
   };
 
-  // 处理按键释放事件
+  // 处理按键释放事件（使用按下瞬间的快照，避免组合被清空）
   const handleKeyUp = (e) => {
     if (!recordingShortcut) return;
 
-    // 从集合中移除释放的键
-    setPressedKeys(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(e.key);
-      return newSet;
-    });
+    let key = e.key;
+    if (key === 'Control') key = 'Ctrl';
+    if (key === 'Meta') key = 'Ctrl';
+    if (key === 'Alt') key = 'Alt';
+    if (key === 'Shift') key = 'Shift';
 
-    // 如果所有修饰键都释放了，完成录制
-    const ctrlKey = e.ctrlKey || e.metaKey;
-    const altKey = e.altKey;
-    const shiftKey = e.shiftKey;
-    
-    if (!ctrlKey && !altKey && !shiftKey && pressedKeys.size > 0) {
-      completeShortcutRecording();
-    }
+    const modifierKeys = ['Ctrl', 'Alt', 'Shift'];
+
+    setPressedKeys(prev => {
+      // 释放前的完整组合快照（包含主键）
+      const snapshot = new Set(prev);
+      // 模拟释放后的集合
+      const afterRelease = new Set(prev);
+      afterRelease.delete(key);
+
+      const remainingKeys = Array.from(afterRelease);
+      const hasOnlyModifiers = remainingKeys.every(k => modifierKeys.includes(k));
+
+      // 只有当释放后只剩修饰键或无键时才完成录制，使用释放前的快照保证包含主键
+      if (remainingKeys.length === 0 || hasOnlyModifiers) {
+        completeShortcutRecording(snapshot);
+      }
+
+      return afterRelease;
+    });
   };
 
-  // 完成快捷键录制
-  const completeShortcutRecording = () => {
-    if (!recordingShortcut || pressedKeys.size === 0) return;
-
-    // 检查按下的键中是否有修饰键
-    const hasCtrl = Array.from(pressedKeys).includes('Control') || Array.from(pressedKeys).includes('Meta');
-    const hasAlt = Array.from(pressedKeys).includes('Alt');
-    const hasShift = Array.from(pressedKeys).includes('Shift');
-
-    // 构建快捷键字符串
-    let shortcutString = '';
-    if (hasCtrl) shortcutString += 'Ctrl+';
-    if (hasAlt) shortcutString += 'Alt+';
-    if (hasShift) shortcutString += 'Shift+';
-    
-    // 找到主要按键（非修饰键）
-    const mainKey = Array.from(pressedKeys).find(key => 
-      !['Control', 'Alt', 'Shift', 'Meta'].includes(key)
-    );
-    
-    if (mainKey) {
-      // 处理特殊键名
-      const keyMap = {
-        ' ': 'Space',
-        ',': ',',
-        '.': '.',
-        'Tab': 'Tab',
-        'Enter': 'Enter',
-        'Escape': 'Escape',
-        'Backspace': 'Backspace',
-        'Delete': 'Delete',
-        'ArrowUp': 'ArrowUp',
-        'ArrowDown': 'ArrowDown',
-        'ArrowLeft': 'ArrowLeft',
-        'ArrowRight': 'ArrowRight',
-        'PageUp': 'PageUp',
-        'PageDown': 'PageDown',
-        'Home': 'Home',
-        'End': 'End'
-      };
-
-      const displayKey = keyMap[mainKey] || mainKey;
-      shortcutString += displayKey;
-
-      // 更新临时快捷键
-      setTempShortcuts(prev => ({
-        ...prev,
-        [recordingShortcut]: shortcutString
-      }));
-
-      // 更新实际快捷键配置
-      updateKeyboardShortcuts({
-        [recordingShortcut]: shortcutString
-      });
+  // 完成快捷键录制（支持传入快照，避免依赖异步 state）
+  const completeShortcutRecording = (keysSnapshot) => {
+    const keysSet = keysSnapshot ? new Set(keysSnapshot) : pressedKeys;
+    if (!recordingShortcut || keysSet.size === 0) {
+      stopRecording();
+      return;
     }
 
-    // 重置录制状态
-    setRecordingShortcut(null);
-    setPressedKeys(new Set());
-    if (recordingTimeout) {
-      clearTimeout(recordingTimeout);
-      setRecordingTimeout(null);
+    const modifierKeys = ['Ctrl', 'Alt', 'Shift'];
+    const modifiers = Array.from(keysSet).filter(key => modifierKeys.includes(key));
+    const mainKeys = Array.from(keysSet).filter(key => !modifierKeys.includes(key));
+
+    if (mainKeys.length === 0) {
+      stopRecording();
+      return;
     }
+
+    const orderedModifiers = [];
+    if (modifiers.includes('Ctrl')) orderedModifiers.push('Ctrl');
+    if (modifiers.includes('Alt')) orderedModifiers.push('Alt');
+    if (modifiers.includes('Shift')) orderedModifiers.push('Shift');
+
+    const mainKey = mainKeys[mainKeys.length - 1];
+
+    const keyMap = {
+      ' ': 'Space',
+      ',': ',',
+      '.': '.',
+      ';': ';',
+      '[': '[',
+      ']': ']',
+      '\\': '\\',
+      "'": "'",
+      '/': '/',
+      'Tab': 'Tab',
+      'Enter': 'Enter',
+      'Escape': 'Escape',
+      'Backspace': 'Backspace',
+      'Delete': 'Delete',
+      'ArrowUp': 'ArrowUp',
+      'ArrowDown': 'ArrowDown',
+      'ArrowLeft': 'ArrowLeft',
+      'ArrowRight': 'ArrowRight',
+      'PageUp': 'PageUp',
+      'PageDown': 'PageDown',
+      'Home': 'Home',
+      'End': 'End',
+      'Insert': 'Insert',
+      'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4', 'F5': 'F5', 'F6': 'F6',
+      'F7': 'F7', 'F8': 'F8', 'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12'
+    };
+
+    const displayKey = keyMap[mainKey] || mainKey.toUpperCase();
+    const shortcutString = [...orderedModifiers, displayKey].join('+');
+
+    setTempShortcuts(prev => ({
+      ...prev,
+      [recordingShortcut]: shortcutString
+    }));
+
+    updateKeyboardShortcuts({
+      [recordingShortcut]: shortcutString
+    });
+
+    stopRecording();
   };
 
   // 停止录制
@@ -379,17 +384,63 @@ const SettingsCard = ({ isOpen, onClose }) => {
     }
   };
 
+  // 格式化按键显示
+  const formatKeyDisplay = (key) => {
+    const keyMap = {
+      'Ctrl': 'Ctrl',
+      'Alt': 'Alt', 
+      'Shift': 'Shift',
+      ' ': 'Space',
+      'Tab': 'Tab',
+      'Enter': 'Enter',
+      'Escape': 'Esc',
+      'Backspace': '⌫',
+      'Delete': '⌦',
+      'ArrowUp': '↑',
+      'ArrowDown': '↓',
+      'ArrowLeft': '←',
+      'ArrowRight': '→',
+      'PageUp': 'PgUp',
+      'PageDown': 'PgDn',
+      'Home': 'Home',
+      'End': 'End',
+      'Insert': 'Ins'
+    };
+    return keyMap[key] || key.toUpperCase();
+  };
+
+  // 获取排序后的按键显示
+  const getSortedKeyDisplay = () => {
+    const modifierOrder = ['Ctrl', 'Alt', 'Shift'];
+    const modifiers = Array.from(pressedKeys).filter(key => modifierOrder.includes(key));
+    const otherKeys = Array.from(pressedKeys).filter(key => !modifierOrder.includes(key));
+    
+    // 按标准顺序排列
+    const sortedModifiers = modifiers.sort((a, b) => modifierOrder.indexOf(a) - modifierOrder.indexOf(b));
+    const sortedKeys = [...sortedModifiers, ...otherKeys];
+    
+    return sortedKeys.map(formatKeyDisplay).join(' + ');
+  };
+
   // 添加全局键盘事件监听
   useEffect(() => {
     if (recordingShortcut) {
       document.addEventListener('keydown', handleKeyDown);
       document.addEventListener('keyup', handleKeyUp);
+
+      const timeoutId = setTimeout(() => {
+        if (pressedKeys.size > 0) {
+          completeShortcutRecording(new Set(pressedKeys));
+        }
+      }, 1000);
+      setRecordingTimeout(timeoutId);
+
       return () => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
       };
     }
-  }, [recordingShortcut, pressedKeys, recordingTimeout]);
+  }, [recordingShortcut]);
 
   // 清理超时
   useEffect(() => {
@@ -399,6 +450,22 @@ const SettingsCard = ({ isOpen, onClose }) => {
       }
     };
   }, [recordingTimeout]);
+
+  // 点击外部区域退出录制模式
+  useEffect(() => {
+    if (recordingShortcut) {
+      const handleClickOutside = (e) => {
+        if (!e.target.closest('.shortcut-recording')) {
+          stopRecording();
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [recordingShortcut]);
 
   // 切换折叠面板
   const toggleSection = (section) => {
@@ -929,22 +996,13 @@ const SettingsCard = ({ isOpen, onClose }) => {
                                 <div className="flex flex-col items-center space-y-1">
                                   <div className="flex items-center space-x-2">
                                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                    <span className="text-blue-600 dark:text-blue-400 text-xs">录制中...</span>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs font-medium">录制中...</span>
                                   </div>
-                                  {pressedKeys.size > 0 && (
-                                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                                      {Array.from(pressedKeys).map(key => {
-                                        const keyMap = {
-                                          'Control': 'Ctrl',
-                                          'Meta': 'Cmd',
-                                          'Alt': 'Alt',
-                                          'Shift': 'Shift',
-                                          ' ': 'Space'
-                                        };
-                                        return keyMap[key] || key;
-                                      }).join(' + ')}
+                                  {pressedKeys.size > 0 ? (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400 font-mono font-medium">
+                                      {getSortedKeyDisplay()}
                                     </div>
-                                  )}
+                                  ) : null}
                                 </div>
                               ) : (
                                 <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
@@ -972,22 +1030,13 @@ const SettingsCard = ({ isOpen, onClose }) => {
                                 <div className="flex flex-col items-center space-y-1">
                                   <div className="flex items-center space-x-2">
                                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                    <span className="text-blue-600 dark:text-blue-400 text-xs">录制中...</span>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs font-medium">录制中...</span>
                                   </div>
-                                  {pressedKeys.size > 0 && (
-                                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                                      {Array.from(pressedKeys).map(key => {
-                                        const keyMap = {
-                                          'Control': 'Ctrl',
-                                          'Meta': 'Cmd',
-                                          'Alt': 'Alt',
-                                          'Shift': 'Shift',
-                                          ' ': 'Space'
-                                        };
-                                        return keyMap[key] || key;
-                                      }).join(' + ')}
+                                  {pressedKeys.size > 0 ? (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400 font-mono font-medium">
+                                      {getSortedKeyDisplay()}
                                     </div>
-                                  )}
+                                  ) : null}
                                 </div>
                               ) : (
                                 <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
@@ -1015,26 +1064,51 @@ const SettingsCard = ({ isOpen, onClose }) => {
                                 <div className="flex flex-col items-center space-y-1">
                                   <div className="flex items-center space-x-2">
                                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                    <span className="text-blue-600 dark:text-blue-400 text-xs">录制中...</span>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs font-medium">录制中...</span>
                                   </div>
-                                  {pressedKeys.size > 0 && (
-                                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                                      {Array.from(pressedKeys).map(key => {
-                                        const keyMap = {
-                                          'Control': 'Ctrl',
-                                          'Meta': 'Cmd',
-                                          'Alt': 'Alt',
-                                          'Shift': 'Shift',
-                                          ' ': 'Space'
-                                        };
-                                        return keyMap[key] || key;
-                                      }).join(' + ')}
+                                  {pressedKeys.size > 0 ? (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400 font-mono font-medium">
+                                      {getSortedKeyDisplay()}
                                     </div>
-                                  )}
+                                  ) : null}
                                 </div>
                               ) : (
                                 <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
                                   {tempShortcuts.openSettings}
+                                </kbd>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* 画布模式快捷键 */}
+                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex flex-col space-y-1 flex-1">
+                              <span className="text-sm font-medium">画布模式</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">快速切换画布模式</span>
+                            </div>
+                            <button
+                              onClick={() => handleShortcutRecord('toggleCanvasMode')}
+                              className={`shortcut-recording px-3 py-2 text-sm rounded-lg border transition-colors text-left min-w-[100px] ${
+                                recordingShortcut === 'toggleCanvasMode'
+                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                              }`}
+                            >
+                              {recordingShortcut === 'toggleCanvasMode' ? (
+                                <div className="flex flex-col items-center space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs font-medium">录制中...</span>
+                                  </div>
+                                  {pressedKeys.size > 0 ? (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400 font-mono font-medium">
+                                      {getSortedKeyDisplay()}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+                                  {tempShortcuts.toggleCanvasMode}
                                 </kbd>
                               )}
                             </button>

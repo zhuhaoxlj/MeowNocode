@@ -39,7 +39,8 @@ export function SettingsProvider({ children }) {
   const [keyboardShortcuts, setKeyboardShortcuts] = useState({
     toggleSidebar: 'Tab',
     openAIDialog: 'Ctrl+Space',
-    openSettings: 'Ctrl+,'
+    openSettings: 'Ctrl+,',
+    toggleCanvasMode: 'Ctrl+/'
   });
 
   useEffect(() => {

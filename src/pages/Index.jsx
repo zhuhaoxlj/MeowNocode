@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LeftSidebar from '@/components/LeftSidebar';
 import RightSidebar from '@/components/RightSidebar';
 import MainContent from '@/components/MainContent';
@@ -200,9 +200,27 @@ import { toast } from 'sonner';
       }
     }
 
+    if (savedCanvasMode !== null) {
+      try {
+        const canvasMode = JSON.parse(savedCanvasMode);
+        setIsCanvasMode(canvasMode);
+        
+        // 如果处于画布模式，强制设置侧栏为非固定状态
+        if (canvasMode) {
+          setIsLeftSidebarPinned(false);
+          setIsRightSidebarPinned(false);
+        }
+      } catch (e) {
+        console.error('Failed to parse canvas mode state from localStorage', e);
+      }
+    }
+
     if (savedLeftSidebarPinned !== null) {
       try {
-        setIsLeftSidebarPinned(JSON.parse(savedLeftSidebarPinned));
+        // 只有在非画布模式下才加载侧栏固定状态
+        if (!JSON.parse(localStorage.getItem('isCanvasMode') || 'false')) {
+          setIsLeftSidebarPinned(JSON.parse(savedLeftSidebarPinned));
+        }
       } catch (e) {
         console.error('Failed to parse left sidebar pinned state from localStorage', e);
       }
@@ -210,17 +228,12 @@ import { toast } from 'sonner';
 
     if (savedRightSidebarPinned !== null) {
       try {
-        setIsRightSidebarPinned(JSON.parse(savedRightSidebarPinned));
+        // 只有在非画布模式下才加载侧栏固定状态
+        if (!JSON.parse(localStorage.getItem('isCanvasMode') || 'false')) {
+          setIsRightSidebarPinned(JSON.parse(savedRightSidebarPinned));
+        }
       } catch (e) {
         console.error('Failed to parse right sidebar pinned state from localStorage', e);
-      }
-    }
-
-    if (savedCanvasMode !== null) {
-      try {
-        setIsCanvasMode(JSON.parse(savedCanvasMode));
-      } catch (e) {
-        console.error('Failed to parse canvas mode state from localStorage', e);
       }
     }
     
@@ -237,14 +250,18 @@ import { toast } from 'sonner';
     localStorage.setItem('pinnedMemos', JSON.stringify(pinnedMemos));
   }, [memos, pinnedMemos]);
 
-  // 保存侧栏固定状态到localStorage
+  // 保存侧栏固定状态到localStorage - 画布模式下不保存
   useEffect(() => {
-    localStorage.setItem('isLeftSidebarPinned', JSON.stringify(isLeftSidebarPinned));
-  }, [isLeftSidebarPinned]);
+    if (!isCanvasMode) {
+      localStorage.setItem('isLeftSidebarPinned', JSON.stringify(isLeftSidebarPinned));
+    }
+  }, [isLeftSidebarPinned, isCanvasMode]);
 
   useEffect(() => {
-    localStorage.setItem('isRightSidebarPinned', JSON.stringify(isRightSidebarPinned));
-  }, [isRightSidebarPinned]);
+    if (!isCanvasMode) {
+      localStorage.setItem('isRightSidebarPinned', JSON.stringify(isRightSidebarPinned));
+    }
+  }, [isRightSidebarPinned, isCanvasMode]);
 
   // 保存画布模式状态到localStorage
   useEffect(() => {
@@ -515,6 +532,21 @@ import { toast } from 'sonner';
     };
   }, []);
 
+  // 画布模式切换函数
+  const handleCanvasModeToggle = useCallback(() => {
+    const newCanvasMode = !isCanvasMode;
+    setIsCanvasMode(newCanvasMode);
+    
+    // 进入画布模式时自动取消固定侧栏
+    if (newCanvasMode) {
+      setIsLeftSidebarPinned(false);
+      setIsRightSidebarPinned(false);
+      toast.success('已进入画布模式，侧栏已自动取消固定');
+    } else {
+      toast.success('已退出画布模式');
+    }
+  }, [isCanvasMode]);
+
   // 自定义快捷键处理
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -572,8 +604,13 @@ import { toast } from 'sonner';
         );
       };
 
-      // 切换侧栏固定状态
+      // 切换侧栏固定状态 - 画布模式下禁用
       if (checkShortcut(keyboardShortcuts.toggleSidebar)) {
+        if (isCanvasMode) {
+          e.preventDefault();
+          toast.info('画布模式下不可固定侧栏');
+          return;
+        }
         e.preventDefault();
         setIsLeftSidebarPinned(!isLeftSidebarPinned);
         setIsRightSidebarPinned(!isRightSidebarPinned);
@@ -593,13 +630,19 @@ import { toast } from 'sonner';
         setIsSettingsOpen(true);
         toast.success('设置已打开');
       }
+
+      // 切换画布模式
+      if (checkShortcut(keyboardShortcuts.toggleCanvasMode)) {
+        e.preventDefault();
+        handleCanvasModeToggle();
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isLeftSidebarPinned, isRightSidebarPinned, isSettingsOpen, isAIDialogOpen, keyboardShortcuts]);
+  }, [isLeftSidebarPinned, isRightSidebarPinned, isSettingsOpen, isAIDialogOpen, keyboardShortcuts, isCanvasMode, handleCanvasModeToggle]);
 
   // 处理热力图日期点击
   const handleDateClick = (dateStr) => {
@@ -793,6 +836,22 @@ import { toast } from 'sonner';
     setIsAIDialogOpen(true);
   };
 
+  // 监听画布模式变化，确保在画布模式下侧栏始终为非固定状态
+  useEffect(() => {
+    if (isCanvasMode) {
+      setIsLeftSidebarPinned(false);
+      setIsRightSidebarPinned(false);
+    }
+  }, [isCanvasMode]);
+
+  // 额外的监听器，防止在画布模式下侧栏被意外固定
+  useEffect(() => {
+    if (isCanvasMode && (isLeftSidebarPinned || isRightSidebarPinned)) {
+      setIsLeftSidebarPinned(false);
+      setIsRightSidebarPinned(false);
+    }
+  }, [isCanvasMode, isLeftSidebarPinned, isRightSidebarPinned]);
+
   // 画布模式相关函数
   const handleCanvasAddMemo = (memo) => {
     // 检查是否为空内容，如果是则添加到pinnedMemos以便编辑
@@ -974,6 +1033,7 @@ import { toast } from 'sonner';
           isRightSidebarHovered={isRightSidebarHovered}
           isAppLoaded={isAppLoaded}
           isInitialLoad={isInitialLoad}
+          isCanvasMode={isCanvasMode}
         />
       </div>
 
