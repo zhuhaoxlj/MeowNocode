@@ -297,6 +297,13 @@ const DraggableMemo = ({
       }}
       onPointerDown={handlePointerDown}
       onDoubleClick={(e) => {
+        // 如果双击的是菜单按钮或菜单区域，不触发编辑模式
+        if (e.target.closest('.memo-menu')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
         // 防止双击事件冒泡到画布，避免误创建新memo
         e.preventDefault();
         e.stopPropagation();
