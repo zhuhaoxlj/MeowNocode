@@ -19,6 +19,7 @@ const DraggableMemo = ({
   const [editContent, setEditContent] = useState(memo.content || '');
   const [isNewAndUnsaved, setIsNewAndUnsaved] = useState(memo.isNew || false);
   const memoRef = useRef(null);
+  const hoverTimerRef = useRef(null);
 
   // 拖拽相关 refs（避免频繁 setState）
   const startPointerRef = useRef({ x: 0, y: 0 });
@@ -30,9 +31,25 @@ const DraggableMemo = ({
   useEffect(() => {
     if (!showMenu) return;
     const onOutside = (e) => {
-      if (memoRef.current && !memoRef.current.contains(e.target)) setShowMenu(false);
+      if (memoRef.current && !memoRef.current.contains(e.target)) {
+        setShowMenu(false);
+        // 清除任何悬停定时器
+        if (hoverTimerRef.current) {
+          clearTimeout(hoverTimerRef.current);
+          hoverTimerRef.current = null;
+        }
+      }
     };
-    const onEsc = (e) => { if (e.key === 'Escape') setShowMenu(false); };
+    const onEsc = (e) => {
+      if (e.key === 'Escape') {
+        setShowMenu(false);
+        // 清除任何悬停定时器
+        if (hoverTimerRef.current) {
+          clearTimeout(hoverTimerRef.current);
+          hoverTimerRef.current = null;
+        }
+      }
+    };
     document.addEventListener('pointerdown', onOutside, true);
     document.addEventListener('keydown', onEsc);
     return () => {
@@ -40,6 +57,50 @@ const DraggableMemo = ({
       document.removeEventListener('keydown', onEsc);
     };
   }, [showMenu]);
+
+  // 点击外部自动保存并退出编辑模式
+  useEffect(() => {
+    if (!isEditing) return;
+    const onOutsideEdit = (e) => {
+      // 如果点击在memo外部，则自动保存并退出编辑模式
+      if (memoRef.current && !memoRef.current.contains(e.target)) {
+        // 如果是新建且内容为空的memo，则删除它
+        if (isNewAndUnsaved && !editContent.trim()) {
+          onDelete(memo.id);
+        } else {
+          // 否则自动保存内容
+          onUpdate(memo.id, { content: editContent, updatedAt: new Date().toISOString() });
+          setIsEditing(false);
+          setIsNewAndUnsaved(false);
+        }
+      }
+    };
+    const onEscapeEdit = (e) => {
+      if (e.key === 'Escape') {
+        // 如果是新建且内容为空的memo，则删除它
+        if (isNewAndUnsaved && !editContent.trim()) {
+          onDelete(memo.id);
+        } else {
+          // ESC键也自动保存并退出
+          onUpdate(memo.id, { content: editContent, updatedAt: new Date().toISOString() });
+          setIsEditing(false);
+          setIsNewAndUnsaved(false);
+        }
+      }
+    };
+    
+    // 延迟添加事件监听器，避免立即触发
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('pointerdown', onOutsideEdit, true);
+      document.addEventListener('keydown', onEscapeEdit);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('pointerdown', onOutsideEdit, true);
+      document.removeEventListener('keydown', onEscapeEdit);
+    };
+  }, [isEditing, editContent, memo.id, onUpdate, onDelete, isNewAndUnsaved]);
 
   // 新建 memo 自动进入编辑
   useEffect(() => {
@@ -50,8 +111,18 @@ const DraggableMemo = ({
     }
   }, [memo.isNew, memo.id, onUpdate]);
 
-  // 清理 RAF
-  useEffect(() => () => rafRef.current && cancelAnimationFrame(rafRef.current), []);
+  // 清理 RAF 和悬停定时器
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const applyFrame = () => {
     if (!memoRef.current) return;
@@ -169,6 +240,40 @@ const DraggableMemo = ({
   };
   const handleDelete = () => { onDelete(memo.id); setShowMenu(false); };
   const handleTogglePin = () => { onTogglePin(memo.id); setShowMenu(false); };
+  
+  // 菜单悬停和点击事件处理
+  const handleMenuContainerEnter = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    // 延迟300ms后显示菜单
+    hoverTimerRef.current = setTimeout(() => {
+      setShowMenu(true);
+    }, 300);
+  };
+  
+  const handleMenuContainerLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    // 延迟150ms后隐藏菜单
+    hoverTimerRef.current = setTimeout(() => {
+      setShowMenu(false);
+    }, 150);
+  };
+  
+  const handleMenuButtonClick = (e) => {
+    e.stopPropagation();
+    // 清除任何悬停定时器
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    // 立即切换菜单状态
+    setShowMenu(!showMenu);
+  };
 
   const isPinned = memo.isPinned || memo.pinnedAt;
 
@@ -191,6 +296,15 @@ const DraggableMemo = ({
         userSelect: isEditing ? 'text' : 'none',
       }}
       onPointerDown={handlePointerDown}
+      onDoubleClick={(e) => {
+        // 防止双击事件冒泡到画布，避免误创建新memo
+        e.preventDefault();
+        e.stopPropagation();
+        // 如果不在编辑状态且不是正在拖拽，则进入编辑模式
+        if (!isEditing && !isDragging) {
+          setIsEditing(true);
+        }
+      }}
       aria-grabbed={isDragging}
     >
       <div className={`relative rounded-xl border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm transition-colors ${
@@ -205,14 +319,11 @@ const DraggableMemo = ({
           {/* 菜单按钮 */}
           <div
             className="absolute top-3 right-3 sm:top-4 sm:right-4 memo-menu"
-            onMouseEnter={(e) => e.stopPropagation()}
-            onMouseLeave={(e) => e.stopPropagation()}
+            onMouseEnter={handleMenuContainerEnter}
+            onMouseLeave={handleMenuContainerLeave}
           >
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
+              onClick={handleMenuButtonClick}
               className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100"
               aria-label="操作菜单"
             >
@@ -224,6 +335,8 @@ const DraggableMemo = ({
               <div
                 className="absolute w-44 sm:w-52 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
                 onClick={(e) => e.stopPropagation()}
+                onMouseEnter={handleMenuContainerEnter}
+                onMouseLeave={handleMenuContainerLeave}
                 style={{ top: '100%', right: 0, marginTop: '6px' }}
               >
                 {/* 置顶/取消置顶按钮 */}
@@ -271,7 +384,7 @@ const DraggableMemo = ({
 
           {/* 内容区域 */}
           {isEditing ? (
-            <div className="memo-edit mb-4">
+            <div className="memo-edit">
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
@@ -281,20 +394,6 @@ const DraggableMemo = ({
                 placeholder="编辑想法..."
                 maxLength={5000}
               />
-              <div className="mt-2 flex items-center justify-end gap-2">
-                <button
-                  onClick={handleCancel}
-                  className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 rounded-md hover:bg-gray-100 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  保存
-                </button>
-              </div>
             </div>
           ) : (
             <div 
