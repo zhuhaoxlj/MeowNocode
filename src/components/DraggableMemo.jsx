@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MoreVertical } from 'lucide-react';
+import ContentRenderer from '@/components/ContentRenderer';
+import { useTheme } from '@/context/ThemeContext';
 
 const DraggableMemo = ({ 
   memo, 
@@ -12,6 +14,7 @@ const DraggableMemo = ({
   style,
   scale = 1,
 }) => {
+  const { currentFont } = useTheme();
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false); // 使用 ref 实时同步拖拽状态
   const [showMenu, setShowMenu] = useState(false);
@@ -314,7 +317,7 @@ const DraggableMemo = ({
       }}
       aria-grabbed={isDragging}
     >
-      <div className={`relative rounded-xl border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm transition-colors ${
+  <div className={`relative rounded-xl border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm transition-colors ${
         isPinned ? 'pl-3' : ''
       }`}>
         {/* 置顶标记 */}
@@ -322,7 +325,7 @@ const DraggableMemo = ({
           <div className="absolute -left-1 top-3 h-3 w-3 rounded-full bg-yellow-400 shadow ring-2 ring-yellow-200" aria-hidden />
         )}
 
-        <div className="p-3 sm:p-4">
+  <div className={`p-3 sm:p-3 pb-9 relative ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
           {/* 菜单按钮 */}
           <div
             className="absolute top-3 right-3 sm:top-4 sm:right-4 memo-menu"
@@ -391,29 +394,27 @@ const DraggableMemo = ({
 
           {/* 内容区域 */}
           {isEditing ? (
-            <div className="memo-edit">
+            <div className="memo-edit px-4">
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent scrollbar-transparent scrollbar-thin"
                 rows={4}
                 autoFocus
                 placeholder="编辑想法..."
                 maxLength={5000}
               />
             </div>
-          ) : (
+           ) : (
             <div 
-              className="text-sm text-gray-800 dark:text-gray-200 pr-8"
+              className="px-4"
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 setIsEditing(true);
               }}
             >
               {memo.content ? (
-                <div className="whitespace-pre-wrap break-words">
-                  {memo.content}
-                </div>
+                <ContentRenderer content={memo.content} activeTag={null} onTagClick={() => {}} />
               ) : (
                 <div className="text-gray-400 italic">双击编辑...</div>
               )}
@@ -435,8 +436,8 @@ const DraggableMemo = ({
             </div>
           )}
 
-          {/* 时间戳 */}
-          <div className="text-xs text-gray-400 mt-2">
+          {/* 时间戳：右下角固定显示 */}
+          <div className="absolute bottom-2 right-3 text-[11px] text-gray-400 dark:text-gray-500 select-none pointer-events-none">
             {new Date(memo.createdAt).toLocaleDateString()}
           </div>
         </div>
