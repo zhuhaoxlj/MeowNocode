@@ -149,6 +149,32 @@ const MemoEditor = ({
     }
   };
 
+  // 在光标处插入 spoiler 语法，并将光标定位到 spoiler 内容处
+  const insertSpoilerAtCursor = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    // 形如: {% spoiler  %}，光标定位到 spoiler 后的空白处（两空格中间的第一个后）
+    const snippet = '{% spoiler  %}';
+    // 计算插入后光标位置：位于 "{% spoiler " 之后（索引从0开始）
+    const caretOffsetInSnippet = '{% spoiler '.length; // 包含末尾空格，落在内容位置
+    const newValue = before + snippet + after;
+    onChange?.(newValue);
+    // 聚焦并设置选择区域到内容位置
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const pos = start + caretOffsetInSnippet;
+        try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
+      }
+      // 调整高度
+      adjustHeight();
+    }, 0);
+  };
+
   // 焦点事件
   const handleFocus = () => {
     setIsFocused(true);
@@ -258,21 +284,39 @@ const MemoEditor = ({
             <div className="flex-1"></div>
           ) : isFocused ? (
             <>
-              {/* 字符计数 */}
-              {showCharCount && (
-                <div className={cn(
-                  "text-xs transition-colors",
-                  isOverLimit
-                    ? "text-red-500 font-medium"
-                    : isNearLimit
-                      ? "text-orange-500"
-                      : "text-gray-500 dark:text-gray-400"
-                )}>
-                  {charCount} 字
-                </div>
-              )}
+              {/* 左侧：字数 + 插入spoiler按钮 */}
+              <div className="flex items-center gap-2">
+                {showCharCount && (
+                  <div className={cn(
+                    "text-xs transition-colors",
+                    isOverLimit
+                      ? "text-red-500 font-medium"
+                      : isNearLimit
+                        ? "text-orange-500"
+                        : "text-gray-500 dark:text-gray-400"
+                  )}>
+                    {charCount} 字
+                  </div>
+                )}
+                {/* Spoiler 快捷按钮 */}
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); insertSpoilerAtCursor(); }}
+                  className="inline-flex items-center justify-center h-7 w-7 rounded-md text-gray-600 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                >
+                  {/* 模糊的小圆角矩形图标（默认模糊效果） */}
+                  <svg width="16" height="12" viewBox="0 0 18 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <filter id="f" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="1.1" />
+                      </filter>
+                    </defs>
+                    <rect x="2" y="2" width="14" height="8" rx="3" fill="currentColor" opacity="0.9" filter="url(#f)" />
+                  </svg>
+                </button>
+              </div>
 
-              {/* 快捷键提示 */}
+              {/* 右侧：快捷键提示 */}
               {onSubmit && (
                 <div className="text-xs text-gray-400 dark:text-gray-500">
                   <kbd className="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">Ctrl</kbd>
