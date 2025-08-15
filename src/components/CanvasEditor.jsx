@@ -66,7 +66,7 @@ const CanvasEditor = ({ onAddMemo, canvasSize, scale = 1, translate = { x: 0, y:
   };
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 canvas-ui" style={{ pointerEvents: 'auto' }}>
       {/* 去掉外层矩形框，仅保留输入与按钮本身样式 */}
     <div className="flex items-end gap-2">
         <textarea

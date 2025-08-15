@@ -1,4 +1,5 @@
 import React from 'react';
+import { toast } from 'sonner';
 import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff, Layout } from 'lucide-react';
 import GitHubStyleHeatmap from '@/components/GitHubStyleHeatmap';
 import UsageStats from '@/components/UsageStats';
@@ -26,6 +27,42 @@ const LeftSidebar = ({
 }) => {
   const { darkMode, toggleDarkMode, themeColor } = useTheme();
   const { cloudSyncEnabled } = useSettings();
+  
+
+  // 重置“今天”所有卡片为 FAIL（每日回顾用）
+  const resetTodayReviewStatus = () => {
+    try {
+      const STORAGE_KEY = 'dailyReviewStatusV1';
+      // 使用本地时区的 YYYY-MM-DD，避免 UTC 偏移
+      const toLocalYMD = (input) => {
+        const d = input instanceof Date ? input : new Date(input);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      const todayStr = toLocalYMD(new Date());
+      const all = [...(memos || []), ...(pinnedMemos || [])];
+      const todays = all.filter(m => {
+        const src = m.createdAt || m.timestamp;
+        return src ? toLocalYMD(src) === todayStr : false;
+      });
+      if (todays.length === 0) {
+        toast.info('今日无可重置的卡片');
+        return;
+      }
+      let data = {};
+      try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { data = {}; }
+      todays.forEach(m => {
+        const id = m.id;
+        data[id] = { ...(data[id] || {}), [todayStr]: 'FAIL' };
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      toast.success(`已重置今日 ${todays.length} 条为 FAIL`);
+    } catch (e) {
+      toast.error('重置失败，请稍后再试');
+    }
+  };
 
   return (
     <div
@@ -73,20 +110,39 @@ const LeftSidebar = ({
 
           {/* 每日回顾入口 */}
           <div className="px-2 pt-4">
-            <button
+            <div
+              role="button"
+              tabIndex={0}
               onClick={onOpenDailyReview}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-300 shadow-sm hover:shadow bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 hover:translate-y-[-1px]"
-              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onOpenDailyReview?.();
+                }
+              }}
+              className="relative w-full flex items-center gap-2 px-4 py-3 rounded-xl transition-colors duration-200 bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none"
               aria-label="打开每日回顾"
               title="每日回顾"
             >
-              <BookOpen className="h-4 w-4" style={{ color: themeColor }} />
-              <span className="text-sm font-medium" style={{ color: themeColor }}>每日回顾</span>
-            </button>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" style={{ color: themeColor }} />
+                <span className="text-sm font-medium" style={{ color: themeColor }}>每日回顾</span>
+              </div>
+              {/* 重置今日按钮（小×）：无圆形包裹，垂直居中，靠右 */}
+              <button
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); resetTodayReviewStatus(); }}
+                className="ml-auto px-1 text-sm leading-none text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                aria-label="重置今日卡片为FAIL"
+                title="重置今日卡片为FAIL"
+              >
+                ×
+              </button>
+            </div>
           </div>
-        </div>
+  {/* 关闭上方的 flex-1 overflow-hidden 容器 */}
+  </div>
 
-        {/* 底部按钮区域 */}
+  {/* 底部按钮区域 */}
         <div className="mt-auto pt-4 flex items-center space-x-2">
           {/* 用户按钮 - 现在总是显示，不再依赖于cloudSyncEnabled */}
           <UserAvatar onOpenSettings={onSettingsOpen} />
