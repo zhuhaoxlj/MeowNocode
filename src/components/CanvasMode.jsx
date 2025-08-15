@@ -55,6 +55,24 @@ const CanvasMode = ({
   const [drawStart, setDrawStart] = useState(null);
   // 对象擦除预览：高亮当前命中的对象（id 集合）
   const [erasePreviewIds, setErasePreviewIds] = useState(null);
+  // 框选与选中
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState(null); // world coords
+  const [selectionRect, setSelectionRect] = useState(null); // {x,y,w,h}
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const selectionRectRef = useRef(null);
+  const selectionStartRef = useRef(null);
+  // Ctrl 增量选择支持
+  const selectionAddModeRef = useRef(false);
+  const selectionBaseIdsRef = useRef(new Set());
+  // 选中对象拖动
+  const [isMovingSelection, setIsMovingSelection] = useState(false);
+  const isMovingSelectionRef = useRef(isMovingSelection);
+  const moveStartRef = useRef(null); // world coords
+  const movingIdsRef = useRef(null);
+  const moveOriginalPropsRef = useRef(new Map()); // id -> shallow copy of props
+  const moveOriginalEraseRef = useRef(new Map()); // id -> erase points snapshot
+  const moveShapesSnapshotRef = useRef([]); // shapes array snapshot at drag start
 
   // refs to avoid stale closures in event handlers
   const selectedToolRef = useRef(selectedTool);
@@ -86,6 +104,10 @@ const CanvasMode = ({
   useEffect(() => { drawStartRef.current = drawStart; }, [drawStart]);
   const eraseByShapeRef = useRef(eraseByShape);
   useEffect(() => { eraseByShapeRef.current = eraseByShape; }, [eraseByShape]);
+  const selectedIdsRef = useRef(selectedIds);
+  useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
+  useEffect(() => { selectionRectRef.current = selectionRect; }, [selectionRect]);
+  useEffect(() => { selectionStartRef.current = selectionStart; }, [selectionStart]);
 
   // 合并所有 memos
   const allMemos = [...memos, ...pinnedMemos];
@@ -103,13 +125,14 @@ const CanvasMode = ({
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
-  // 同步工具面板可见性到外部（用于屏蔽左侧栏 hover）
+  // 同步工具面板可见性到外部（用于屏蔽左侧栏 hover）：工具激活或单对象选中时
   useEffect(() => {
     if (typeof onToolPanelVisibleChange === 'function') {
-      onToolPanelVisibleChange(!!selectedTool);
+      const visible = !!selectedTool || (selectedIds && selectedIds.size === 1);
+      onToolPanelVisibleChange(visible);
       return () => onToolPanelVisibleChange(false);
     }
-  }, [selectedTool, onToolPanelVisibleChange]);
+  }, [selectedTool, selectedIds, onToolPanelVisibleChange]);
 
   // 连接计算
   const checkConnections = (draggedId, draggedPos) => {
@@ -340,7 +363,7 @@ const CanvasMode = ({
       if (e.button !== 0) return; // 只处理左键
       const targetEl = e.target instanceof Element ? e.target : null;
   // 忽略在 memo 或 UI 面板/工具栏上的点击
-  if (targetEl && (targetEl.closest('.draggable-memo') || targetEl.closest('.canvas-ui'))) return;
+  if (targetEl && (targetEl.closest('.draggable-memo') || targetEl.closest('.canvas-ui') || targetEl.closest('[data-shape-root="1"]'))) return;
       // 如果上一次绘制完成后处于“等待退出”状态，且当前工具不是橡皮擦，则本次点击先退出工具
       if (awaitingExitRef.current && selectedToolRef.current && selectedToolRef.current !== 'eraser') {
         awaitingExitRef.current = false;
@@ -562,6 +585,190 @@ const CanvasMode = ({
     };
   }, []);
 
+  // 框选（左键拖拽，未选择绘图工具时）
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    const onPointerDown = (e) => {
+      if (e.button !== 0) return;
+      if (selectedToolRef.current) return; // 有工具时，不启用框选
+      const targetEl = e.target instanceof Element ? e.target : null;
+      if (targetEl && (targetEl.closest('.draggable-memo') || targetEl.closest('.canvas-ui') || targetEl.closest('[data-shape-root="1"]'))) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = el.getBoundingClientRect();
+      const t = translateRef.current;
+      const s = scaleRef.current;
+      const sx = e.clientX - rect.left - t.x;
+      const sy = e.clientY - rect.top - t.y;
+      const x = sx / s;
+      const y = sy / s;
+
+      setIsSelecting(true);
+  const start = { x, y };
+  setSelectionStart(start);
+  const initRect = { x, y, w: 0, h: 0 };
+  setSelectionRect(initRect);
+  selectionStartRef.current = start;
+  selectionRectRef.current = initRect;
+  // 记录是否为增量框选及基准选择集
+  selectionAddModeRef.current = !!e.ctrlKey;
+  selectionBaseIdsRef.current = new Set(selectedIdsRef.current ? Array.from(selectedIdsRef.current) : []);
+
+      const onMove = (ev) => {
+        const r = el.getBoundingClientRect();
+        const tt = translateRef.current;
+        const sc = scaleRef.current;
+        const msx = ev.clientX - r.left - tt.x;
+        const msy = ev.clientY - r.top - tt.y;
+        const mx = msx / sc;
+        const my = msy / sc;
+  const ss = selectionStartRef.current || { x, y };
+  const x0 = ss.x;
+  const y0 = ss.y;
+        const nx = Math.min(x0, mx);
+        const ny = Math.min(y0, my);
+        const nw = Math.abs(mx - x0);
+        const nh = Math.abs(my - y0);
+        const rectWorld = { x: nx, y: ny, w: nw, h: nh };
+        setSelectionRect(rectWorld);
+  selectionRectRef.current = rectWorld;
+
+        const hit = new Set();
+        shapesRef.current.forEach(s => {
+          const bb = getShapeBBox(s);
+          if (!bb) return;
+          if (rectsIntersect(rectWorld, bb)) hit.add(s.id);
+        });
+        // 增量模式预览：基线 ∪ 命中
+        const preview = selectionAddModeRef.current
+          ? new Set([...Array.from(selectionBaseIdsRef.current), ...Array.from(hit)])
+          : hit;
+        setSelectedIds(preview);
+        if (preview.size === 1) {
+          setActiveShapeId(Array.from(preview)[0]);
+        } else {
+          setActiveShapeId(null);
+        }
+      };
+
+      const onUp = (ev) => {
+        setIsSelecting(false);
+  // 极小移动视为点击：命中顶部图形
+  const curRect = selectionRectRef.current;
+  const dx = Math.abs(curRect?.w || 0);
+  const dy = Math.abs(curRect?.h || 0);
+        if (dx < 3 && dy < 3) {
+          const r = el.getBoundingClientRect();
+          const tt = translateRef.current;
+          const sc = scaleRef.current;
+          const msx = ev.clientX - r.left - tt.x;
+          const msy = ev.clientY - r.top - tt.y;
+          const mx = msx / sc;
+          const my = msy / sc;
+          const sorted = [...shapesRef.current].sort((a, b) => (b.z || 0) - (a.z || 0));
+          const found = sorted.find(s => isHitShape(s, mx, my, 0));
+          if (found) {
+            if (ev.ctrlKey) {
+              const base = new Set(selectedIdsRef.current ? Array.from(selectedIdsRef.current) : []);
+              if (base.has(found.id)) base.delete(found.id); else base.add(found.id);
+              setSelectedIds(base);
+              setActiveShapeId(base.size === 1 ? Array.from(base)[0] : null);
+            } else {
+              setSelectedIds(new Set([found.id]));
+              setActiveShapeId(found.id);
+            }
+          } else {
+            if (!ev.ctrlKey) {
+              setSelectedIds(new Set());
+              setActiveShapeId(null);
+            }
+          }
+        }
+        else {
+          // 框选合并：根据增量模式
+          const rectWorld = selectionRectRef.current;
+          const hitFinal = new Set();
+          shapesRef.current.forEach(s => {
+            const bb = getShapeBBox(s);
+            if (!bb) return;
+            if (rectsIntersect(rectWorld, bb)) hitFinal.add(s.id);
+          });
+          const finalSel = selectionAddModeRef.current
+            ? new Set([...Array.from(selectionBaseIdsRef.current), ...Array.from(hitFinal)])
+            : hitFinal;
+          setSelectedIds(finalSel);
+          setActiveShapeId(finalSel.size === 1 ? Array.from(finalSel)[0] : null);
+        }
+  setSelectionStart(null);
+  setSelectionRect(null);
+  selectionStartRef.current = null;
+  selectionRectRef.current = null;
+        selectionAddModeRef.current = false;
+        selectionBaseIdsRef.current = new Set();
+
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp, { once: true });
+      window.addEventListener('pointercancel', onUp, { once: true });
+    };
+
+    el.addEventListener('pointerdown', onPointerDown);
+    return () => el.removeEventListener('pointerdown', onPointerDown);
+  }, []);
+
+  // 键盘删除选中
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const ae = document.activeElement;
+      const isEditing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || (ae.getAttribute && ae.getAttribute('contenteditable') === 'true'));
+      // ESC：清除选中/取消框选/停止移动
+      if (e.key === 'Escape') {
+        if (isEditing) return; // 让文本输入的 ESC 走元素自身逻辑（如 blur）
+        setIsSelecting(false);
+        setSelectionRect(null);
+        setSelectionStart(null);
+        selectionRectRef.current = null;
+        selectionStartRef.current = null;
+        setSelectedIds(new Set());
+        setActiveShapeId(null);
+        // 停止移动（监听会在 pointerup 清理，onMove 将被 ref 拦截）
+        if (isMovingSelectionRef?.current) {
+          isMovingSelectionRef.current = false;
+          setIsMovingSelection(false);
+        }
+        return;
+      }
+      // Delete/Backspace：删除选中
+      if (!(e.key === 'Delete' || e.key === 'Backspace')) return;
+      if (isEditing) return;
+      const ids = selectedIdsRef.current;
+      if (!ids || ids.size === 0) return;
+      e.preventDefault();
+      setShapes(prev => {
+        const next = prev.filter(s => !ids.has(s.id));
+        shapesRef.current = next;
+        return next;
+      });
+      setEraseByShape(prev => {
+        const cp = { ...prev };
+        ids.forEach(id => { delete cp[id]; });
+        return cp;
+      });
+      setSelectedIds(new Set());
+      setActiveShapeId(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const handleLayerAction = (action) => {
     if (!activeShapeId) return;
     setShapes(prev => {
@@ -583,8 +790,59 @@ const CanvasMode = ({
     });
   };
 
+  // 面板：绘图时显示工具选项；无工具但单选对象时显示对象属性
+  const singleSelectedId = selectedIds && selectedIds.size === 1 ? Array.from(selectedIds)[0] : null;
+  const singleSelectedShape = singleSelectedId ? shapes.find(s => s.id === singleSelectedId) : null;
+
+  const buildOptionsFromShape = (s) => {
+    if (!s) return toolOptions;
+    if (s.type === 'text') {
+      return {
+        color: s.props.color ?? '#111827',
+        fontSize: s.props.fontSize ?? 16,
+        textAlign: s.props.textAlign ?? 'left',
+        opacity: s.props.opacity ?? 1,
+      };
+    }
+    const base = {
+      stroke: s.props.stroke ?? '#3b82f6',
+      fill: s.props.fill ?? 'transparent',
+      strokeWidth: s.props.strokeWidth ?? 2,
+      strokeStyle: s.props.strokeStyle ?? 'solid',
+      opacity: s.props.opacity ?? 1,
+    };
+    if (s.type === 'rectangle') base.cornerRadius = s.props.cornerRadius ?? 8;
+    return base;
+  };
+
+  const applyShapeOptions = (opts) => {
+    if (!singleSelectedShape) return;
+    setShapes(prev => prev.map(s => {
+      if (s.id !== singleSelectedShape.id) return s;
+      if (s.type === 'text') {
+        return { ...s, props: { ...s.props, color: opts.color, fontSize: opts.fontSize, textAlign: opts.textAlign, opacity: opts.opacity } };
+      }
+      const patch = {
+        stroke: opts.stroke,
+        fill: opts.fill,
+        strokeWidth: opts.strokeWidth,
+        strokeStyle: opts.strokeStyle,
+        opacity: opts.opacity,
+      };
+      if (s.type === 'rectangle') patch.cornerRadius = opts.cornerRadius;
+      return { ...s, props: { ...s.props, ...patch } };
+    }));
+  };
+
+  const panelVisible = !!selectedTool || (!!singleSelectedShape && !selectedTool);
+  const panelTool = selectedTool || (singleSelectedShape ? singleSelectedShape.type : null);
+  const panelOptions = selectedTool ? toolOptions : buildOptionsFromShape(singleSelectedShape);
+  const panelOnChange = selectedTool ? setToolOptions : applyShapeOptions;
+  // keep ref in sync to avoid stale closures
+  useEffect(() => { isMovingSelectionRef.current = isMovingSelection; }, [isMovingSelection]);
+
   return (
-    <div className="relative w-full h-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
+  <div className="relative w-full h-full bg-gray-50 dark:bg-gray-900 overflow-hidden" style={{ cursor: isMovingSelection ? 'move' : undefined }}>
       {/* 背景层（网格） */}
       <div 
         ref={canvasRef}
@@ -593,8 +851,8 @@ const CanvasMode = ({
       >
   {/* 顶部工具栏 */}
   <CanvasToolbar selectedTool={selectedTool} onSelectTool={setSelectedTool} />
-  {/* 左侧工具设置 */}
-  <ToolOptionsPanel visible={!!selectedTool} tool={selectedTool} options={toolOptions} onChange={setToolOptions} onLayer={handleLayerAction} />
+  {/* 左侧工具设置：绘图工具或单对象选中时可见 */}
+  <ToolOptionsPanel visible={panelVisible} tool={panelTool} options={panelOptions} onChange={panelOnChange} onLayer={handleLayerAction} />
   {/* 屏蔽左侧 hover 区域：当工具面板可见时，拦截左侧靠边触发悬浮的鼠标事件 */}
   {selectedTool && (
     <div
@@ -709,6 +967,129 @@ const CanvasMode = ({
               ) : node;
               const baseOpacity = s.props.opacity ?? 1;
               const opacity = previewHit ? Math.max(0.25, baseOpacity * 0.4) : baseOpacity;
+              const isSelected = selectedIds && selectedIds.has && selectedIds.has(s.id);
+              const highlightStroke = '#3b82f6';
+              const highlightDash = '4 4';
+              const onSelectPointerDown = (ev) => {
+                if (selectedToolRef.current) return; // 绘图状态不处理
+                ev.stopPropagation();
+                // 防止文本形状内触发选区/光标，专注移动
+                ev.preventDefault();
+                // Ctrl 点击：切换该图形的选中状态，不进入拖动
+                if (ev.ctrlKey) {
+                  const cur = new Set(selectedIdsRef.current ? Array.from(selectedIdsRef.current) : []);
+                  if (cur.has(s.id)) {
+                    cur.delete(s.id);
+                    if (activeShapeIdRef.current === s.id) setActiveShapeId(null);
+                  } else {
+                    cur.add(s.id);
+                  }
+                  setSelectedIds(cur);
+                  return;
+                }
+                // 计算世界坐标
+                const svgRect = canvasRef.current.getBoundingClientRect();
+                const t = translateRef.current;
+                const sc = scaleRef.current;
+                const sx = ev.clientX - svgRect.left - t.x;
+                const sy = ev.clientY - svgRect.top - t.y;
+                const wx = sx / sc;
+                const wy = sy / sc;
+
+                // 确定将要移动的 id 集合
+                const currentSel = selectedIdsRef.current || new Set();
+                const movingSet = currentSel.has(s.id) && currentSel.size > 0 ? new Set(currentSel) : new Set([s.id]);
+                if (!(currentSel.has(s.id) && currentSel.size > 0)) {
+                  setSelectedIds(movingSet);
+                }
+                setActiveShapeId(s.id);
+
+                // 初始化拖动快照
+                setIsMovingSelection(true);
+                isMovingSelectionRef.current = true;
+                moveStartRef.current = { x: wx, y: wy };
+                movingIdsRef.current = movingSet;
+                moveShapesSnapshotRef.current = [...shapesRef.current];
+                moveOriginalPropsRef.current = new Map();
+                moveOriginalEraseRef.current = new Map();
+                // 记录每个移动对象的原始属性与擦除点
+                moveShapesSnapshotRef.current.forEach(sh => {
+                  if (!movingSet.has(sh.id)) return;
+                  const p = sh.props || {};
+                  // 浅拷贝数值属性即可
+                  if (sh.type === 'rectangle' || sh.type === 'ellipse') {
+                    moveOriginalPropsRef.current.set(sh.id, { x: p.x, y: p.y, w: p.w, h: p.h });
+                  } else if (sh.type === 'line' || sh.type === 'arrow') {
+                    moveOriginalPropsRef.current.set(sh.id, { x1: p.x1, y1: p.y1, x2: p.x2, y2: p.y2 });
+                  } else if (sh.type === 'pencil') {
+                    moveOriginalPropsRef.current.set(sh.id, { points: (p.points || []).map(pt => ({ x: pt.x, y: pt.y })) });
+                  } else if (sh.type === 'text') {
+                    moveOriginalPropsRef.current.set(sh.id, { x: p.x, y: p.y });
+                  }
+                  const ep = (eraseByShapeRef.current && eraseByShapeRef.current[sh.id]) || [];
+                  // 存储原始擦除点（世界坐标）
+                  moveOriginalEraseRef.current.set(sh.id, ep.map(pt => ({ x: pt.x, y: pt.y, r: pt.r })));
+                });
+
+                const onMove = (e2) => {
+                  if (!isMovingSelectionRef.current) return;
+                  const r = canvasRef.current.getBoundingClientRect();
+                  const tt = translateRef.current;
+                  const sc2 = scaleRef.current;
+                  const msx = e2.clientX - r.left - tt.x;
+                  const msy = e2.clientY - r.top - tt.y;
+                  const mx = msx / sc2;
+                  const my = msy / sc2;
+                  const dx = mx - moveStartRef.current.x;
+                  const dy = my - moveStartRef.current.y;
+
+                  // 更新形状位置（基于快照与原始属性）
+                  const movingIds = movingIdsRef.current || new Set();
+                  const newShapes = moveShapesSnapshotRef.current.map(sh => {
+                    if (!movingIds.has(sh.id)) return sh;
+                    const base = moveOriginalPropsRef.current.get(sh.id) || {};
+                    if (sh.type === 'rectangle' || sh.type === 'ellipse') {
+                      return { ...sh, props: { ...sh.props, x: base.x + dx, y: base.y + dy } };
+                    } else if (sh.type === 'line' || sh.type === 'arrow') {
+                      return { ...sh, props: { ...sh.props, x1: base.x1 + dx, y1: base.y1 + dy, x2: base.x2 + dx, y2: base.y2 + dy } };
+                    } else if (sh.type === 'pencil') {
+                      const movedPts = (base.points || []).map(pt => ({ x: pt.x + dx, y: pt.y + dy }));
+                      return { ...sh, props: { ...sh.props, points: movedPts } };
+                    } else if (sh.type === 'text') {
+                      return { ...sh, props: { ...sh.props, x: base.x + dx, y: base.y + dy } };
+                    }
+                    return sh;
+                  });
+                  setShapes(newShapes);
+                  shapesRef.current = newShapes;
+
+                  // 同步移动已擦除的蒙版点，使擦除效果随图形移动
+                  const newErase = { ...eraseByShapeRef.current };
+                  movingIds.forEach(id => {
+                    const orig = moveOriginalEraseRef.current.get(id) || [];
+                    newErase[id] = orig.map(pt => ({ x: pt.x + dx, y: pt.y + dy, r: pt.r }));
+                  });
+                  setEraseByShape(newErase);
+                  eraseByShapeRef.current = newErase;
+                };
+
+                const onUp = () => {
+                  setIsMovingSelection(false);
+                  isMovingSelectionRef.current = false;
+                  moveStartRef.current = null;
+                  movingIdsRef.current = null;
+                  moveOriginalPropsRef.current = new Map();
+                  moveOriginalEraseRef.current = new Map();
+                  moveShapesSnapshotRef.current = [];
+                  window.removeEventListener('pointermove', onMove);
+                  window.removeEventListener('pointerup', onUp);
+                  window.removeEventListener('pointercancel', onUp);
+                };
+
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+                window.addEventListener('pointercancel', onUp);
+              };
               if (s.type === 'rectangle') {
                 const dash = s.props.strokeStyle === 'dashed' ? '6 6' : s.props.strokeStyle === 'dotted' ? '2 6' : undefined;
                 const node = (
@@ -720,7 +1101,15 @@ const CanvasMode = ({
                     opacity={opacity}
                   />
                 );
-                return <React.Fragment key={s.id}>{maybeWrap(node)}</React.Fragment>;
+                return (
+                  <g key={s.id} data-shape-root="1" onPointerDown={onSelectPointerDown} style={{ cursor: (!selectedTool && selectedIds && selectedIds.has && selectedIds.has(s.id)) ? 'move' : undefined }}>
+                    {maybeWrap(node)}
+                    {isSelected && (
+                      <rect x={s.props.x} y={s.props.y} width={Math.abs(s.props.w)} height={Math.abs(s.props.h)} rx={s.props.cornerRadius || 0}
+                        fill="none" stroke={highlightStroke} strokeWidth={(s.props.strokeWidth || 2) + 2} strokeDasharray={highlightDash} opacity={0.9} pointerEvents="none" />
+                    )}
+                  </g>
+                );
               }
               if (s.type === 'ellipse') {
                 const dash = s.props.strokeStyle === 'dashed' ? '6 6' : s.props.strokeStyle === 'dotted' ? '2 6' : undefined;
@@ -733,7 +1122,17 @@ const CanvasMode = ({
                     opacity={opacity}
                   />
                 );
-                return <React.Fragment key={s.id}>{maybeWrap(node)}</React.Fragment>;
+                const cx = s.props.x + Math.abs(s.props.w)/2;
+                const cy = s.props.y + Math.abs(s.props.h)/2;
+                return (
+                  <g key={s.id} data-shape-root="1" onPointerDown={onSelectPointerDown} style={{ cursor: (!selectedTool && selectedIds && selectedIds.has && selectedIds.has(s.id)) ? 'move' : undefined }}>
+                    {maybeWrap(node)}
+                    {isSelected && (
+                      <ellipse cx={cx} cy={cy} rx={Math.abs(s.props.w)/2} ry={Math.abs(s.props.h)/2}
+                        fill="none" stroke={highlightStroke} strokeWidth={(s.props.strokeWidth || 2) + 2} strokeDasharray={highlightDash} opacity={0.9} pointerEvents="none" />
+                    )}
+                  </g>
+                );
               }
               if (s.type === 'line' || s.type === 'arrow') {
                 const dash = s.props.strokeStyle === 'dashed' ? '6 6' : s.props.strokeStyle === 'dotted' ? '2 6' : undefined;
@@ -743,14 +1142,29 @@ const CanvasMode = ({
                     markerEnd={s.type === 'arrow' ? `url(#arrow-${s.id})` : undefined}
                   />
                 );
-                return <React.Fragment key={s.id}>{maybeWrap(node)}</React.Fragment>;
+                return (
+                  <g key={s.id} data-shape-root="1" onPointerDown={onSelectPointerDown} style={{ cursor: (!selectedTool && selectedIds && selectedIds.has && selectedIds.has(s.id)) ? 'move' : undefined }}>
+                    {maybeWrap(node)}
+                    {isSelected && (
+                      <line x1={s.props.x1} y1={s.props.y1} x2={s.props.x2} y2={s.props.y2}
+                        stroke={highlightStroke} strokeWidth={(s.props.strokeWidth || 2) + 2} strokeDasharray={highlightDash} opacity={0.9} pointerEvents="none" />
+                    )}
+                  </g>
+                );
               }
               if (s.type === 'pencil') {
                 const d = (s.props.points || []).map((p, i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
                 const node = (
                   <path d={d} fill="none" stroke={s.props.stroke} strokeWidth={s.props.strokeWidth} strokeLinecap="round" strokeLinejoin="round" opacity={opacity} />
                 );
-                return <React.Fragment key={s.id}>{maybeWrap(node)}</React.Fragment>;
+                return (
+                  <g key={s.id} data-shape-root="1" onPointerDown={onSelectPointerDown} style={{ cursor: (!selectedTool && selectedIds && selectedIds.has && selectedIds.has(s.id)) ? 'move' : undefined }}>
+                    {maybeWrap(node)}
+                    {isSelected && (
+                      <path d={d} fill="none" stroke={highlightStroke} strokeWidth={(s.props.strokeWidth || 2) + 2} strokeDasharray={highlightDash} opacity={0.9} pointerEvents="none" />
+                    )}
+                  </g>
+                );
               }
               if (s.type === 'text') {
                 const node = (
@@ -792,7 +1206,14 @@ const CanvasMode = ({
                     </div>
                   </foreignObject>
                 );
-                return <React.Fragment key={s.id}>{maybeWrap(node)}</React.Fragment>;
+                return (
+                  <g key={s.id} data-shape-root="1" onPointerDown={onSelectPointerDown} style={{ cursor: (!selectedTool && selectedIds && selectedIds.has && selectedIds.has(s.id)) ? 'move' : undefined }}>
+                    {maybeWrap(node)}
+                    {isSelected && (
+                      <rect x={s.props.x} y={s.props.y} width={200} height={50} fill="none" stroke={highlightStroke} strokeDasharray={highlightDash} strokeWidth={2} pointerEvents="none" />
+                    )}
+                  </g>
+                );
               }
               return null;
             })}
@@ -819,6 +1240,22 @@ const CanvasMode = ({
               );
             })()}
           </svg>
+
+          {/* 框选矩形（世界坐标） */}
+          {isSelecting && selectionRect && (
+            <svg className="absolute inset-0" style={{ zIndex: 2, width: '100%', height: '100%', pointerEvents: 'none' }}>
+              <rect
+                x={selectionRect.x}
+                y={selectionRect.y}
+                width={selectionRect.w}
+                height={selectionRect.h}
+                fill="rgba(59,130,246,0.08)"
+                stroke="#3b82f6"
+                strokeDasharray="4 4"
+                strokeWidth="1.5"
+              />
+            </svg>
+          )}
 
           {/* Memo 项 */}
           {allMemos.map(memo => (
@@ -968,6 +1405,45 @@ function isHitShape(shape, x, y, eraserR = 0) {
     return x >= p.x && y >= p.y && x <= p.x + w && y <= p.y + h;
   }
   return false;
+}
+
+// 获取图形的包围盒（世界坐标，用于框选相交判断）
+function getShapeBBox(shape) {
+  if (!shape || !shape.props) return null;
+  const p = shape.props;
+  if (shape.type === 'rectangle' || shape.type === 'ellipse') {
+    return { x: p.x, y: p.y, w: Math.abs(p.w || 0), h: Math.abs(p.h || 0) };
+  }
+  if (shape.type === 'line' || shape.type === 'arrow') {
+    const x0 = Math.min(p.x1, p.x2);
+    const y0 = Math.min(p.y1, p.y2);
+    const w = Math.abs((p.x2 ?? p.x1) - p.x1);
+    const h = Math.abs((p.y2 ?? p.y1) - p.y1);
+    return { x: x0, y: y0, w, h };
+  }
+  if (shape.type === 'pencil') {
+    const pts = p.points || [];
+    if (!pts.length) return null;
+    let minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y;
+    for (let i = 1; i < pts.length; i++) {
+      const pt = pts[i];
+      if (pt.x < minX) minX = pt.x;
+      if (pt.x > maxX) maxX = pt.x;
+      if (pt.y < minY) minY = pt.y;
+      if (pt.y > maxY) maxY = pt.y;
+    }
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+  if (shape.type === 'text') {
+    // 与渲染时 foreignObject 的大小一致
+    return { x: p.x, y: p.y, w: 200, h: 50 };
+  }
+  return null;
+}
+
+function rectsIntersect(a, b) {
+  if (!a || !b) return false;
+  return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
 }
 
 export default CanvasMode;
