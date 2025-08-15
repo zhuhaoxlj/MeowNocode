@@ -66,12 +66,12 @@ import { toast } from 'sonner';
     };
   }, [isMobileSidebarOpen]);
 
-  // 处理左侧栏鼠标悬停事件
+  // 处理左侧栏鼠标悬停事件（AI 对话或每日回顾打开时禁用）
   useEffect(() => {
     let hoverTimer;
     
     const handleMouseMove = (e) => {
-      if (canvasToolPanelVisible) {
+      if (canvasToolPanelVisible || isAIDialogOpen || isDailyReviewOpen) {
         // 工具面板可见时禁用左侧 hover 触发逻辑
         return;
       }
@@ -98,7 +98,7 @@ import { toast } from 'sonner';
       }
     };
 
-    if (!isLeftSidebarPinned) {
+    if (!isLeftSidebarPinned && !isAIDialogOpen && !isDailyReviewOpen) {
       document.addEventListener('mousemove', handleMouseMove);
     }
 
@@ -108,13 +108,16 @@ import { toast } from 'sonner';
         clearTimeout(hoverTimer);
       }
     };
-  }, [isLeftSidebarPinned, isLeftSidebarHovered, canvasToolPanelVisible]);
+  }, [isLeftSidebarPinned, isLeftSidebarHovered, canvasToolPanelVisible, isAIDialogOpen, isDailyReviewOpen]);
 
-  // 处理右侧栏鼠标悬停事件
+  // 处理右侧栏鼠标悬停事件（AI 对话或每日回顾打开时禁用）
   useEffect(() => {
     let hoverTimer;
     
     const handleMouseMove = (e) => {
+      if (isAIDialogOpen || isDailyReviewOpen) {
+        return;
+      }
       if (!isRightSidebarPinned) {
         if (e.clientX > window.innerWidth - 50) {
           // 清除之前的定时器
@@ -138,7 +141,7 @@ import { toast } from 'sonner';
       }
     };
 
-    if (!isRightSidebarPinned) {
+    if (!isRightSidebarPinned && !isAIDialogOpen && !isDailyReviewOpen) {
       document.addEventListener('mousemove', handleMouseMove);
     }
 
@@ -148,7 +151,19 @@ import { toast } from 'sonner';
         clearTimeout(hoverTimer);
       }
     };
-  }, [isRightSidebarPinned, isRightSidebarHovered]);
+  }, [isRightSidebarPinned, isRightSidebarHovered, isAIDialogOpen, isDailyReviewOpen]);
+
+  // 当 AI 对话或每日回顾弹窗打开时，自动收起已唤出的悬浮侧栏（不影响固定侧栏）
+  useEffect(() => {
+    if (isAIDialogOpen || isDailyReviewOpen) {
+      if (!isLeftSidebarPinned && isLeftSidebarHovered) {
+        setIsLeftSidebarHovered(false);
+      }
+      if (!isRightSidebarPinned && isRightSidebarHovered) {
+        setIsRightSidebarHovered(false);
+      }
+    }
+  }, [isAIDialogOpen, isDailyReviewOpen, isLeftSidebarPinned, isRightSidebarPinned, isLeftSidebarHovered, isRightSidebarHovered]);
 
   // 监听memos列表滚动，控制回到顶部按钮显示
   useEffect(() => {
@@ -642,6 +657,13 @@ import { toast } from 'sonner';
       if (checkShortcut(keyboardShortcuts.toggleCanvasMode)) {
         e.preventDefault();
         handleCanvasModeToggle();
+      }
+
+      // 打开每日回顾
+      if (checkShortcut(keyboardShortcuts.openDailyReview)) {
+        e.preventDefault();
+        setIsDailyReviewOpen(true);
+        toast.success('每日回顾已打开');
       }
     };
 

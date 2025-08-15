@@ -40,7 +40,8 @@ export function SettingsProvider({ children }) {
     toggleSidebar: 'Tab',
     openAIDialog: 'Ctrl+Space',
     openSettings: 'Ctrl+,',
-    toggleCanvasMode: 'Ctrl+/'
+  toggleCanvasMode: 'Ctrl+/',
+  openDailyReview: 'Ctrl+\\'
   });
 
   useEffect(() => {

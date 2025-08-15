@@ -1113,6 +1113,40 @@ const SettingsCard = ({ isOpen, onClose }) => {
                               )}
                             </button>
                           </div>
+
+                          {/* 每日回顾快捷键 */}
+                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex flex-col space-y-1 flex-1">
+                              <span className="text-sm font-medium">每日回顾</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">快速打开每日回顾卡片</span>
+                            </div>
+                            <button
+                              onClick={() => handleShortcutRecord('openDailyReview')}
+                              className={`shortcut-recording px-3 py-2 text-sm rounded-lg border transition-colors text-left min-w-[100px] ${
+                                recordingShortcut === 'openDailyReview'
+                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                              }`}
+                            >
+                              {recordingShortcut === 'openDailyReview' ? (
+                                <div className="flex flex-col items-center space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span className="text-blue-600 dark:text-blue-400 text-xs font-medium">录制中...</span>
+                                  </div>
+                                  {pressedKeys.size > 0 ? (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400 font-mono font-medium">
+                                      {getSortedKeyDisplay()}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <kbd className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+                                  {tempShortcuts.openDailyReview}
+                                </kbd>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
 
