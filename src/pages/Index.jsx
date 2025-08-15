@@ -8,6 +8,7 @@ import SettingsCard from '@/components/SettingsCard';
 import ShareDialog from '@/components/ShareDialog';
 import AIButton from '@/components/AIButton';
 import AIDialog from '@/components/AIDialog';
+import DailyReview from '@/components/DailyReview';
 import { useSettings } from '@/context/SettingsContext';
 import { toast } from 'sonner';
 
@@ -41,6 +42,7 @@ import { toast } from 'sonner';
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
   const [isCanvasMode, setIsCanvasMode] = useState(false);
   const [canvasToolPanelVisible, setCanvasToolPanelVisible] = useState(false);
+  const [isDailyReviewOpen, setIsDailyReviewOpen] = useState(false);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -967,6 +969,7 @@ import { toast } from 'sonner';
           setIsCanvasMode={setIsCanvasMode}
           onSettingsOpen={() => setIsSettingsOpen(true)}
           onDateClick={handleDateClick}
+          onOpenDailyReview={() => setIsDailyReviewOpen(true)}
         />
 
         {/* 中央主内容区 */}
@@ -1072,6 +1075,13 @@ import { toast } from 'sonner';
       <AIDialog
         isOpen={isAIDialogOpen}
         onClose={() => setIsAIDialogOpen(false)}
+        memos={[...memos, ...pinnedMemos]}
+      />
+
+      {/* 每日回顾弹窗 */}
+      <DailyReview
+        isOpen={isDailyReviewOpen}
+        onClose={() => setIsDailyReviewOpen(false)}
         memos={[...memos, ...pinnedMemos]}
       />
 

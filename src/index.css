@@ -446,3 +446,30 @@
     background-color: rgba(75, 85, 99, 0.5);
   }
 
+  /* 每日回顾弹窗隐藏右上角关闭按钮 */
+  .daily-review-content button[data-state][class*="absolute"][class*="right-4"][class*="top-4"],
+  .daily-review-content > button.absolute.right-4.top-4 {
+    display: none !important;
+  }
+
+  /* 每日回顾弹窗内去除焦点高亮线框（箭头按钮/容器等）*/
+  .daily-review-content :is(button, [role="button"], [tabindex], .embla) {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  .daily-review-content :is(button, [role="button"]) :focus,
+  .daily-review-content :is(button, [role="button"]) :focus-visible,
+  .daily-review-content :is(button, [role="button"]) :focus-within,
+  .daily-review-content :is([tabindex]) :focus,
+  .daily-review-content :is([tabindex]) :focus-visible,
+  .daily-review-content :is([tabindex]) :focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  .daily-review-content .embla,
+  .daily-review-content .embla__viewport,
+  .daily-review-content .embla__container {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+

@@ -2,6 +2,7 @@ import React from 'react';
 import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff, Layout } from 'lucide-react';
 import GitHubStyleHeatmap from '@/components/GitHubStyleHeatmap';
 import UsageStats from '@/components/UsageStats';
+import { BookOpen } from 'lucide-react';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -20,7 +21,8 @@ const LeftSidebar = ({
   isCanvasMode,
   setIsCanvasMode,
   onSettingsOpen,
-  onDateClick
+  onDateClick,
+  onOpenDailyReview
 }) => {
   const { darkMode, toggleDarkMode, themeColor } = useTheme();
   const { cloudSyncEnabled } = useSettings();
@@ -68,6 +70,20 @@ const LeftSidebar = ({
         <div className="flex-1 overflow-hidden">
           <GitHubStyleHeatmap data={heatmapData} onDateClick={onDateClick} isSidebarHovered={!isLeftSidebarPinned && isLeftSidebarHovered} />
           <UsageStats memos={memos} pinnedMemos={pinnedMemos} />
+
+          {/* 每日回顾入口 */}
+          <div className="px-2 pt-4">
+            <button
+              onClick={onOpenDailyReview}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-300 shadow-sm hover:shadow bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 hover:translate-y-[-1px]"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+              aria-label="打开每日回顾"
+              title="每日回顾"
+            >
+              <BookOpen className="h-4 w-4" style={{ color: themeColor }} />
+              <span className="text-sm font-medium" style={{ color: themeColor }}>每日回顾</span>
+            </button>
+          </div>
         </div>
 
         {/* 底部按钮区域 */}
