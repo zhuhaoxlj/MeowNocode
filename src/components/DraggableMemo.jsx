@@ -325,7 +325,7 @@ const DraggableMemo = ({
           <div className="absolute -left-1 top-3 h-3 w-3 rounded-full bg-yellow-400 shadow ring-2 ring-yellow-200" aria-hidden />
         )}
 
-  <div className={`p-3 sm:p-3 pb-9 relative ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
+  <div className="p-3 sm:p-3 pb-9 relative">
           {/* 菜单按钮 */}
           <div
             className="absolute top-3 right-3 sm:top-4 sm:right-4 memo-menu"
@@ -394,7 +394,7 @@ const DraggableMemo = ({
 
           {/* 内容区域 */}
           {isEditing ? (
-            <div className="memo-edit px-4">
+            <div className={`memo-edit px-4 ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
@@ -407,7 +407,7 @@ const DraggableMemo = ({
             </div>
            ) : (
             <div 
-              className="px-4"
+              className={`px-4 ${currentFont !== 'default' ? 'custom-font-content' : ''}`}
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 setIsEditing(true);
