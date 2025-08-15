@@ -421,20 +421,7 @@ const DraggableMemo = ({
             </div>
           )}
 
-          {/* 标签 */}
-          {memo.tags && memo.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-3">
-              {memo.tags.map(tag => (
-                <span
-                  key={tag}
-                  className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer"
-                  onClick={() => console.log('Tag clicked:', tag)}
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* 标签在内容中渲染，避免底部重复显示 */}
 
           {/* 时间戳：右下角固定显示 */}
           <div className="absolute bottom-2 right-3 text-[11px] text-gray-400 dark:text-gray-500 select-none pointer-events-none">
