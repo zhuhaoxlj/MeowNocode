@@ -40,6 +40,7 @@ import { toast } from 'sonner';
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
   const [isCanvasMode, setIsCanvasMode] = useState(false);
+  const [canvasToolPanelVisible, setCanvasToolPanelVisible] = useState(false);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -68,6 +69,10 @@ import { toast } from 'sonner';
     let hoverTimer;
     
     const handleMouseMove = (e) => {
+      if (canvasToolPanelVisible) {
+        // 工具面板可见时禁用左侧 hover 触发逻辑
+        return;
+      }
       if (!isLeftSidebarPinned) {
         if (e.clientX < 50) {
           // 清除之前的定时器
@@ -101,7 +106,7 @@ import { toast } from 'sonner';
         clearTimeout(hoverTimer);
       }
     };
-  }, [isLeftSidebarPinned, isLeftSidebarHovered]);
+  }, [isLeftSidebarPinned, isLeftSidebarHovered, canvasToolPanelVisible]);
 
   // 处理右侧栏鼠标悬停事件
   useEffect(() => {
@@ -973,6 +978,7 @@ import { toast } from 'sonner';
             onUpdateMemo={handleCanvasUpdateMemo}
             onDeleteMemo={handleCanvasDeleteMemo}
             onTogglePin={handleCanvasTogglePin}
+            onToolPanelVisibleChange={setCanvasToolPanelVisible}
           />
         ) : (
           <MainContent

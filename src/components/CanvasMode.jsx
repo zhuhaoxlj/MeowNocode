@@ -12,7 +12,8 @@ const CanvasMode = ({
   onAddMemo,
   onUpdateMemo,
   onDeleteMemo,
-  onTogglePin
+  onTogglePin,
+  onToolPanelVisibleChange
 }) => {
   const [draggingId, setDraggingId] = useState(null);
   const [connections, setConnections] = useState([]);
@@ -33,7 +34,7 @@ const CanvasMode = ({
   const [selectedTool, setSelectedTool] = useState(null); // 'rectangle' | 'ellipse' | 'text' | 'arrow' | 'line' | 'pencil' | 'eraser'
   const [toolOptions, setToolOptions] = useState({
     // 通用
-    stroke: '#111827',
+  stroke: '#3b82f6',
     fill: 'transparent',
     strokeWidth: 2,
     strokeStyle: 'solid', // solid|dashed|dotted
@@ -42,7 +43,9 @@ const CanvasMode = ({
     // 文本
     color: '#111827',
     fontSize: 16,
-    textAlign: 'left',
+  textAlign: 'left',
+  // 橡皮擦
+  eraseType: (typeof window !== 'undefined' && localStorage.getItem('canvas.eraseType')) || 'partial',
   });
   const [shapes, setShapes] = useState([]); // {id, type, props, z}
   // 按图形聚合的擦除点：shapeId -> {x,y,r}[]，更稳定地提交局部擦除
@@ -50,6 +53,8 @@ const CanvasMode = ({
   const [activeShapeId, setActiveShapeId] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState(null);
+  // 对象擦除预览：高亮当前命中的对象（id 集合）
+  const [erasePreviewIds, setErasePreviewIds] = useState(null);
 
   // refs to avoid stale closures in event handlers
   const selectedToolRef = useRef(selectedTool);
@@ -69,6 +74,12 @@ const CanvasMode = ({
   useEffect(() => { translateRef.current = translate; }, [translate]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { toolOptionsRef.current = toolOptions; }, [toolOptions]);
+  // 本地持久化：仅存储橡皮擦类型（不云同步）
+  useEffect(() => {
+    try {
+      if (toolOptions.eraseType) localStorage.setItem('canvas.eraseType', toolOptions.eraseType);
+    } catch {}
+  }, [toolOptions.eraseType]);
   useEffect(() => { shapesRef.current = shapes; }, [shapes]);
   useEffect(() => { activeShapeIdRef.current = activeShapeId; }, [activeShapeId]);
   useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
@@ -91,6 +102,14 @@ const CanvasMode = ({
     window.addEventListener('resize', updateCanvasSize);
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
+
+  // 同步工具面板可见性到外部（用于屏蔽左侧栏 hover）
+  useEffect(() => {
+    if (typeof onToolPanelVisibleChange === 'function') {
+      onToolPanelVisibleChange(!!selectedTool);
+      return () => onToolPanelVisibleChange(false);
+    }
+  }, [selectedTool, onToolPanelVisibleChange]);
 
   // 连接计算
   const checkConnections = (draggedId, draggedPos) => {
@@ -120,7 +139,7 @@ const CanvasMode = ({
   const handleCanvasDoubleClick = (e) => {
     // 忽略在memo上的双击（兼容 SVG/HTML 元素）
     const targetEl = e.target instanceof Element ? e.target : null;
-    if (targetEl && targetEl.closest('.draggable-memo')) return;
+  if (targetEl && (targetEl.closest('.draggable-memo') || targetEl.closest('.canvas-ui'))) return;
     
     const rect = canvasRef.current.getBoundingClientRect();
     // 将屏幕坐标反映射到世界坐标（考虑平移与缩放）
@@ -280,8 +299,8 @@ const CanvasMode = ({
       if (e.button !== 1) return;
       
       // 忽略从 memo 上开始的拖拽（让 memo 自己处理）
-      const targetEl = e.target instanceof Element ? e.target : null;
-      if (targetEl && targetEl.closest('.draggable-memo')) return;
+  const targetEl = e.target instanceof Element ? e.target : null;
+  if (targetEl && (targetEl.closest('.draggable-memo') || targetEl.closest('.canvas-ui'))) return;
       
       e.preventDefault();
       e.stopPropagation();
@@ -320,7 +339,8 @@ const CanvasMode = ({
     const onPointerDown = (e) => {
       if (e.button !== 0) return; // 只处理左键
       const targetEl = e.target instanceof Element ? e.target : null;
-      if (targetEl && targetEl.closest('.draggable-memo')) return;
+  // 忽略在 memo 或 UI 面板/工具栏上的点击
+  if (targetEl && (targetEl.closest('.draggable-memo') || targetEl.closest('.canvas-ui'))) return;
       // 如果上一次绘制完成后处于“等待退出”状态，且当前工具不是橡皮擦，则本次点击先退出工具
       if (awaitingExitRef.current && selectedToolRef.current && selectedToolRef.current !== 'eraser') {
         awaitingExitRef.current = false;
@@ -351,16 +371,16 @@ const CanvasMode = ({
       const zIndex = shapesRef.current.length;
       let shape = null;
       
-    if (currentTool === 'rectangle' || currentTool === 'ellipse') {
+  if (currentTool === 'rectangle' || currentTool === 'ellipse') {
         shape = {
           id, type: currentTool, z: zIndex, props: {
             x, y, w: 1, h: 1,
-            stroke: opts.stroke, fill: opts.fill,
+      stroke: opts.stroke || '#3b82f6', fill: opts.fill,
             strokeWidth: opts.strokeWidth, strokeStyle: opts.strokeStyle,
             cornerRadius: opts.cornerRadius, opacity: opts.opacity
           }
         };
-      } else if (currentTool === 'line' || currentTool === 'arrow') {
+  } else if (currentTool === 'line' || currentTool === 'arrow') {
         shape = { 
           id, 
           type: currentTool, 
@@ -370,7 +390,7 @@ const CanvasMode = ({
             y1: y, 
             x2: x, 
             y2: y, 
-            stroke: opts.stroke, 
+    stroke: opts.stroke || '#3b82f6', 
             strokeWidth: opts.strokeWidth, 
             strokeStyle: opts.strokeStyle, 
             opacity: opts.opacity 
@@ -394,7 +414,7 @@ const CanvasMode = ({
             id, 
             type: 'pencil', 
             z: zIndex, 
-            props: { points: [{ x, y }], stroke: opts.stroke || '#111827', strokeWidth: opts.strokeWidth || 2, opacity: opts.opacity }
+            props: { points: [{ x, y }], stroke: opts.stroke || '#3b82f6', strokeWidth: opts.strokeWidth || 2, opacity: opts.opacity }
           };
         }
       }
@@ -444,6 +464,22 @@ const CanvasMode = ({
         clone[idx] = sh;
         return clone;
       });
+
+      // 对象擦除：计算实时预览命中对象
+      if (selectedToolRef.current === 'eraser' && (toolOptionsRef.current.eraseType || 'partial') === 'object') {
+        const current = shapesRef.current.find(sh => sh.id === activeShapeIdRef.current && sh.type === 'eraser');
+        const points = (eraserPointsRef.current && eraserPointsRef.current.length ? eraserPointsRef.current : (current?.props?.points || []).map(p => ({ x: p.x, y: p.y, r: current?.props?.radius || 15 })));
+        const samples = points.slice(-12); // 采样最后若干点，避免过多计算
+        const targets = shapesRef.current.filter(s => s.type !== 'eraser');
+        const hit = new Set();
+        samples.forEach(pt => {
+          const r = pt.r || 15;
+          targets.forEach(s => { if (isHitShape(s, pt.x, pt.y, r)) hit.add(s.id); });
+        });
+        setErasePreviewIds(hit);
+      } else {
+        if (erasePreviewIds) setErasePreviewIds(null);
+      }
       };
 
       const onUpOrCancel = () => {
@@ -500,6 +536,8 @@ const CanvasMode = ({
               shapesRef.current = shapesRef.current.filter(s => s.id !== current.id);
             }
             eraserPointsRef.current = null;
+            // 清除预览
+            if (erasePreviewIds) setErasePreviewIds(null);
           }
         }
         // 橡皮擦不会触发“下一次点击退出”
@@ -557,6 +595,17 @@ const CanvasMode = ({
   <CanvasToolbar selectedTool={selectedTool} onSelectTool={setSelectedTool} />
   {/* 左侧工具设置 */}
   <ToolOptionsPanel visible={!!selectedTool} tool={selectedTool} options={toolOptions} onChange={setToolOptions} onLayer={handleLayerAction} />
+  {/* 屏蔽左侧 hover 区域：当工具面板可见时，拦截左侧靠边触发悬浮的鼠标事件 */}
+  {selectedTool && (
+    <div
+      className="absolute top-0 left-0 h-full z-30"
+      style={{ width: 360, pointerEvents: 'auto' }}
+      onMouseEnter={(e) => e.stopPropagation()}
+      onMouseMove={(e) => e.stopPropagation()}
+      onMouseLeave={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
+    />
+  )}
         {/* 变换容器：包含连接线 + memos */}
         <div
           className="absolute inset-0 origin-top-left"
@@ -643,6 +692,7 @@ const CanvasMode = ({
 
             {/* 绘制的形状层：每个图形应用其合成遮罩 */}
             {shapes.filter(s => s.type !== 'eraser').map((s) => {
+              const previewHit = !!(erasePreviewIds && erasePreviewIds.has && erasePreviewIds.has(s.id));
               // 与 <defs> 中一致地汇总该图形的所有擦除点（历史 + 预览）
               const relatedPoints = (eraseByShape[s.id] || []);
               let previewPoints = [];
@@ -657,7 +707,8 @@ const CanvasMode = ({
               const maybeWrap = (node) => hasMask ? (
                 <g key={`wrap-${s.id}`} mask={`url(#mask-shape-${s.id})`}>{node}</g>
               ) : node;
-              const opacity = s.props.opacity ?? 1;
+              const baseOpacity = s.props.opacity ?? 1;
+              const opacity = previewHit ? Math.max(0.25, baseOpacity * 0.4) : baseOpacity;
               if (s.type === 'rectangle') {
                 const dash = s.props.strokeStyle === 'dashed' ? '6 6' : s.props.strokeStyle === 'dotted' ? '2 6' : undefined;
                 const node = (

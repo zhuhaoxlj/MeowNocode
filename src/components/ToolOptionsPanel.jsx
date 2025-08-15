@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowDownToLine, ArrowUpToLine, ArrowDown, ArrowUp, Palette, Square, Circle, Type, Eraser, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const COLORS = ['#111827', '#ef4444', '#10b981', '#3b82f6', '#f59e0b'];
+const COLORS = ['#3b82f6', '#111827', '#ef4444', '#10b981', '#f59e0b'];
 
 const ColorSwatch = ({ value, active, onClick, title }) => (
   <button
@@ -47,7 +47,7 @@ const ToolOptionsPanel = ({ visible, tool, options, onChange, onLayer }) => {
 
   if (tool === 'eraser') {
     return (
-      <div className="absolute top-20 left-3 z-40 w-72">
+  <div className="absolute top-20 left-3 z-40 w-72 canvas-ui">
         <Card className="border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -96,7 +96,7 @@ const ToolOptionsPanel = ({ visible, tool, options, onChange, onLayer }) => {
           {COLORS.map(c => (
             <ColorSwatch key={c} value={c} active={options.stroke === c} onClick={() => set('stroke', c)} />
           ))}
-          <input type="color" className="w-6 h-6 rounded-md overflow-hidden" value={options.stroke || '#111827'} onChange={(e) => set('stroke', e.target.value)} />
+          <input type="color" className="w-6 h-6 rounded-md overflow-hidden" value={options.stroke || '#3b82f6'} onChange={(e) => set('stroke', e.target.value)} />
         </div>
       </Section>
 
@@ -228,7 +228,7 @@ const ToolOptionsPanel = ({ visible, tool, options, onChange, onLayer }) => {
   );
 
   return (
-    <div className="absolute top-20 left-3 z-40 w-72">
+  <div className="absolute top-20 left-3 z-40 w-72 canvas-ui">
       <Card className="border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
