@@ -36,7 +36,7 @@ export async function onRequest(context) {
       )
     `);
 
-    // 创建user_settings表
+  // 创建user_settings表
     await env.DB.exec(`
       CREATE TABLE IF NOT EXISTS user_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +46,9 @@ export async function onRequest(context) {
         dark_mode INTEGER DEFAULT 0,
         hitokoto_config TEXT DEFAULT '{"enabled":true,"types":["a","b","c","d","i","j","k"]}',
         font_config TEXT DEFAULT '{"selectedFont":"default"}',
-        background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
+    background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
+    avatar_config TEXT DEFAULT '{"imageUrl":""}',
+    canvas_config TEXT DEFAULT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
