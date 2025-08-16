@@ -150,10 +150,10 @@ const UserAvatar = ({ onOpenSettings }) => {
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {getDisplayName()}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
                   {user?.email || (requiresAuth && isAuthenticated ? "密码认证" : "无需认证")}
                 </p>
               </div>

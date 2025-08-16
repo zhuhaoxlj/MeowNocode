@@ -1,6 +1,14 @@
 # Meow App
 ![meow.png](https://pic.oneloved.top/2025-08/meow_1754197450654.png)
 Meow App 是一个简洁的笔记应用，支持本地存储和云端同步。你可以使用Supabase或Cloudflare D1作为云端数据库。
+## 功能亮点：
+- 画布模式，便于整理思绪
+- 热力图数据统计，满满成就感
+- 模糊语法，适用于记忆场景
+- 每日回顾，温故而知新
+- AI对话，你问它答
+....
+
 ## 特别感谢
 使用nocode<https://nocode.cn> 和vscode制作。
 
@@ -31,6 +39,8 @@ npm run dev
    ```
    VITE_SUPABASE_URL=你的Supabase项目URL
    VITE_SUPABASE_ANON_KEY=你的Supabase anon key
+
+   PASSWORD= #配置后，访问前端页面需要密码。可选
    ```
 
 #### 初始化数据库
