@@ -256,7 +256,8 @@ export function SettingsProvider({ children }) {
         hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
         backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
-        avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}')
+  avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
+  canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
       };
 
       // 优先尝试使用API客户端（适用于Cloudflare Pages）
@@ -319,6 +320,9 @@ export function SettingsProvider({ children }) {
             if (result.data.settings.avatar_config) {
               localStorage.setItem('avatarConfig', result.data.settings.avatar_config);
             }
+            if (result.data.settings.canvas_config) {
+              localStorage.setItem('canvasState', result.data.settings.canvas_config);
+            }
           }
           
           return { success: true, message: '从D1恢复数据成功，请刷新页面查看' };
@@ -329,7 +333,7 @@ export function SettingsProvider({ children }) {
         console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
         
         // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
-        const result = await D1DatabaseService.restoreUserData();
+  const result = await D1DatabaseService.restoreUserData();
         return result;
       }
     } catch (error) {

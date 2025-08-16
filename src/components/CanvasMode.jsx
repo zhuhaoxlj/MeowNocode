@@ -109,6 +109,57 @@ const CanvasMode = ({
   useEffect(() => { selectionRectRef.current = selectionRect; }, [selectionRect]);
   useEffect(() => { selectionStartRef.current = selectionStart; }, [selectionStart]);
 
+  // 本地持久化：加载 canvasState（shapes/eraseByShape/viewport）。memoPositions 在 Index.jsx 中维护
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('canvasState');
+      if (!raw) return;
+      const state = JSON.parse(raw);
+      if (state && Array.isArray(state.shapes)) {
+        // 过滤掉临时的 eraser 形状
+        const restored = state.shapes.filter(s => s && s.type !== 'eraser');
+        setShapes(restored);
+      }
+      if (state && state.eraseByShape && typeof state.eraseByShape === 'object') {
+        setEraseByShape(state.eraseByShape);
+      }
+      if (state && state.viewport) {
+        const vp = state.viewport;
+        if (typeof vp.scale === 'number') setScale(clamp(vp.scale, 0.4, 2.5));
+        if (vp.translate && typeof vp.translate.x === 'number' && typeof vp.translate.y === 'number') {
+          setTranslate({ x: vp.translate.x, y: vp.translate.y });
+        }
+      }
+    } catch {}
+  }, []);
+
+  // 本地持久化：保存 canvasState（shapes/eraseByShape/viewport），去除临时 eraser
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    // debounce 300ms
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem('canvasState');
+        const prev = raw ? JSON.parse(raw) : {};
+        const next = { ...prev };
+        const safeShapes = (shapes || []).filter(s => s && s.type !== 'eraser');
+        // 清理不存在图形的擦除点
+        const validIds = new Set(safeShapes.map(s => s.id));
+        const cleanedErase = {};
+        Object.entries(eraseByShape || {}).forEach(([id, pts]) => {
+          if (validIds.has(id)) cleanedErase[id] = Array.isArray(pts) ? pts : [];
+        });
+        next.shapes = safeShapes;
+        next.eraseByShape = cleanedErase;
+        next.viewport = { scale, translate };
+        // memoPositions 由 Index.jsx 负责合并
+        localStorage.setItem('canvasState', JSON.stringify(next));
+      } catch {}
+    }, 300);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [shapes, eraseByShape, scale, translate]);
+
   // 合并所有 memos
   const allMemos = [...memos, ...pinnedMemos];
 

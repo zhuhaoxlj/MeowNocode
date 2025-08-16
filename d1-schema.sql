@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   hitokoto_config TEXT DEFAULT '{"enabled":true,"types":["a","b","c","d","i","j","k"]}',
   font_config TEXT DEFAULT '{"selectedFont":"default"}',
   background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
+  avatar_config TEXT DEFAULT '{"imageUrl":""}',
+  canvas_config TEXT DEFAULT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

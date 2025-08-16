@@ -195,8 +195,16 @@ import { toast } from 'sonner';
     const savedLeftSidebarPinned = localStorage.getItem('isLeftSidebarPinned');
     const savedRightSidebarPinned = localStorage.getItem('isRightSidebarPinned');
     const savedCanvasMode = localStorage.getItem('isCanvasMode');
+    const savedCanvasState = localStorage.getItem('canvasState');
+    let memoPositions = {};
+    try {
+      if (savedCanvasState) {
+        const st = JSON.parse(savedCanvasState);
+        if (st && st.memoPositions && typeof st.memoPositions === 'object') memoPositions = st.memoPositions;
+      }
+    } catch {}
     
-    if (savedMemos) {
+  if (savedMemos) {
       try {
         const parsedMemos = JSON.parse(savedMemos);
         const normalizedMemos = parsedMemos.map(memo => ({
@@ -206,7 +214,10 @@ import { toast } from 'sonner';
           timestamp: memo.timestamp || memo.createdAt || new Date().toISOString(),
           lastModified: memo.lastModified || memo.updatedAt || new Date().toISOString(),
           createdAt: memo.createdAt || memo.timestamp || new Date().toISOString(),
-          updatedAt: memo.updatedAt || memo.lastModified || new Date().toISOString()
+      updatedAt: memo.updatedAt || memo.lastModified || new Date().toISOString(),
+      // 画布位置：优先使用 memo 自身保存的，退回到 canvasState.memoPositions
+      canvasX: (typeof memo.canvasX === 'number' ? memo.canvasX : (memoPositions[memo.id]?.x)),
+      canvasY: (typeof memo.canvasY === 'number' ? memo.canvasY : (memoPositions[memo.id]?.y))
         }));
         setMemos(normalizedMemos);
       } catch (e) {
@@ -265,6 +276,26 @@ import { toast } from 'sonner';
       setIsInitialLoad(false);
     }, 100);
   }, []);
+
+  // 将 memo 的位置信息写回到 canvasState.memoPositions（与 CanvasMode 的 shapes/viewport 持久化并存）
+  useEffect(() => {
+    try {
+      const positions = {};
+      [...memos, ...pinnedMemos].forEach(m => {
+        if (m && typeof m.id !== 'undefined') {
+          const x = typeof m.canvasX === 'number' ? m.canvasX : undefined;
+          const y = typeof m.canvasY === 'number' ? m.canvasY : undefined;
+          if (typeof x === 'number' && typeof y === 'number') {
+            positions[m.id] = { x, y };
+          }
+        }
+      });
+      const raw = localStorage.getItem('canvasState');
+      const prev = raw ? JSON.parse(raw) : {};
+      const next = { ...prev, memoPositions: positions };
+      localStorage.setItem('canvasState', JSON.stringify(next));
+    } catch {}
+  }, [memos, pinnedMemos]);
 
   // 保存数据到localStorage
   useEffect(() => {

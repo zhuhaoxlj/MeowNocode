@@ -122,7 +122,6 @@ const LeftSidebar = ({
               }}
               className="relative w-full flex items-center gap-2 px-4 py-3 rounded-xl transition-colors duration-200 bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none"
               aria-label="打开每日回顾"
-              title="每日回顾"
             >
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" style={{ color: themeColor }} />
@@ -133,7 +132,6 @@ const LeftSidebar = ({
                 onClick={(e) => { e.stopPropagation(); e.preventDefault(); resetTodayReviewStatus(); }}
                 className="ml-auto px-1 text-sm leading-none text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 aria-label="重置今日卡片为FAIL"
-                title="重置今日卡片为FAIL"
               >
                 ×
               </button>

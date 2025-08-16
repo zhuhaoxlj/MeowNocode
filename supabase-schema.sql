@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   hitokoto_config JSONB DEFAULT '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'::jsonb,
   font_config JSONB DEFAULT '{"selectedFont":"default"}'::jsonb,
   background_config JSONB DEFAULT '{"imageUrl":"","brightness":50,"blur":10}'::jsonb,
+  canvas_config JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

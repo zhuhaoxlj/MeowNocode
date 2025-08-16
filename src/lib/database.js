@@ -13,7 +13,9 @@ export class DatabaseService {
         darkMode: localStorage.getItem('darkMode') || 'false',
         hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}')
+  backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+  avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
+  canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
       }
 
       // 同步memos
@@ -28,7 +30,9 @@ export class DatabaseService {
         darkMode: localData.darkMode,
         hitokotoConfig: localData.hitokotoConfig,
         fontConfig: localData.fontConfig,
-        backgroundConfig: localData.backgroundConfig
+        backgroundConfig: localData.backgroundConfig,
+        avatarConfig: localData.avatarConfig,
+        canvasConfig: localData.canvasConfig
       })
 
       return { success: true, message: '数据同步成功' }
@@ -94,6 +98,12 @@ export class DatabaseService {
         if (settings.background_config) {
           localStorage.setItem('backgroundConfig', JSON.stringify(settings.background_config))
         }
+        if (settings.avatar_config) {
+          localStorage.setItem('avatarConfig', JSON.stringify(settings.avatar_config))
+        }
+        if (settings.canvas_config) {
+          localStorage.setItem('canvasState', JSON.stringify(settings.canvas_config))
+        }
       }
 
       return { success: true, message: '数据恢复成功，请刷新页面查看' }
@@ -138,7 +148,9 @@ export class DatabaseService {
         dark_mode: settings.darkMode === 'true',
         hitokoto_config: settings.hitokotoConfig,
         font_config: settings.fontConfig,
-        background_config: settings.backgroundConfig,
+  background_config: settings.backgroundConfig,
+  avatar_config: settings.avatarConfig,
+  canvas_config: settings.canvasConfig,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id'

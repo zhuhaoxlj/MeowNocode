@@ -92,7 +92,7 @@ export class D1ApiClient {
         throw new Error(memosResult.message || settingsResult.message || '获取数据失败');
       }
       
-      return {
+  return {
         success: true,
         data: {
           memos: memosResult.data || [],
@@ -156,7 +156,7 @@ export class D1ApiClient {
         'Content-Type': 'application/json',
       };
       
-      const response = await fetch(`${baseUrl}/api/settings`, {
+    const response = await fetch(`${baseUrl}/api/settings`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -165,7 +165,9 @@ export class D1ApiClient {
           dark_mode: settings.darkMode === 'true',
           hitokoto_config: settings.hitokotoConfig,
           font_config: settings.fontConfig,
-          background_config: settings.backgroundConfig
+      background_config: settings.backgroundConfig,
+      avatar_config: settings.avatarConfig,
+      canvas_config: settings.canvasConfig
         }),
       });
       
