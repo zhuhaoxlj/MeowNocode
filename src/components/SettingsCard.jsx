@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { D1ApiClient } from '@/lib/d1-api';
 import ImageUpload from './ImageUpload';
 import { toast } from 'sonner';
+import MemosImport from './MemosImport';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
@@ -1365,6 +1366,11 @@ const SettingsCard = ({ isOpen, onClose }) => {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                   本地数据包含所有想法、标签和设置，导出为JSON格式
                 </p>
+
+                {/* 从 Memos 导入 */}
+                <div className="mt-6">
+                  <MemosImport />
+                </div>
               </div>
             </div>
           )}

@@ -44,6 +44,10 @@ export default defineConfig({
   build: {
     outDir,
   },
+  optimizeDeps: {
+    include: ['sql.js'],
+  },
+  assetsInclude: ['**/*.wasm'],
   resolve: {
     alias: [
       {
