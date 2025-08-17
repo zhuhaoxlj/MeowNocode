@@ -102,6 +102,7 @@ export class D1DatabaseService {
           id: memo.memo_id,
           content: memo.content,
           tags: JSON.parse(memo.tags || '[]'),
+          backlinks: JSON.parse(memo.backlinks || '[]'),
           timestamp: memo.created_at,
           lastModified: memo.updated_at,
           createdAt: memo.created_at,
@@ -162,14 +163,14 @@ export class D1DatabaseService {
     if (existingMemo) {
       // 更新现有memo
       await db
-        .prepare('UPDATE memos SET content = ?, tags = ?, updated_at = ? WHERE memo_id = ?')
-        .bind(memo.content, JSON.stringify(memo.tags || []), updatedAt, memo.id)
+        .prepare('UPDATE memos SET content = ?, tags = ?, backlinks = ?, updated_at = ? WHERE memo_id = ?')
+        .bind(memo.content, JSON.stringify(memo.tags || []), JSON.stringify(Array.isArray(memo.backlinks) ? memo.backlinks : []), updatedAt, memo.id)
         .run();
     } else {
       // 插入新memo
       await db
-        .prepare('INSERT INTO memos (memo_id, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-        .bind(memo.id, memo.content, JSON.stringify(memo.tags || []), createdAt, updatedAt)
+        .prepare('INSERT INTO memos (memo_id, content, tags, backlinks, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(memo.id, memo.content, JSON.stringify(memo.tags || []), JSON.stringify(Array.isArray(memo.backlinks) ? memo.backlinks : []), createdAt, updatedAt)
         .run();
     }
   }

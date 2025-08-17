@@ -78,6 +78,7 @@ export function SettingsProvider({ children }) {
               memo_id: m.memo_id,
               content: m.content,
               tags: JSON.parse(m.tags || '[]'),
+              backlinks: JSON.parse(m.backlinks || '[]'),
               created_at: m.created_at,
               updated_at: m.updated_at
             }));
@@ -91,6 +92,7 @@ export function SettingsProvider({ children }) {
               memo_id: m.memo_id,
               content: m.content,
               tags: JSON.parse(m.tags || '[]'),
+              backlinks: JSON.parse(m.backlinks || '[]'),
               created_at: m.created_at,
               updated_at: m.updated_at
             }));
@@ -154,6 +156,7 @@ export function SettingsProvider({ children }) {
               id,
               content: cm.content,
               tags: cm.tags || [],
+              backlinks: cm.backlinks || [],
               createdAt: cm.created_at,
               updatedAt: cm.updated_at,
               timestamp: cm.created_at,
@@ -168,6 +171,7 @@ export function SettingsProvider({ children }) {
                 ...lm,
                 content: cm.content,
                 tags: cm.tags || [],
+                backlinks: cm.backlinks || [],
                 updatedAt: cm.updated_at,
                 lastModified: cm.updated_at
               });
@@ -177,7 +181,10 @@ export function SettingsProvider({ children }) {
         }
 
         if (changed) {
-          const merged = Array.from(mergedById.values()).sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0));
+          const merged = Array.from(mergedById.values()).map(m => ({
+            ...m,
+            backlinks: Array.isArray(m.backlinks) ? m.backlinks : []
+          })).sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0));
           localStorage.setItem('memos', JSON.stringify(merged));
           if (removedIds.length && Array.isArray(pinned)) {
             const removedSet = new Set(removedIds);
@@ -488,6 +495,7 @@ export function SettingsProvider({ children }) {
               memo_id: m.memo_id,
               content: m.content,
               tags: JSON.parse(m.tags || '[]'),
+              backlinks: JSON.parse(m.backlinks || '[]'),
               created_at: m.created_at,
               updated_at: m.updated_at
             }));
@@ -502,6 +510,7 @@ export function SettingsProvider({ children }) {
             memo_id: m.memo_id,
             content: m.content,
             tags: JSON.parse(m.tags || '[]'),
+            backlinks: JSON.parse(m.backlinks || '[]'),
             created_at: m.created_at,
             updated_at: m.updated_at
           }));
@@ -526,7 +535,7 @@ export function SettingsProvider({ children }) {
           if (lTime >= cTime) {
             merged.push(l);
           } else {
-            merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
+            merged.push({ id, content: c.content, tags: c.tags || [], backlinks: c.backlinks || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
           }
         } else if (l && !c) {
           // 云端无该 memo：若无法判断本地时间（新建未带时间戳）或 lastSyncAt 为 0，则保留；
@@ -537,11 +546,11 @@ export function SettingsProvider({ children }) {
             merged.push(l);
           }
         } else if (!l && c) {
-          merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
+          merged.push({ id, content: c.content, tags: c.tags || [], backlinks: c.backlinks || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
         }
       });
 
-      localStorage.setItem('memos', JSON.stringify(merged));
+  localStorage.setItem('memos', JSON.stringify(merged.map(m => ({ ...m, backlinks: Array.isArray(m.backlinks) ? m.backlinks : [] }))));
 
       // 清理被删除的置顶引用
       try {

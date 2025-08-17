@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS memos (
   memo_id TEXT NOT NULL UNIQUE,
   content TEXT NOT NULL,
   tags TEXT DEFAULT '[]',
+  backlinks TEXT DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

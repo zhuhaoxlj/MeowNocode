@@ -71,6 +71,7 @@ export class DatabaseService {
           id: memo.memo_id,
           content: memo.content,
           tags: memo.tags || [],
+          backlinks: memo.backlinks || [],
           timestamp: memo.created_at,
           lastModified: memo.updated_at,
           createdAt: memo.created_at,
@@ -126,7 +127,8 @@ export class DatabaseService {
         memo_id: memo.id,
         user_id: userId,
         content: memo.content,
-        tags: memo.tags || [],
+  tags: memo.tags || [],
+  backlinks: Array.isArray(memo.backlinks) ? memo.backlinks : [],
         created_at: createdAt,
         updated_at: updatedAt
       }, {

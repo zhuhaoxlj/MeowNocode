@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS memos (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   tags JSONB DEFAULT '[]'::jsonb,
+  backlinks JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
   UNIQUE(memo_id, user_id)

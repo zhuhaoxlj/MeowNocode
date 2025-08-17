@@ -159,6 +159,9 @@ ALTER TABLE user_settings ADD COLUMN avatar_config TEXT DEFAULT '{"imageUrl":""}
 -- 如缺少画布配置字段
 ALTER TABLE user_settings ADD COLUMN canvas_config TEXT;
 
+-- 如缺少双链数据
+ALTER TABLE memos ADD COLUMN backlinks TEXT DEFAULT '[]';
+
 -- 如缺少 memos.created_at 索引
 CREATE INDEX IF NOT EXISTS idx_memos_created_at ON memos(created_at);
 ```
@@ -171,6 +174,9 @@ ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS avatar_config JSONB DEFAULT '
 
 -- 如缺少画布配置字段
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS canvas_config JSONB;
+
+-- 如缺少双链数据
+ALTER TABLE memos ADD COLUMN IF NOT EXISTS backlinks JSONB DEFAULT '[]'::jsonb;
 
 -- 如缺少 memos.created_at 索引
 CREATE INDEX IF NOT EXISTS idx_memos_created_at ON memos(created_at);

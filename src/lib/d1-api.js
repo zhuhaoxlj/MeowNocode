@@ -129,6 +129,7 @@ export class D1ApiClient {
           memo_id: memo.id,
           content: memo.content,
           tags: memo.tags || [],
+          backlinks: Array.isArray(memo.backlinks) ? memo.backlinks : [],
           created_at: createdAt,
           updated_at: updatedAt
         }),
