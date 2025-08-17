@@ -3,7 +3,6 @@ import DraggableMemo from './DraggableMemo';
 import CanvasEditor from './CanvasEditor';
 import CanvasToolbar from './CanvasToolbar';
 import ToolOptionsPanel from './ToolOptionsPanel';
-import ImageUpload from './ImageUpload';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -220,7 +219,8 @@ const CanvasMode = ({
       w = Math.max(40, Math.round(w * scale));
       h = Math.max(40, Math.round(h * scale));
       const id = `shape_${Date.now()}`;
-      const shape = { id, type: 'image', z: shapesRef.current.length, props: { x: cxWorld - w/2, y: cyWorld - h/2, w, h, src, opacity: 1 } };
+      const initialOpacity = (toolOptionsRef.current?.opacity ?? 1);
+      const shape = { id, type: 'image', z: shapesRef.current.length, props: { x: cxWorld - w/2, y: cyWorld - h/2, w, h, src, opacity: initialOpacity } };
       setShapes(prev => [...prev, shape]);
       shapesRef.current = [...shapesRef.current, shape];
       setSelectedIds(new Set([id]));
@@ -232,7 +232,8 @@ const CanvasMode = ({
       // 失败时用默认尺寸
       const w = 240, h = 180;
       const id = `shape_${Date.now()}`;
-      const shape = { id, type: 'image', z: shapesRef.current.length, props: { x: cxWorld - w/2, y: cyWorld - h/2, w, h, src, opacity: 1 } };
+      const initialOpacity = (toolOptionsRef.current?.opacity ?? 1);
+      const shape = { id, type: 'image', z: shapesRef.current.length, props: { x: cxWorld - w/2, y: cyWorld - h/2, w, h, src, opacity: initialOpacity } };
       setShapes(prev => [...prev, shape]);
       shapesRef.current = [...shapesRef.current, shape];
       setSelectedIds(new Set([id]));
@@ -243,7 +244,19 @@ const CanvasMode = ({
   };
 
   const handleImagePicked = (val) => {
-    if (val) insertImageAtCenter(val);
+    if (!val) return;
+    // 如果当前单选且是图片，则替换其 src
+    const ids = selectedIdsRef.current;
+    if (ids && ids.size === 1) {
+      const id = Array.from(ids)[0];
+      const target = (shapesRef.current || []).find(s => s.id === id);
+      if (target && target.type === 'image') {
+        setShapes(prev => prev.map(s => s.id === id ? { ...s, props: { ...s.props, src: val } } : s));
+        return;
+      }
+    }
+    // 否则插入到中心
+    insertImageAtCenter(val);
   };
 
   // 本地持久化：保存 canvasState（shapes/eraseByShape/viewport），去除临时 eraser
@@ -999,7 +1012,7 @@ const CanvasMode = ({
   };
 
   // 图片工具使用自定义上传面板，不显示通用工具设置
-  const panelVisible = (!!selectedTool && selectedTool !== 'image') || (!!singleSelectedShape && !selectedTool && singleSelectedShape.type !== 'image');
+  const panelVisible = !!selectedTool || (!!singleSelectedShape && !selectedTool);
   const panelTool = selectedTool || (singleSelectedShape ? singleSelectedShape.type : null);
   const panelOptions = selectedTool ? toolOptions : buildOptionsFromShape(singleSelectedShape);
   const panelOnChange = selectedTool ? setToolOptions : applyShapeOptions;
@@ -1017,7 +1030,7 @@ const CanvasMode = ({
   {/* 顶部工具栏 */}
   <CanvasToolbar selectedTool={selectedTool} onSelectTool={setSelectedTool} />
   {/* 左侧工具设置：绘图工具或单对象选中时可见 */}
-  <ToolOptionsPanel visible={panelVisible} tool={panelTool} options={panelOptions} onChange={panelOnChange} onLayer={handleLayerAction} />
+  <ToolOptionsPanel visible={panelVisible} tool={panelTool} options={panelOptions} onChange={panelOnChange} onLayer={handleLayerAction} onImagePicked={handleImagePicked} />
   {/* 屏蔽左侧 hover 区域：当工具面板可见时，拦截左侧靠边触发悬浮的鼠标事件 */}
   {selectedTool && (
     <div
@@ -1460,17 +1473,7 @@ const CanvasMode = ({
         {/* 底部编辑器（固定在屏幕坐标，不随画布缩放） */}
         <CanvasEditor onAddMemo={onAddMemo} canvasSize={canvasSize} scale={scale} translate={translate} />
 
-        {/* 图片上传面板（选择图片工具时） */}
-        {selectedTool === 'image' && (
-          <div className="canvas-ui absolute top-16 left-1/2 -translate-x-1/2 z-40 w-[440px] max-w-[92vw] rounded-lg border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 shadow-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-gray-700 dark:text-gray-200">插入图片</div>
-              <button className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200" onClick={() => setSelectedTool(null)} aria-label="关闭">×</button>
-            </div>
-            <ImageUpload value={''} onChange={handleImagePicked} className="" />
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">也可以直接把图片从桌面拖到页面中</div>
-          </div>
-        )}
+  {/* 图片上传改为左侧工具配置面板中呈现 */}
 
         {/* 右下角工具条（不缩放，固定屏幕 UI） */}
         <div className="absolute right-4 bottom-4 z-30 flex flex-col items-end gap-2">

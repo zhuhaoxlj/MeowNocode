@@ -1,4 +1,5 @@
 import React from 'react';
+import ImageUpload from './ImageUpload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -40,7 +41,7 @@ const ToolIcon = ({ tool }) => {
   return <Icon className="w-4 h-4" />;
 };
 
-const ToolOptionsPanel = ({ visible, tool, options, onChange, onLayer }) => {
+const ToolOptionsPanel = ({ visible, tool, options, onChange, onLayer, onImagePicked }) => {
   if (!visible) return null;
 
   const set = (k, v) => onChange({ ...options, [k]: v });
@@ -82,6 +83,29 @@ const ToolOptionsPanel = ({ visible, tool, options, onChange, onLayer }) => {
                 ))}
               </div>
             </Section>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (tool === 'image') {
+    // 图片工具：在左侧面板展示上传/直链/拖拽
+    const handlePicked = (val) => {
+      if (onImagePicked) onImagePicked(val);
+    };
+    return (
+      <div className="absolute top-20 left-3 z-40 w-80 canvas-ui">
+        <Card className="border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ToolIcon tool={tool} />
+              图片上传
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ImageUpload value={''} onChange={handlePicked} />
+            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">也可将图片直接拖到页面上</div>
           </CardContent>
         </Card>
       </div>
