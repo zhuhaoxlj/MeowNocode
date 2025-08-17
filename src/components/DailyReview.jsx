@@ -30,6 +30,8 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
   const [activeDateFilter, setActiveDateFilter] = useState(todayStr); // 默认仅今日
   const [reviewStatus, setReviewStatus] = useState({}); // { [memoId]: { [dateStr]: 'PASS'|'FAIL' } }
   const [currentMemoId, setCurrentMemoId] = useState(null);
+  const [isFlipped, setIsFlipped] = useState(false); // 是否翻到背面显示双链
+  const [backlinkIndex, setBacklinkIndex] = useState(0); // 背面当前显示的双链索引
   const formatShort = (dateStr) => {
     try {
       return new Date(dateStr).toLocaleString('zh-CN', { month: 'short', day: 'numeric' });
@@ -90,6 +92,17 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
     return failPool.find(m => m.id === currentMemoId) || null;
   }, [failPool, currentMemoId]);
 
+  // 当前 memo 的双链列表（按时间降序，存在性校验）
+  const linkedMemos = useMemo(() => {
+    if (!currentMemo) return [];
+    const ids = Array.isArray(currentMemo.backlinks) ? currentMemo.backlinks : [];
+    const list = ids
+      .map(id => memos.find(m => m.id === id))
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.updatedAt || b.lastModified || b.createdAt || b.timestamp) - new Date(a.updatedAt || a.lastModified || a.createdAt || a.timestamp));
+    return list;
+  }, [currentMemo, memos]);
+
   const pickRandomFromPool = (excludeId = null) => {
     if (!failPool.length) return null;
     if (failPool.length === 1) return failPool[0].id;
@@ -122,7 +135,16 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
     }
   }, [isOpen, failPool, currentMemoId]);
 
-  // 键盘事件：下=PASS，上=从PASS改FAIL；左右=随机切换
+  // 当切换当前 memo 或池发生变化时，重置翻转与背面索引
+  useEffect(() => {
+    setIsFlipped(false);
+    setBacklinkIndex(0);
+  }, [currentMemoId, failPool.length, activeDateFilter]);
+
+  // 键盘事件：
+  // - 空格：在每日回顾模式下翻转当前卡片，显示其双链（若无双链则提示不翻转）
+  // - 正面：下=PASS，上=FAIL；左右=随机切换 FAIL 池
+  // - 背面：左右=在双链中切换；上/下禁用（背面无 PASS/FAIL）
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
@@ -132,6 +154,38 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
       if (!currentMemoId) return;
       const memo = memos.find(m => m.id === currentMemoId);
       const d = memo ? getDateStr(memo) : todayStr;
+
+      // 空格：翻转
+      if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+        e.preventDefault();
+        if (!isFlipped) {
+          if (linkedMemos.length === 0) {
+            toast.info('该卡片暂无双链');
+            return;
+          }
+          setBacklinkIndex(0);
+          setIsFlipped(true);
+        } else {
+          setIsFlipped(false);
+        }
+        return;
+      }
+
+      // 背面逻辑：只处理左右切换双链，其余忽略
+      if (isFlipped) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          if (linkedMemos.length <= 1) return;
+          setBacklinkIndex(prev => {
+            const n = linkedMemos.length;
+            if (n === 0) return 0;
+            if (e.key === 'ArrowLeft') return (prev - 1 + n) % n;
+            return (prev + 1) % n;
+          });
+        }
+        // 背面无 PASS/FAIL
+        return;
+      }
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -162,7 +216,7 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, currentMemoId, reviewStatus, memos, activeDateFilter]);
+  }, [isOpen, currentMemoId, reviewStatus, memos, activeDateFilter, isFlipped, linkedMemos.length]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
@@ -190,46 +244,69 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
               <CarouselContent>
                 {currentMemo && (
                   <CarouselItem key={currentMemo.id} className="basis-full">
-                    <div className="relative">
-                      {/* 单层卡片：移除外层套卡，仅保留内容卡片 */}
+                    <div className="relative" style={{ perspective: '1200px' }}>
+                      {/* 翻转容器 */}
                       <div
-                        className={`relative rounded-2xl p-5 sm:p-7 shadow-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/98 dark:bg-gray-900/85 backdrop-blur-sm ${currentFont !== 'default' ? 'custom-font-content' : ''}`}
-                        style={{ maxHeight: '60vh', minHeight: '300px' }}
+                        className={`relative transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform`}
+                        style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
                       >
-            {/* 日期信息：右下角 + 重置按钮 */
-            }
-                        <div className="absolute bottom-2 right-2 flex items-center gap-1">
-                          {/* 重置按钮（淡色，hover 变深） */}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); resetDateToFail(getDateStr(currentMemo)); }}
-                            className="px-1.5 py-0.5 rounded-full text-[11px] leading-none border transition-colors text-gray-400/70 border-gray-200/40 dark:text-gray-300/50 dark:border-gray-700/40 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-200 dark:hover:border-gray-600 bg-transparent"
-                            title="重置当日为 FAIL"
-                          >
-                            ×
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const d = getDateStr(currentMemo);
-                              setActiveDateFilter(prev => prev === d ? null : d);
-                            }}
-                            className="text-[11px] leading-none px-2 py-1 rounded-full bg-black/5 dark:bg-white/10 border"
-                            style={activeDateFilter
-                              ? { borderColor: themeColor, color: themeColor, boxShadow: `inset 0 0 0 1px ${themeColor}` }
-                              : { borderColor: 'rgba(229,231,235,0.6)' }}
-                            title={activeDateFilter
-                              ? `当前筛选：${activeDateFilter}（点击切换为全部）`
-                              : `未筛选（点击筛选到：${getDateStr(currentMemo)}）`}
-                          >
-                            {formatShort(activeDateFilter || getDateStr(currentMemo))}
-                          </button>
+                        {/* 正面 */}
+                        <div
+                          className={`absolute inset-0 rounded-2xl p-5 sm:p-7 shadow-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/98 dark:bg-gray-900/85 backdrop-blur-sm ${currentFont !== 'default' ? 'custom-font-content' : ''}`}
+                          style={{ maxHeight: '60vh', minHeight: '300px', backfaceVisibility: 'hidden' }}
+                        >
+                          {/* 日期信息：右下角 + 重置按钮 */}
+                          <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); resetDateToFail(getDateStr(currentMemo)); }}
+                              className="px-1.5 py-0.5 rounded-full text-[11px] leading-none border transition-colors text-gray-400/70 border-gray-200/40 dark:text-gray-300/50 dark:border-gray-700/40 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-200 dark:hover:border-gray-600 bg-transparent"
+                              aria-label="重置当日为 FAIL"
+                            >
+                              ×
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const d = getDateStr(currentMemo);
+                                setActiveDateFilter(prev => prev === d ? null : d);
+                              }}
+                              className="text-[11px] leading-none px-2 py-1 rounded-full bg-black/5 dark:bg-white/10 border"
+                              style={activeDateFilter
+                                ? { borderColor: themeColor, color: themeColor, boxShadow: `inset 0 0 0 1px ${themeColor}` }
+                                : { borderColor: 'rgba(229,231,235,0.6)' }}
+                              aria-label="切换日期筛选"
+                            >
+                              {formatShort(activeDateFilter || getDateStr(currentMemo))}
+                            </button>
+                          </div>
+                          <div className="overflow-y-auto pr-2 scrollbar-transparent h-full">
+                            <ContentRenderer
+                              content={currentMemo.content}
+                              activeTag={null}
+                              onTagClick={onTagClick || (() => {})}
+                            />
+                          </div>
                         </div>
-                        <div className="overflow-y-auto pr-2 scrollbar-transparent">
-                          <ContentRenderer
-                            content={currentMemo.content}
-                            activeTag={null}
-                            onTagClick={onTagClick || (() => {})}
-                          />
+
+                        {/* 背面（双链） */}
+                        <div
+                          className={`absolute inset-0 rounded-2xl p-5 sm:p-7 shadow-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/98 dark:bg-gray-900/85 backdrop-blur-sm ${currentFont !== 'default' ? 'custom-font-content' : ''}`}
+                          style={{ maxHeight: '60vh', minHeight: '300px', transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}
+                        >
+                          <div className="absolute top-2 right-3 text-xs text-gray-500 dark:text-gray-400 select-none">
+                            {linkedMemos.length > 0 ? `${backlinkIndex + 1}/${linkedMemos.length}` : '无双链'}
+                          </div>
+                          <div className="overflow-y-auto pr-2 scrollbar-transparent h-full">
+                            {linkedMemos.length > 0 ? (
+                              <ContentRenderer
+                                content={linkedMemos[backlinkIndex].content}
+                                activeTag={null}
+                                onTagClick={onTagClick || (() => {})}
+                              />
+                            ) : (
+                              <div className="h-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">暂无双链内容</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
