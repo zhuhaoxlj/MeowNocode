@@ -278,6 +278,60 @@ import { toast } from 'sonner';
     }, 100);
   }, []);
 
+  // 监听全局数据变更与 storage 事件，感知 SettingsContext 的恢复/合并结果并刷新本地状态
+  useEffect(() => {
+    const loadFromLocal = () => {
+      try {
+        const savedMemos = localStorage.getItem('memos');
+        const savedPinned = localStorage.getItem('pinnedMemos');
+        const savedCanvasState = localStorage.getItem('canvasState');
+        let memoPositions = {};
+        try {
+          if (savedCanvasState) {
+            const st = JSON.parse(savedCanvasState);
+            if (st && st.memoPositions && typeof st.memoPositions === 'object') memoPositions = st.memoPositions;
+          }
+        } catch {}
+        if (savedMemos) {
+          const parsedMemos = JSON.parse(savedMemos);
+          const normalizedMemos = parsedMemos.map(memo => ({
+            id: memo.id || Date.now() + Math.random(),
+            content: memo.content || '',
+            tags: memo.tags || [],
+            timestamp: memo.timestamp || memo.createdAt || new Date().toISOString(),
+            lastModified: memo.lastModified || memo.updatedAt || new Date().toISOString(),
+            createdAt: memo.createdAt || memo.timestamp || new Date().toISOString(),
+            updatedAt: memo.updatedAt || memo.lastModified || new Date().toISOString(),
+            canvasX: (typeof memo.canvasX === 'number' ? memo.canvasX : (memoPositions[memo.id]?.x)),
+            canvasY: (typeof memo.canvasY === 'number' ? memo.canvasY : (memoPositions[memo.id]?.y))
+          }));
+          // 仅在内容有变化时才更新，避免循环写入
+          if (JSON.stringify(normalizedMemos) !== JSON.stringify(memos)) {
+            setMemos(normalizedMemos);
+          }
+        }
+        if (savedPinned) {
+          const parsedPinned = JSON.parse(savedPinned);
+          if (JSON.stringify(parsedPinned) !== JSON.stringify(pinnedMemos)) {
+            setPinnedMemos(parsedPinned);
+          }
+        }
+      } catch {}
+    };
+
+    const onDataChanged = () => loadFromLocal();
+    const onStorage = (e) => {
+      if (!e || (e.key !== 'memos' && e.key !== 'pinnedMemos' && e.key !== 'canvasState')) return;
+      loadFromLocal();
+    };
+    window.addEventListener('app:dataChanged', onDataChanged);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('app:dataChanged', onDataChanged);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [memos, pinnedMemos]);
+
   // 将 memo 的位置信息写回到 canvasState.memoPositions（与 CanvasMode 的 shapes/viewport 持久化并存）
   useEffect(() => {
     try {

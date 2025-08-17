@@ -171,6 +171,8 @@ export function SettingsProvider({ children }) {
               localStorage.setItem('pinnedMemos', JSON.stringify(nextPinned));
             }
           }
+          // 通知页面刷新本地缓存
+          try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'sync.downmerge' } })); } catch {}
         }
       } catch {
         // 忽略下行合并失败，继续尽力上行
@@ -420,12 +422,15 @@ export function SettingsProvider({ children }) {
         if (cloudProvider === 'supabase') {
           if (!user) return; // need auth to restore
           await DatabaseService.restoreUserData(user.id);
+          try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.supabase' } })); } catch {}
         } else {
           try {
             const res = await D1ApiClient.restoreUserData();
             if (!res?.success) throw new Error('restore via API failed');
+            try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.d1.api' } })); } catch {}
           } catch (_) {
             await D1DatabaseService.restoreUserData();
+            try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.d1.db' } })); } catch {}
           }
         }
         // after restore, schedule a push to ensure any local-only fields are upserted formats
