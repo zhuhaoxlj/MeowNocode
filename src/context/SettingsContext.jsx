@@ -116,6 +116,12 @@ export function SettingsProvider({ children }) {
         const removedIds = [];
         for (const m of localMemos) {
           const id = String(m.id);
+          // 若本地已标记删除，强制过滤掉，避免被下行合并回写复活
+          if (deletedSet.has(id)) {
+            removedIds.push(id);
+            changed = true;
+            continue;
+          }
           if (cloudMap.has(id)) {
             keptLocal.push(m);
             continue;
