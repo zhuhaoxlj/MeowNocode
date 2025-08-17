@@ -281,6 +281,7 @@ const CanvasMode = ({
         next.viewport = { scale, translate };
         // memoPositions 由 Index.jsx 负责合并
         localStorage.setItem('canvasState', JSON.stringify(next));
+  try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'canvas.state' } })); } catch {}
       } catch {}
     }, 300);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };

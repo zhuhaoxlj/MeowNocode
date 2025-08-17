@@ -44,6 +44,73 @@ export function SettingsProvider({ children }) {
   openDailyReview: 'Ctrl+\\'
   });
 
+  // ---- Auto sync scheduler (debounced) ----
+  const syncTimerRef = React.useRef(null);
+  const hardTimerRef = React.useRef(null); // minimal interval limiter
+  const syncingRef = React.useRef(false);
+  const pendingRef = React.useRef(false);
+  const lastSyncAtRef = React.useRef(0);
+
+  const dispatchDataChanged = (detail = {}) => {
+    try {
+      window.dispatchEvent(new CustomEvent('app:dataChanged', { detail }));
+    } catch {}
+  };
+
+  const doSync = React.useCallback(async () => {
+    if (!cloudSyncEnabled) return;
+    if (syncingRef.current) { pendingRef.current = true; return; }
+    syncingRef.current = true;
+    try {
+      if (cloudProvider === 'supabase') {
+        if (!user) return; // need auth
+        await DatabaseService.syncUserData(user.id);
+      } else {
+        // d1
+        await (async () => {
+          // 优先 API 客户端，失败降级
+          try {
+            const localData = {
+              memos: JSON.parse(localStorage.getItem('memos') || '[]'),
+              pinnedMemos: JSON.parse(localStorage.getItem('pinnedMemos') || '[]'),
+              themeColor: localStorage.getItem('themeColor') || '#818CF8',
+              darkMode: localStorage.getItem('darkMode') || 'false',
+              hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
+              fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
+              backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+              avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
+              canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
+            };
+            await D1ApiClient.syncUserData(localData);
+          } catch (_) {
+            await D1DatabaseService.syncUserData();
+          }
+        })();
+      }
+      lastSyncAtRef.current = Date.now();
+      localStorage.setItem('lastCloudSyncAt', String(lastSyncAtRef.current));
+    } finally {
+      syncingRef.current = false;
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        // chain another run after a short delay to batch rapid changes
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = setTimeout(doSync, 500);
+      }
+    }
+  }, [cloudSyncEnabled, cloudProvider, user]);
+
+  const scheduleSync = React.useCallback((reason = 'change') => {
+    if (!cloudSyncEnabled) return;
+    // minimal interval 1500ms
+    const now = Date.now();
+    const since = now - lastSyncAtRef.current;
+    // debounce immediate timer
+    clearTimeout(syncTimerRef.current);
+    const delay = since < 1500 ? 800 : 200; // small delay when not recently synced
+    syncTimerRef.current = setTimeout(doSync, delay);
+  }, [cloudSyncEnabled, doSync]);
+
   useEffect(() => {
     // 从localStorage加载一言设置
     const savedHitokotoConfig = localStorage.getItem('hitokotoConfig');
@@ -136,21 +203,25 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     // 保存一言设置到localStorage
     localStorage.setItem('hitokotoConfig', JSON.stringify(hitokotoConfig));
+  dispatchDataChanged({ part: 'hitokoto' });
   }, [hitokotoConfig]);
 
   useEffect(() => {
     // 保存字体设置到localStorage
     localStorage.setItem('fontConfig', JSON.stringify(fontConfig));
+  dispatchDataChanged({ part: 'font' });
   }, [fontConfig]);
 
   useEffect(() => {
     // 保存背景设置到localStorage
     localStorage.setItem('backgroundConfig', JSON.stringify(backgroundConfig));
+  dispatchDataChanged({ part: 'background' });
   }, [backgroundConfig]);
 
   useEffect(() => {
     // 保存头像设置到localStorage
     localStorage.setItem('avatarConfig', JSON.stringify(avatarConfig));
+  dispatchDataChanged({ part: 'avatar' });
   }, [avatarConfig]);
 
   useEffect(() => {
@@ -167,12 +238,72 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     // 保存AI配置到localStorage
     localStorage.setItem('aiConfig', JSON.stringify(aiConfig));
+  dispatchDataChanged({ part: 'ai' });
   }, [aiConfig]);
 
   useEffect(() => {
     // 保存快捷键配置到localStorage
     localStorage.setItem('keyboardShortcuts', JSON.stringify(keyboardShortcuts));
   }, [keyboardShortcuts]);
+
+  // Subscribe to app-level data change events and page lifecycle to auto sync
+  useEffect(() => {
+    if (!cloudSyncEnabled) return;
+    const onChange = () => scheduleSync('event');
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        // try flush quickly when tab hidden
+        doSync();
+      }
+    };
+    const onBeforeUnload = () => {
+      // best-effort flush
+      try { doSync(); } catch {}
+    };
+    window.addEventListener('app:dataChanged', onChange);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onBeforeUnload);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('app:dataChanged', onChange);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onBeforeUnload);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
+  }, [cloudSyncEnabled, scheduleSync, doSync]);
+
+  // When enabling cloud sync or provider/user becomes ready, try restore if local is empty
+  useEffect(() => {
+    const maybeRestore = async () => {
+      if (!cloudSyncEnabled) return;
+      try {
+        const memos = JSON.parse(localStorage.getItem('memos') || '[]');
+        const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
+        const hasLocal = (Array.isArray(memos) && memos.length > 0) || (Array.isArray(pinned) && pinned.length > 0);
+        if (hasLocal) {
+          // 仍然进行一次快速同步，保证云端跟上当前设备
+          scheduleSync('startup');
+          return;
+        }
+        if (cloudProvider === 'supabase') {
+          if (!user) return; // need auth to restore
+          await DatabaseService.restoreUserData(user.id);
+        } else {
+          try {
+            const res = await D1ApiClient.restoreUserData();
+            if (!res?.success) throw new Error('restore via API failed');
+          } catch (_) {
+            await D1DatabaseService.restoreUserData();
+          }
+        }
+        // after restore, schedule a push to ensure any local-only fields are upserted formats
+        scheduleSync('post-restore');
+      } catch (e) {
+        // ignore in auto flow
+      }
+    };
+    maybeRestore();
+  }, [cloudSyncEnabled, cloudProvider, user, scheduleSync]);
 
 
 
@@ -364,6 +495,8 @@ export function SettingsProvider({ children }) {
       updateAiConfig,
       keyboardShortcuts,
       updateKeyboardShortcuts
+  , // Sync public helpers
+  _scheduleCloudSync: scheduleSync
     }}>
       {children}
     </SettingsContext.Provider>

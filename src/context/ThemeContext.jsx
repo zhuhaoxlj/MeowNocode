@@ -73,6 +73,7 @@ export function ThemeProvider({ children }) {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'theme.darkMode' } })); } catch {}
   }, [darkMode]);
 
   useEffect(() => {
@@ -141,6 +142,7 @@ export function ThemeProvider({ children }) {
     } catch (error) {
       console.warn('Invalid color format:', themeColor);
     }
+  try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'theme.color' } })); } catch {}
   }, [themeColor]);
 
   // 监听字体配置变化 - 使用定时器检查localStorage变化
