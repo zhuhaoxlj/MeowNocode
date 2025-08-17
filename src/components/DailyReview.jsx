@@ -251,12 +251,12 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
                       {/* 翻转容器 */}
                       <div
                         className={`relative transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform`}
-                        style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+                        style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)', height: '60vh', minHeight: '300px' }}
                       >
                         {/* 正面 */}
                         <div
                           className={`absolute inset-0 rounded-2xl p-5 sm:p-7 shadow-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/98 dark:bg-gray-900/85 backdrop-blur-sm ${currentFont !== 'default' ? 'custom-font-content' : ''}`}
-                          style={{ maxHeight: '60vh', minHeight: '300px', backfaceVisibility: 'hidden' }}
+                          style={{ height: '100%', backfaceVisibility: 'hidden' }}
                         >
                           {/* 日期信息：右下角 + 重置按钮 */}
                           <div className="absolute bottom-2 right-2 flex items-center gap-1">
@@ -294,7 +294,7 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
                         {/* 背面（双链） */}
                         <div
                           className={`absolute inset-0 rounded-2xl p-5 sm:p-7 shadow-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/98 dark:bg-gray-900/85 backdrop-blur-sm ${currentFont !== 'default' ? 'custom-font-content' : ''}`}
-                          style={{ maxHeight: '60vh', minHeight: '300px', transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}
+                          style={{ height: '100%', transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}
                         >
                           <div className="absolute top-2 right-3 text-xs text-gray-500 dark:text-gray-400 select-none">
                             {linkedMemos.length > 0 ? `${backlinkIndex + 1}/${linkedMemos.length}` : '无双链'}
