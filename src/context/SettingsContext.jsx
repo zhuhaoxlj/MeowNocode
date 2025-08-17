@@ -100,12 +100,17 @@ export function SettingsProvider({ children }) {
 
       // 与本地对比并应用远端删除/更新/新增
       try {
-        const localMemos = JSON.parse(localStorage.getItem('memos') || '[]');
+        const tombstones = getDeletedMemoTombstones();
+        const deletedSet = new Set((tombstones || []).map(t => String(t.id)));
+        const localMemosRaw = JSON.parse(localStorage.getItem('memos') || '[]');
         const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
-        const localMap = new Map((localMemos || []).map(m => [String(m.id), m]));
-        const cloudMap = new Map((cloudMemos || []).map(m => [String(m.memo_id), m]));
 
-        let changed = false;
+        // 先按墓碑过滤本地，避免后续步骤被云端短暂拉回
+        const preFilteredLocal = (localMemosRaw || []).filter(m => !deletedSet.has(String(m.id)));
+        let changed = preFilteredLocal.length !== (localMemosRaw || []).length;
+
+        const localMap = new Map(preFilteredLocal.map(m => [String(m.id), m]));
+        const cloudMap = new Map((cloudMemos || []).map(m => [String(m.memo_id), m]));
 
         // 1) 远端不存在且本地更新时间 <= lastSyncAt -> 视为远端已删除，移除本地
         const keptLocal = [];
@@ -131,6 +136,7 @@ export function SettingsProvider({ children }) {
         // 2) 远端较新覆盖本地；远端新增补齐到本地
         const mergedById = new Map(keptLocal.map(m => [String(m.id), m]));
         for (const [id, cm] of cloudMap.entries()) {
+          if (deletedSet.has(id)) continue; // 本地标记删除的，不拉回
           const lm = mergedById.get(id);
           const cTime = new Date(cm.updated_at || cm.created_at || 0).getTime();
           if (!lm) {
@@ -164,8 +170,8 @@ export function SettingsProvider({ children }) {
         if (changed) {
           const merged = Array.from(mergedById.values()).sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0));
           localStorage.setItem('memos', JSON.stringify(merged));
-          if (removedIds.length && Array.isArray(pinned)) {
-            const removedSet = new Set(removedIds);
+          if ((removedIds.length || deletedSet.size) && Array.isArray(pinned)) {
+            const removedSet = new Set([...removedIds, ...deletedSet]);
             const nextPinned = pinned.filter(id => !removedSet.has(String(id)));
             if (nextPinned.length !== pinned.length) {
               localStorage.setItem('pinnedMemos', JSON.stringify(nextPinned));
