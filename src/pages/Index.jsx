@@ -319,7 +319,13 @@ import { toast } from 'sonner';
       } catch {}
     };
 
-    const onDataChanged = () => loadFromLocal();
+    const onDataChanged = (e) => {
+      // 只在同步/恢复类事件时重新加载，避免本地操作(如删除)触发的事件导致状态闪烁
+      const part = e?.detail?.part || '';
+      if (part.includes('sync.') || part.includes('restore.') || part === 'startup') {
+        loadFromLocal();
+      }
+    };
     const onStorage = (e) => {
       if (!e || (e.key !== 'memos' && e.key !== 'pinnedMemos' && e.key !== 'canvasState')) return;
       loadFromLocal();
