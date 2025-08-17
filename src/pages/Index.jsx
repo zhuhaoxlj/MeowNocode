@@ -644,6 +644,23 @@ import { toast } from 'sonner';
     }));
   };
 
+  // 移除双链：从双方的 backlinks 中互相删除；顶部新建时（fromId 为空）从待建列表删除
+  const handleRemoveBacklink = (fromId, toId) => {
+    if (!toId) return;
+    if (!fromId) {
+      setPendingNewBacklinks(prev => prev.filter(id => id !== toId));
+      return;
+    }
+    if (fromId === toId) return;
+    const prune = (list) => list.map(m => {
+      if (m.id === fromId) return { ...m, backlinks: (Array.isArray(m.backlinks) ? m.backlinks.filter(id => id !== toId) : []), updatedAt: new Date().toISOString() };
+      if (m.id === toId) return { ...m, backlinks: (Array.isArray(m.backlinks) ? m.backlinks.filter(id => id !== fromId) : []), updatedAt: new Date().toISOString() };
+      return m;
+    });
+    setMemos(prev => prune(prev));
+    setPinnedMemos(prev => prune(prev));
+  };
+
   // 预览某条 memo
   const handlePreviewMemo = (memoId) => {
     setPreviewMemoId(memoId);
@@ -1220,6 +1237,7 @@ import { toast } from 'sonner';
             onAddBacklink={handleAddBacklink}
             onPreviewMemo={handlePreviewMemo}
             pendingNewBacklinks={pendingNewBacklinks}
+            onRemoveBacklink={handleRemoveBacklink}
           />
         )}
 

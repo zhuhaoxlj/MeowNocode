@@ -30,7 +30,8 @@ const MemoList = ({
   // backlinks
   allMemos = [],
   onAddBacklink,
-  onPreviewMemo
+  onPreviewMemo,
+  onRemoveBacklink
 }) => {
   const { themeColor } = useTheme();
   const memosForBacklinks = (allMemos && allMemos.length) ? allMemos : [...pinnedMemos, ...memos];
@@ -253,16 +254,19 @@ const MemoList = ({
           backlinks={Array.isArray(memo.backlinks) ? memo.backlinks : []}
           onAddBacklink={onAddBacklink}
           onPreviewMemo={onPreviewMemo}
+                            onRemoveBacklink={onRemoveBacklink}
                           />
                           <div className="absolute bottom-12 right-2 flex items-center space-x-1 sm:space-x-2">
                             <Button
                               variant="outline"
+                              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                               onClick={onCancelEdit}
                               className="bg-white hover:bg-gray-50 text-gray-700 border-gray-300 px-2 py-1 sm:px-3 sm:py-2 text-sm"
                             >
                               取消
                             </Button>
                             <Button
+                              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                               onClick={() => onSaveEdit(memo.id)}
                               disabled={!editContent.trim()}
                               className="bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-2 py-1 sm:px-3 sm:py-2 text-sm"
@@ -291,8 +295,7 @@ const MemoList = ({
                               key={`${memo.id}-bk-${bid}`}
                               type="button"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPreviewMemo?.(bid); }}
-                              className="max-w-full inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                              title={m.content}
+                              className="group max-w-full inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                             >
                               <span className="truncate inline-block max-w-[200px]">{m.content?.replace(/\n/g, ' ').slice(0, 60) || '（无内容）'}</span>
                               {/* 小箭头图标 */}
@@ -300,6 +303,16 @@ const MemoList = ({
                                 <path d="M7 17L17 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                                 <path d="M9 7H17V15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                               </svg>
+                              {/* hover 才出现的小 × */}
+                              <button
+                                type="button"
+                                className="ml-1 w-4 h-4 rounded hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemoveBacklink?.(memo.id, bid); }}
+                                aria-label="移除反链"
+                                title="移除"
+                              >
+                                ×
+                              </button>
                             </button>
                           );
                         })}

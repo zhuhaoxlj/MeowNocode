@@ -53,6 +53,7 @@ const MainContent = ({
   onAddBacklink,
   onPreviewMemo,
   pendingNewBacklinks
+  , onRemoveBacklink
 }) => {
   const { themeColor } = useTheme();
 
@@ -86,6 +87,7 @@ const MainContent = ({
   onAddBacklink={onAddBacklink}
   onPreviewMemo={onPreviewMemo}
   pendingNewBacklinks={pendingNewBacklinks}
+  onRemoveBacklink={onRemoveBacklink}
       />
 
       {/* Memos列表 */}
@@ -114,6 +116,7 @@ const MainContent = ({
   allMemos={allMemos}
   onAddBacklink={onAddBacklink}
   onPreviewMemo={onPreviewMemo}
+  onRemoveBacklink={onRemoveBacklink}
       />
     </div>
   );

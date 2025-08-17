@@ -21,8 +21,9 @@ const MemoEditor = ({
   memosList = [],            // 所有可选 memo 列表（用于下拉选择）
   currentMemoId = null,      // 当前编辑 memo 的 id
   backlinks = [],            // 当前 memo 的反链 id 列表
-  onAddBacklink,             // (fromId, toId) => void
-  onPreviewMemo              // (memoId) => void
+  onAddBacklink,             // (fromId|null, toId) => void
+  onPreviewMemo,             // (memoId) => void
+  onRemoveBacklink           // (fromId|null, toId) => void
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
@@ -318,11 +319,19 @@ const MemoEditor = ({
               key={m.id}
               type="button"
               onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onPreviewMemo?.(m.id); }}
-              className="max-w-full inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              title={m.content}
+              className="group max-w-full inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               <span className="truncate inline-block max-w-[180px]">{m.content?.replace(/\n/g, ' ').slice(0, 50) || '（无内容）'}</span>
               <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+              <span
+                role="button"
+                aria-label="移除反链"
+                className="ml-1 w-4 h-4 rounded hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onRemoveBacklink?.(currentMemoId || null, m.id); }}
+                title="移除"
+              >
+                ×
+              </span>
             </button>
           ))}
         </div>

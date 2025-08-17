@@ -8,9 +8,6 @@ const MemoPreviewDialog = ({ open, onClose, memo }) => {
       <DialogContent className="max-w-2xl">
         {memo ? (
           <div className="space-y-3">
-            <DialogHeader>
-              <DialogTitle className="text-base">预览</DialogTitle>
-            </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto pr-2 scrollbar-transparent">
               <ContentRenderer content={memo.content} activeTag={null} onTagClick={() => {}} />
             </div>
