@@ -51,7 +51,8 @@ const MainContent = ({
   // backlinks
   allMemos,
   onAddBacklink,
-  onPreviewMemo
+  onPreviewMemo,
+  pendingNewBacklinks
 }) => {
   const { themeColor } = useTheme();
 
@@ -84,6 +85,7 @@ const MainContent = ({
   allMemos={allMemos}
   onAddBacklink={onAddBacklink}
   onPreviewMemo={onPreviewMemo}
+  pendingNewBacklinks={pendingNewBacklinks}
       />
 
       {/* Memos列表 */}

@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/context/ThemeContext';
@@ -32,6 +32,7 @@ const MemoEditor = ({
   const { darkMode, themeColor, currentFont } = useTheme();
   const { hitokotoConfig } = useSettings();
   const [showBacklinkPicker, setShowBacklinkPicker] = useState(false);
+  const [pickerPos, setPickerPos] = useState(null);
   const backlinkBtnRef = useRef(null);
 
   // 获取一言或内置句子
@@ -186,11 +187,38 @@ const MemoEditor = ({
 
   // 选择一个目标 memo 建立双链
   const handlePickBacklink = (targetId) => {
-    if (!currentMemoId || !onAddBacklink) return;
-    if (targetId === currentMemoId) return;
-    onAddBacklink(currentMemoId, targetId);
+    if (!onAddBacklink) return;
+    if (currentMemoId && targetId === currentMemoId) return;
+    onAddBacklink(currentMemoId || null, targetId);
     setShowBacklinkPicker(false);
   };
+
+  // 计算选择卡片的屏幕定位，避免被滚动容器裁剪
+  const updatePickerPosition = useCallback(() => {
+    const btn = backlinkBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const width = 320;
+    const margin = 8;
+    let left = Math.min(rect.left, window.innerWidth - width - margin);
+    if (left < margin) left = margin;
+    const top = Math.min(rect.bottom + 6, window.innerHeight - margin);
+    setPickerPos({ left, top, width });
+  }, []);
+
+  useEffect(() => {
+    if (!showBacklinkPicker) return;
+    updatePickerPosition();
+    const onResize = () => updatePickerPosition();
+    const onScroll = () => updatePickerPosition();
+    window.addEventListener('resize', onResize);
+    // 捕获阶段监听滚动，包含内部滚动容器
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [showBacklinkPicker, updatePickerPosition]);
 
   const findMemoById = (id) => memosList.find(m => m.id === id);
   const backlinkMemos = (backlinks || []).map(findMemoById).filter(Boolean);
@@ -357,10 +385,9 @@ const MemoEditor = ({
                 <button
                   type="button"
                   ref={backlinkBtnRef}
-                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (currentMemoId) setShowBacklinkPicker(v => !v); }}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowBacklinkPicker(v => !v); }}
                   className={cn(
-                    "inline-flex items-center justify-center h-7 px-2 rounded-md text-gray-600 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors",
-                    !currentMemoId && "opacity-50 cursor-not-allowed"
+                    "inline-flex items-center justify-center h-7 px-2 rounded-md text-gray-600 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
                   )}
                 >
                   {/* 简洁链路图标 */}
@@ -373,7 +400,8 @@ const MemoEditor = ({
                 {/* 双链选择卡片 */}
                 {isFocused && showBacklinkPicker && (
                   <div
-                    className="absolute left-28 top-8 z-40 w-[320px] max-h-56 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden"
+                    className="fixed z-50 w-[320px] max-h-56 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden"
+                    style={{ left: pickerPos?.left ?? 16, top: pickerPos?.top ?? 100, width: pickerPos?.width ?? 320 }}
                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   >
                     <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">选择一个 Memo 建立双链</div>

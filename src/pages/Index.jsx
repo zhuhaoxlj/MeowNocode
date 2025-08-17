@@ -46,6 +46,7 @@ import { toast } from 'sonner';
   const [canvasToolPanelVisible, setCanvasToolPanelVisible] = useState(false);
   const [isDailyReviewOpen, setIsDailyReviewOpen] = useState(false);
   const [previewMemoId, setPreviewMemoId] = useState(null);
+  const [pendingNewBacklinks, setPendingNewBacklinks] = useState([]);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -407,18 +408,32 @@ import { toast } from 'sonner';
       .filter((tag, index, self) => self.indexOf(tag) === index)
       .filter(tag => tag.length > 0);
 
+    const newId = Date.now();
+    const nowIso = new Date().toISOString();
     const newMemoObj = {
-      id: Date.now(),
+      id: newId,
       content: newMemo,
       tags: extractedTags,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      lastModified: new Date().toISOString()
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      timestamp: nowIso,
+      lastModified: nowIso,
+      backlinks: Array.isArray(pendingNewBacklinks) ? pendingNewBacklinks : []
     };
 
-    setMemos([newMemoObj, ...memos]);
+    // 更新现有 memos 与 pinnedMemos，将新 memoId 写入被选目标的 backlinks（双向）
+    const addLink = (list) => list.map(m => (
+      (pendingNewBacklinks || []).includes(m.id)
+        ? { ...m, backlinks: Array.from(new Set([...(Array.isArray(m.backlinks) ? m.backlinks : []), newId])), updatedAt: nowIso }
+        : m
+    ));
+    const updatedMemos = addLink(memos);
+    const updatedPinned = addLink(pinnedMemos);
+
+    setMemos([newMemoObj, ...updatedMemos]);
+    setPinnedMemos(updatedPinned);
     setNewMemo('');
+    setPendingNewBacklinks([]);
   };
 
   // 更新热力图数据
@@ -605,7 +620,13 @@ import { toast } from 'sonner';
 
   // 建立双链：在 from 和 to 的 backlinks 中互相加入，避免重复
   const handleAddBacklink = (fromId, toId) => {
-    if (!fromId || !toId || fromId === toId) return;
+    if (!toId) return;
+    // 新建 memo（顶部编辑器）场景：fromId 为空，先把选中的 toId 放到待建列表
+    if (!fromId) {
+      setPendingNewBacklinks(prev => prev.includes(toId) ? prev : [...prev, toId]);
+      return;
+    }
+    if (fromId === toId) return;
     const updateOne = (memo, targetId) => {
       const curr = Array.isArray(memo.backlinks) ? memo.backlinks : [];
       if (curr.includes(targetId)) return curr;
@@ -1198,6 +1219,7 @@ import { toast } from 'sonner';
             allMemos={[...memos, ...pinnedMemos]}
             onAddBacklink={handleAddBacklink}
             onPreviewMemo={handlePreviewMemo}
+            pendingNewBacklinks={pendingNewBacklinks}
           />
         )}
 
