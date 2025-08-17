@@ -15,7 +15,7 @@ import MemosImport from './MemosImport';
 
 const SettingsCard = ({ isOpen, onClose }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, syncToSupabase, restoreFromSupabase, syncToD1, restoreFromD1, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, manualSync, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -82,81 +82,20 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
 
 
-  // Supabase同步处理函数
-  const handleSupabaseSync = async () => {
-    if (!isAuthenticated) {
-      toast.error('请先登录GitHub账号');
-      return;
-    }
-
+  // 统一“手动同步”处理函数：三向合并 + 删除墓碑
+  const handleManualSync = async () => {
     setIsSyncing(true);
-
     try {
-      const result = await syncToSupabase();
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
+      if (cloudProvider === 'supabase' && !isAuthenticated) {
+        toast.error('请先登录GitHub账号');
+        setIsSyncing(false);
+        return;
       }
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleSupabaseRestore = async () => {
-    if (!isAuthenticated) {
-      toast.error('请先登录GitHub账号');
-      return;
-    }
-
-    setIsSyncing(true);
-
-    try {
-      const result = await restoreFromSupabase();
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // D1同步处理函数
-  const handleD1Sync = async () => {
-    setIsSyncing(true);
-
-    try {
-      const result = await syncToD1();
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleD1Restore = async () => {
-    setIsSyncing(true);
-
-    try {
-      const result = await restoreFromD1();
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      toast.error(error.message);
+      const result = await manualSync();
+      if (result.success) toast.success(result.message);
+      else toast.error(result.message);
+    } catch (e) {
+      toast.error(e?.message || '同步失败');
     } finally {
       setIsSyncing(false);
     }
@@ -1267,25 +1206,16 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
                             <div className="flex space-x-2">
                               <Button
-                                onClick={handleSupabaseSync}
+                                onClick={handleManualSync}
                                 disabled={isSyncing}
                                 size="sm"
                                 className="flex-1"
                                 style={{ backgroundColor: themeColor }}
                               >
                                 <Upload className="h-4 w-4 mr-2" />
-                                {isSyncing ? '同步中...' : '备份到Supabase'}
+                                {isSyncing ? '同步中...' : '手动同步'}
                               </Button>
-                              <Button
-                                onClick={handleSupabaseRestore}
-                                disabled={isSyncing}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                {isSyncing ? '恢复中...' : '从Supabase恢复'}
-                              </Button>
+                              
                             </div>
                           </div>
                         )}
@@ -1305,25 +1235,16 @@ const SettingsCard = ({ isOpen, onClose }) => {
 
                         <div className="flex space-x-2">
                           <Button
-                            onClick={handleD1Sync}
+                            onClick={handleManualSync}
                             disabled={isSyncing}
                             size="sm"
                             className="flex-1"
                             style={{ backgroundColor: themeColor }}
                           >
                             <Upload className="h-4 w-4 mr-2" />
-                            {isSyncing ? '同步中...' : '备份到D1'}
+                            {isSyncing ? '同步中...' : '手动同步'}
                           </Button>
-                          <Button
-                            onClick={handleD1Restore}
-                            disabled={isSyncing}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            {isSyncing ? '恢复中...' : '从D1恢复'}
-                          </Button>
+                          
                         </div>
                       </div>
                     )}

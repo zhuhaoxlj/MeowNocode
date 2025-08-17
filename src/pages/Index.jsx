@@ -10,6 +10,7 @@ import AIButton from '@/components/AIButton';
 import AIDialog from '@/components/AIDialog';
 import DailyReview from '@/components/DailyReview';
 import { useSettings } from '@/context/SettingsContext';
+import { addDeletedMemoTombstone } from '@/lib/utils';
 import { toast } from 'sonner';
 
  const Index = () => {
@@ -481,8 +482,10 @@ import { toast } from 'sonner';
         }
         break;
       case 'delete':
-        setMemos(memos.filter(memo => memo.id !== memoId));
-        setPinnedMemos(pinnedMemos.filter(memo => memo.id !== memoId));
+  setMemos(memos.filter(memo => memo.id !== memoId));
+  setPinnedMemos(pinnedMemos.filter(memo => memo.id !== memoId));
+  // 记录删除墓碑用于云端删除
+  addDeletedMemoTombstone(memoId);
         break;
       default:
         break;
@@ -957,6 +960,7 @@ import { toast } from 'sonner';
   const handleCanvasDeleteMemo = (id) => {
     setMemos(memos.filter(memo => memo.id !== id));
     setPinnedMemos(pinnedMemos.filter(memo => memo.id !== id));
+  addDeletedMemoTombstone(id);
   };
 
   const handleCanvasTogglePin = (id) => {

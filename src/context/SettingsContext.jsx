@@ -3,6 +3,7 @@ import { DatabaseService } from '@/lib/database';
 import { D1DatabaseService } from '@/lib/d1';
 import { D1ApiClient } from '@/lib/d1-api';
 import { useAuth } from './AuthContext';
+import { getDeletedMemoTombstones, removeDeletedMemoTombstones } from '@/lib/utils';
 
 const SettingsContext = createContext();
 
@@ -62,6 +63,7 @@ export function SettingsProvider({ children }) {
     if (syncingRef.current) { pendingRef.current = true; return; }
     syncingRef.current = true;
     try {
+      // 先进行上行同步（upsert settings & memos）
       if (cloudProvider === 'supabase') {
         if (!user) return; // need auth
         await DatabaseService.syncUserData(user.id);
@@ -86,6 +88,24 @@ export function SettingsProvider({ children }) {
             await D1DatabaseService.syncUserData();
           }
         })();
+      }
+
+      // 然后处理删除墓碑，推送云端删除
+      const tombstones = getDeletedMemoTombstones();
+      if (tombstones && tombstones.length) {
+        const ids = tombstones.map(t => t.id);
+        if (cloudProvider === 'supabase') {
+          if (user) {
+            for (const id of ids) {
+              try { await DatabaseService.deleteMemo(user.id, id); } catch {}
+            }
+          }
+        } else {
+          for (const id of ids) {
+            try { await D1ApiClient.deleteMemo(id); } catch { try { await D1DatabaseService.deleteMemo(id); } catch {} }
+          }
+        }
+        removeDeletedMemoTombstones(ids);
       }
       lastSyncAtRef.current = Date.now();
       localStorage.setItem('lastCloudSyncAt', String(lastSyncAtRef.current));
@@ -272,17 +292,16 @@ export function SettingsProvider({ children }) {
     };
   }, [cloudSyncEnabled, scheduleSync, doSync]);
 
-  // When enabling cloud sync or provider/user becomes ready, try restore if local is empty
+  // Try restore on startup (even if cloud sync disabled) when local is empty
   useEffect(() => {
     const maybeRestore = async () => {
-      if (!cloudSyncEnabled) return;
       try {
         const memos = JSON.parse(localStorage.getItem('memos') || '[]');
         const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
         const hasLocal = (Array.isArray(memos) && memos.length > 0) || (Array.isArray(pinned) && pinned.length > 0);
         if (hasLocal) {
           // 仍然进行一次快速同步，保证云端跟上当前设备
-          scheduleSync('startup');
+          if (cloudSyncEnabled) scheduleSync('startup');
           return;
         }
         if (cloudProvider === 'supabase') {
@@ -297,13 +316,150 @@ export function SettingsProvider({ children }) {
           }
         }
         // after restore, schedule a push to ensure any local-only fields are upserted formats
-        scheduleSync('post-restore');
+        if (cloudSyncEnabled) scheduleSync('post-restore');
       } catch (e) {
         // ignore in auto flow
       }
     };
     maybeRestore();
   }, [cloudSyncEnabled, cloudProvider, user, scheduleSync]);
+
+  // 统一“手动同步”按钮逻辑：云 -> 本地 合并 -> 云
+  const manualSync = async () => {
+    try {
+      const local = {
+        memos: JSON.parse(localStorage.getItem('memos') || '[]'),
+        pinnedMemos: JSON.parse(localStorage.getItem('pinnedMemos') || '[]'),
+        themeColor: localStorage.getItem('themeColor') || '#818CF8',
+        darkMode: localStorage.getItem('darkMode') || 'false',
+        hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
+        fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
+        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+        avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
+        canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
+      };
+
+      // 拉取云端
+      let cloudMemos = [];
+      let cloudSettings = null;
+      if (cloudProvider === 'supabase') {
+        if (!user) throw new Error('请先登录');
+        cloudMemos = await DatabaseService.getUserMemos(user.id);
+        cloudSettings = await DatabaseService.getUserSettings(user.id);
+      } else {
+        try {
+          const res = await D1ApiClient.restoreUserData();
+          if (res?.success) {
+            cloudMemos = (res.data?.memos || []).map(m => ({
+              memo_id: m.memo_id,
+              content: m.content,
+              tags: JSON.parse(m.tags || '[]'),
+              created_at: m.created_at,
+              updated_at: m.updated_at
+            }));
+            cloudSettings = res.data?.settings || null;
+          } else {
+            throw new Error(res?.message || 'D1恢复失败');
+          }
+        } catch (_) {
+          const memos = await D1DatabaseService.getAllMemos();
+          const settings = await D1DatabaseService.getUserSettings();
+          cloudMemos = (memos || []).map(m => ({
+            memo_id: m.memo_id,
+            content: m.content,
+            tags: JSON.parse(m.tags || '[]'),
+            created_at: m.created_at,
+            updated_at: m.updated_at
+          }));
+          cloudSettings = settings || null;
+        }
+      }
+
+      // 合并
+      const localMap = new Map((local.memos || []).map(m => [String(m.id), m]));
+      const cloudMap = new Map((cloudMemos || []).map(m => [String(m.memo_id), m]));
+      const tombstones = getDeletedMemoTombstones();
+      const deletedSet = new Set((tombstones || []).map(t => String(t.id)));
+      const merged = [];
+      const ids = new Set([...localMap.keys(), ...cloudMap.keys()]);
+      ids.forEach(id => {
+        if (deletedSet.has(id)) return;
+        const l = localMap.get(id);
+        const c = cloudMap.get(id);
+        if (l && c) {
+          const lTime = new Date(l.updatedAt || l.lastModified || l.createdAt || l.timestamp || 0).getTime();
+          const cTime = new Date(c.updated_at || c.created_at || 0).getTime();
+          if (lTime >= cTime) {
+            merged.push(l);
+          } else {
+            merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
+          }
+        } else if (l && !c) {
+          merged.push(l);
+        } else if (!l && c) {
+          merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
+        }
+      });
+
+      localStorage.setItem('memos', JSON.stringify(merged));
+
+      const mergedSettings = {
+        pinnedMemos: local.pinnedMemos,
+        themeColor: local.themeColor,
+        darkMode: local.darkMode,
+        hitokotoConfig: local.hitokotoConfig,
+        fontConfig: local.fontConfig,
+        backgroundConfig: local.backgroundConfig,
+        avatarConfig: local.avatarConfig,
+        canvasConfig: local.canvasConfig
+      };
+      if (cloudSettings) {
+        mergedSettings.pinnedMemos = local.pinnedMemos?.length ? local.pinnedMemos : (cloudSettings.pinned_memos ? JSON.parse(cloudSettings.pinned_memos) : []);
+        mergedSettings.themeColor = local.themeColor || cloudSettings.theme_color || '#818CF8';
+        mergedSettings.darkMode = local.darkMode ?? (cloudSettings.dark_mode != null ? String(!!cloudSettings.dark_mode) : 'false');
+        mergedSettings.hitokotoConfig = local.hitokotoConfig || (cloudSettings.hitokoto_config ? JSON.parse(cloudSettings.hitokoto_config) : { enabled: true, types: ["a","b","c","d","i","j","k"] });
+        mergedSettings.fontConfig = local.fontConfig || (cloudSettings.font_config ? JSON.parse(cloudSettings.font_config) : { selectedFont: 'default' });
+        mergedSettings.backgroundConfig = local.backgroundConfig || (cloudSettings.background_config ? JSON.parse(cloudSettings.background_config) : { imageUrl: '', brightness: 50, blur: 10 });
+        mergedSettings.avatarConfig = local.avatarConfig || (cloudSettings.avatar_config ? JSON.parse(cloudSettings.avatar_config) : { imageUrl: '' });
+        mergedSettings.canvasConfig = local.canvasConfig ?? (cloudSettings.canvas_config ? JSON.parse(cloudSettings.canvas_config) : null);
+      }
+      localStorage.setItem('pinnedMemos', JSON.stringify(mergedSettings.pinnedMemos || []));
+      localStorage.setItem('themeColor', mergedSettings.themeColor || '#818CF8');
+      localStorage.setItem('darkMode', mergedSettings.darkMode ?? 'false');
+      localStorage.setItem('hitokotoConfig', JSON.stringify(mergedSettings.hitokotoConfig || { enabled: true, types: ["a","b","c","d","i","j","k"] }));
+      localStorage.setItem('fontConfig', JSON.stringify(mergedSettings.fontConfig || { selectedFont: 'default' }));
+      localStorage.setItem('backgroundConfig', JSON.stringify(mergedSettings.backgroundConfig || { imageUrl: '', brightness: 50, blur: 10 }));
+      localStorage.setItem('avatarConfig', JSON.stringify(mergedSettings.avatarConfig || { imageUrl: '' }));
+      if (mergedSettings.canvasConfig != null) localStorage.setItem('canvasState', JSON.stringify(mergedSettings.canvasConfig));
+
+      // 删除墓碑
+      const toDeleteIds = Array.from(deletedSet);
+      if (cloudProvider === 'supabase') {
+        if (!user) throw new Error('请先登录');
+        for (const id of toDeleteIds) {
+          try { await DatabaseService.deleteMemo(user.id, id); } catch {}
+        }
+        for (const memo of merged) {
+          await DatabaseService.upsertMemo(user.id, memo);
+        }
+        await DatabaseService.upsertUserSettings(user.id, mergedSettings);
+      } else {
+        for (const id of toDeleteIds) {
+          try { await D1ApiClient.deleteMemo(id); } catch { try { await D1DatabaseService.deleteMemo(id); } catch {} }
+        }
+        for (const memo of merged) {
+          try { await D1ApiClient.upsertMemo(memo); } catch { await D1DatabaseService.upsertMemo(memo); }
+        }
+        try { await D1ApiClient.upsertUserSettings(mergedSettings); } catch { await D1DatabaseService.upsertUserSettings(mergedSettings); }
+      }
+      removeDeletedMemoTombstones(toDeleteIds);
+      localStorage.setItem('lastCloudSyncAt', String(Date.now()));
+      try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'manualSync' } })); } catch {}
+      return { success: true, message: '同步完成' };
+    } catch (e) {
+      return { success: false, message: e?.message || '同步失败' };
+    }
+  };
 
 
 
@@ -494,8 +650,9 @@ export function SettingsProvider({ children }) {
       aiConfig,
       updateAiConfig,
       keyboardShortcuts,
-      updateKeyboardShortcuts
-  , // Sync public helpers
+  updateKeyboardShortcuts,
+  manualSync,
+  // Sync public helpers
   _scheduleCloudSync: scheduleSync
     }}>
       {children}
