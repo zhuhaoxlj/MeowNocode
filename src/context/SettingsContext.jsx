@@ -63,7 +63,119 @@ export function SettingsProvider({ children }) {
     if (syncingRef.current) { pendingRef.current = true; return; }
     syncingRef.current = true;
     try {
-      // 先进行上行同步（upsert settings & memos）
+      // 先下行：拉取云端，基于 lastCloudSyncAt 处理“远端删除”，避免本地旧数据回传导致复活
+      const lastSyncAt = Number(localStorage.getItem('lastCloudSyncAt') || 0);
+      let cloudMemos = [];
+      if (cloudProvider === 'supabase') {
+        if (user) {
+          try { cloudMemos = await DatabaseService.getUserMemos(user.id); } catch {}
+        }
+      } else {
+        try {
+          const res = await D1ApiClient.restoreUserData();
+          if (res?.success) {
+            cloudMemos = (res.data?.memos || []).map(m => ({
+              memo_id: m.memo_id,
+              content: m.content,
+              tags: JSON.parse(m.tags || '[]'),
+              created_at: m.created_at,
+              updated_at: m.updated_at
+            }));
+          } else {
+            throw new Error('restore via API failed');
+          }
+        } catch {
+          try {
+            const ms = await D1DatabaseService.getAllMemos();
+            cloudMemos = (ms || []).map(m => ({
+              memo_id: m.memo_id,
+              content: m.content,
+              tags: JSON.parse(m.tags || '[]'),
+              created_at: m.created_at,
+              updated_at: m.updated_at
+            }));
+          } catch {}
+        }
+      }
+
+      // 与本地对比并应用远端删除/更新/新增
+      try {
+        const localMemos = JSON.parse(localStorage.getItem('memos') || '[]');
+        const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
+        const localMap = new Map((localMemos || []).map(m => [String(m.id), m]));
+        const cloudMap = new Map((cloudMemos || []).map(m => [String(m.memo_id), m]));
+
+        let changed = false;
+
+        // 1) 远端不存在且本地更新时间 <= lastSyncAt -> 视为远端已删除，移除本地
+        const keptLocal = [];
+        const removedIds = [];
+        for (const m of localMemos) {
+          const id = String(m.id);
+          if (cloudMap.has(id)) {
+            keptLocal.push(m);
+            continue;
+          }
+          const lTime = new Date(m.updatedAt || m.lastModified || m.timestamp || m.createdAt || 0).getTime();
+          if (lTime > lastSyncAt) {
+            // 本地较新（可能离线新增/编辑），保留，待上行
+            keptLocal.push(m);
+          } else {
+            // 远端删除，移除本地，避免“复活”
+            removedIds.push(id);
+            changed = true;
+          }
+        }
+
+        // 2) 远端较新覆盖本地；远端新增补齐到本地
+        const mergedById = new Map(keptLocal.map(m => [String(m.id), m]));
+        for (const [id, cm] of cloudMap.entries()) {
+          const lm = mergedById.get(id);
+          const cTime = new Date(cm.updated_at || cm.created_at || 0).getTime();
+          if (!lm) {
+            // 本地没有，直接拉取进来
+            mergedById.set(id, {
+              id,
+              content: cm.content,
+              tags: cm.tags || [],
+              createdAt: cm.created_at,
+              updatedAt: cm.updated_at,
+              timestamp: cm.created_at,
+              lastModified: cm.updated_at
+            });
+            changed = true;
+          } else {
+            const lTime = new Date(lm.updatedAt || lm.lastModified || lm.timestamp || lm.createdAt || 0).getTime();
+            if (cTime > lTime) {
+              // 云端较新，覆盖
+              mergedById.set(id, {
+                ...lm,
+                content: cm.content,
+                tags: cm.tags || [],
+                updatedAt: cm.updated_at,
+                lastModified: cm.updated_at
+              });
+              changed = true;
+            }
+          }
+        }
+
+        if (changed) {
+          const merged = Array.from(mergedById.values()).sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0));
+          localStorage.setItem('memos', JSON.stringify(merged));
+          if (removedIds.length && Array.isArray(pinned)) {
+            const removedSet = new Set(removedIds);
+            const nextPinned = pinned.filter(id => !removedSet.has(String(id)));
+            if (nextPinned.length !== pinned.length) {
+              localStorage.setItem('pinnedMemos', JSON.stringify(nextPinned));
+            }
+          }
+        }
+      } catch {
+        // 忽略下行合并失败，继续尽力上行
+      }
+
+      // 再进行上行同步（upsert settings & memos）
       if (cloudProvider === 'supabase') {
         if (!user) return; // need auth
         await DatabaseService.syncUserData(user.id);
@@ -107,7 +219,7 @@ export function SettingsProvider({ children }) {
         }
         removeDeletedMemoTombstones(ids);
       }
-      lastSyncAtRef.current = Date.now();
+  lastSyncAtRef.current = Date.now();
       localStorage.setItem('lastCloudSyncAt', String(lastSyncAtRef.current));
     } finally {
       syncingRef.current = false;
@@ -327,6 +439,7 @@ export function SettingsProvider({ children }) {
   // 统一“手动同步”按钮逻辑：云 -> 本地 合并 -> 云
   const manualSync = async () => {
     try {
+  const lastSyncAt = Number(localStorage.getItem('lastCloudSyncAt') || 0);
       const local = {
         memos: JSON.parse(localStorage.getItem('memos') || '[]'),
         pinnedMemos: JSON.parse(localStorage.getItem('pinnedMemos') || '[]'),
@@ -395,13 +508,27 @@ export function SettingsProvider({ children }) {
             merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
           }
         } else if (l && !c) {
-          merged.push(l);
+          // 云端无该 memo：若本地更新时间不晚于 lastSyncAt，视为“云端已删除”，不再复活
+          const lTime = new Date(l.updatedAt || l.lastModified || l.timestamp || l.createdAt || 0).getTime();
+          if (lTime > lastSyncAt) {
+            merged.push(l);
+          }
         } else if (!l && c) {
           merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
         }
       });
 
       localStorage.setItem('memos', JSON.stringify(merged));
+
+      // 清理被删除的置顶引用
+      try {
+        const mergedIds = new Set(merged.map(m => String(m.id)));
+        const pinned = Array.isArray(local.pinnedMemos) ? local.pinnedMemos : [];
+        const nextPinned = pinned.filter(pid => mergedIds.has(String(pid)));
+        if (nextPinned.length !== pinned.length) {
+          localStorage.setItem('pinnedMemos', JSON.stringify(nextPinned));
+        }
+      } catch {}
 
       const mergedSettings = {
         pinnedMemos: local.pinnedMemos,
