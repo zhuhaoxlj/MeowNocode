@@ -226,6 +226,9 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
         <DialogPrimitive.Content
           className="daily-review-content fixed left-1/2 top-1/2 z-50 grid w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 gap-4 p-2 sm:p-3 bg-transparent border-none shadow-none focus:outline-none focus-visible:outline-none"
         >
+  {/* A11y: Title & Description for DialogContent (visually hidden) */}
+  <DialogPrimitive.Title className="sr-only">每日回顾</DialogPrimitive.Title>
+  <DialogPrimitive.Description className="sr-only">使用上下键标记 PASS/FAIL，空格翻转查看双链，左右切换。</DialogPrimitive.Description>
         {failPool.length === 0 || !currentMemo ? (
           <div className="flex items-center justify-center p-10 text-center">
             <div className="space-y-2">
