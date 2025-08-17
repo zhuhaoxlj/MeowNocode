@@ -3,6 +3,7 @@ import DraggableMemo from './DraggableMemo';
 import CanvasEditor from './CanvasEditor';
 import CanvasToolbar from './CanvasToolbar';
 import ToolOptionsPanel from './ToolOptionsPanel';
+import ImageUpload from './ImageUpload';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -65,6 +66,8 @@ const CanvasMode = ({
   // Ctrl 增量选择支持
   const selectionAddModeRef = useRef(false);
   const selectionBaseIdsRef = useRef(new Set());
+  // 全局拖拽图片提示
+  const [showGlobalDropHint, setShowGlobalDropHint] = useState(false);
   // 选中对象拖动
   const [isMovingSelection, setIsMovingSelection] = useState(false);
   const isMovingSelectionRef = useRef(isMovingSelection);
@@ -132,6 +135,116 @@ const CanvasMode = ({
       }
     } catch {}
   }, []);
+
+  // 从页面外部拖入图片：显示提示并支持直接放置插入
+  useEffect(() => {
+    const acceptDrag = (e) => {
+      const dt = e.dataTransfer;
+      if (!dt) return false;
+      if (dt.types && dt.types.includes && dt.types.includes('Files')) return true;
+      if (dt.types && dt.types.includes && dt.types.includes('text/uri-list')) return true;
+      return false;
+    };
+
+    const onDragOver = (e) => {
+      if (!acceptDrag(e)) return;
+      e.preventDefault();
+      setShowGlobalDropHint(true);
+    };
+    const onDragEnter = (e) => {
+      if (!acceptDrag(e)) return;
+      e.preventDefault();
+      setShowGlobalDropHint(true);
+    };
+    const onDragLeave = (e) => {
+      // 当拖拽离开窗口时隐藏提示
+      setShowGlobalDropHint(false);
+    };
+    const onDrop = async (e) => {
+      if (!acceptDrag(e)) return;
+      e.preventDefault();
+      setShowGlobalDropHint(false);
+      const dt = e.dataTransfer;
+      if (!dt) return;
+      // 优先文件
+      if (dt.files && dt.files.length > 0) {
+        const file = Array.from(dt.files).find(f => f.type && f.type.startsWith('image/')) || dt.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const dataUrl = ev.target?.result;
+            if (typeof dataUrl === 'string') {
+              insertImageAtCenter(dataUrl);
+            }
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+      }
+      // 其次 URL
+      const text = dt.getData('text/uri-list') || dt.getData('text/plain');
+      if (text && /^(data:image\/|https?:\/\/).+/i.test(text)) {
+        insertImageAtCenter(text.trim());
+      }
+    };
+
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, []);
+
+  // 在视口中心插入图片形状
+  const insertImageAtCenter = (src) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const t = translateRef.current;
+    const s = scaleRef.current;
+    const cxWorld = (rect.width / 2 - t.x) / s;
+    const cyWorld = (rect.height / 2 - t.y) / s;
+
+    // 读取图片尺寸以适配大小
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 360;
+      const maxH = 260;
+      let w = img.naturalWidth || 240;
+      let h = img.naturalHeight || 180;
+      const scale = Math.min(1, maxW / w, maxH / h);
+      w = Math.max(40, Math.round(w * scale));
+      h = Math.max(40, Math.round(h * scale));
+      const id = `shape_${Date.now()}`;
+      const shape = { id, type: 'image', z: shapesRef.current.length, props: { x: cxWorld - w/2, y: cyWorld - h/2, w, h, src, opacity: 1 } };
+      setShapes(prev => [...prev, shape]);
+      shapesRef.current = [...shapesRef.current, shape];
+      setSelectedIds(new Set([id]));
+      setActiveShapeId(id);
+      // 插入后退出图片工具
+      setSelectedTool(null);
+    };
+    img.onerror = () => {
+      // 失败时用默认尺寸
+      const w = 240, h = 180;
+      const id = `shape_${Date.now()}`;
+      const shape = { id, type: 'image', z: shapesRef.current.length, props: { x: cxWorld - w/2, y: cyWorld - h/2, w, h, src, opacity: 1 } };
+      setShapes(prev => [...prev, shape]);
+      shapesRef.current = [...shapesRef.current, shape];
+      setSelectedIds(new Set([id]));
+      setActiveShapeId(id);
+      setSelectedTool(null);
+    };
+    img.src = src;
+  };
+
+  const handleImagePicked = (val) => {
+    if (val) insertImageAtCenter(val);
+  };
 
   // 本地持久化：保存 canvasState（shapes/eraseByShape/viewport），去除临时 eraser
   const saveTimerRef = useRef(null);
@@ -422,7 +535,7 @@ const CanvasMode = ({
         return;
       }
       const currentTool = selectedToolRef.current;
-      if (!currentTool || currentTool === 'text') return; // 文字工具由双击处理
+  if (!currentTool || currentTool === 'text' || currentTool === 'image') return; // 文字/图片工具由双击或面板处理
       
       e.preventDefault();
       e.stopPropagation();
@@ -885,7 +998,8 @@ const CanvasMode = ({
     }));
   };
 
-  const panelVisible = !!selectedTool || (!!singleSelectedShape && !selectedTool);
+  // 图片工具使用自定义上传面板，不显示通用工具设置
+  const panelVisible = (!!selectedTool && selectedTool !== 'image') || (!!singleSelectedShape && !selectedTool && singleSelectedShape.type !== 'image');
   const panelTool = selectedTool || (singleSelectedShape ? singleSelectedShape.type : null);
   const panelOptions = selectedTool ? toolOptions : buildOptionsFromShape(singleSelectedShape);
   const panelOnChange = selectedTool ? setToolOptions : applyShapeOptions;
@@ -1068,7 +1182,7 @@ const CanvasMode = ({
                   if (!movingSet.has(sh.id)) return;
                   const p = sh.props || {};
                   // 浅拷贝数值属性即可
-                  if (sh.type === 'rectangle' || sh.type === 'ellipse') {
+                  if (sh.type === 'rectangle' || sh.type === 'ellipse' || sh.type === 'image') {
                     moveOriginalPropsRef.current.set(sh.id, { x: p.x, y: p.y, w: p.w, h: p.h });
                   } else if (sh.type === 'line' || sh.type === 'arrow') {
                     moveOriginalPropsRef.current.set(sh.id, { x1: p.x1, y1: p.y1, x2: p.x2, y2: p.y2 });
@@ -1099,7 +1213,7 @@ const CanvasMode = ({
                   const newShapes = moveShapesSnapshotRef.current.map(sh => {
                     if (!movingIds.has(sh.id)) return sh;
                     const base = moveOriginalPropsRef.current.get(sh.id) || {};
-                    if (sh.type === 'rectangle' || sh.type === 'ellipse') {
+                    if (sh.type === 'rectangle' || sh.type === 'ellipse' || sh.type === 'image') {
                       return { ...sh, props: { ...sh.props, x: base.x + dx, y: base.y + dy } };
                     } else if (sh.type === 'line' || sh.type === 'arrow') {
                       return { ...sh, props: { ...sh.props, x1: base.x1 + dx, y1: base.y1 + dy, x2: base.x2 + dx, y2: base.y2 + dy } };
@@ -1158,6 +1272,19 @@ const CanvasMode = ({
                     {isSelected && (
                       <rect x={s.props.x} y={s.props.y} width={Math.abs(s.props.w)} height={Math.abs(s.props.h)} rx={s.props.cornerRadius || 0}
                         fill="none" stroke={highlightStroke} strokeWidth={(s.props.strokeWidth || 2) + 2} strokeDasharray={highlightDash} opacity={0.9} pointerEvents="none" />
+                    )}
+                  </g>
+                );
+              }
+              if (s.type === 'image') {
+                const node = (
+                  <image href={s.props.src} x={s.props.x} y={s.props.y} width={Math.abs(s.props.w)} height={Math.abs(s.props.h)} opacity={opacity} preserveAspectRatio="xMidYMid meet" />
+                );
+                return (
+                  <g key={s.id} data-shape-root="1" onPointerDown={onSelectPointerDown} style={{ cursor: (!selectedTool && selectedIds && selectedIds.has && selectedIds.has(s.id)) ? 'move' : undefined }}>
+                    {maybeWrap(node)}
+                    {isSelected && (
+                      <rect x={s.props.x} y={s.props.y} width={Math.abs(s.props.w)} height={Math.abs(s.props.h)} fill="none" stroke={highlightStroke} strokeWidth={2} strokeDasharray={highlightDash} opacity={0.9} pointerEvents="none" />
                     )}
                   </g>
                 );
@@ -1333,6 +1460,18 @@ const CanvasMode = ({
         {/* 底部编辑器（固定在屏幕坐标，不随画布缩放） */}
         <CanvasEditor onAddMemo={onAddMemo} canvasSize={canvasSize} scale={scale} translate={translate} />
 
+        {/* 图片上传面板（选择图片工具时） */}
+        {selectedTool === 'image' && (
+          <div className="canvas-ui absolute top-16 left-1/2 -translate-x-1/2 z-40 w-[440px] max-w-[92vw] rounded-lg border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 shadow-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-200">插入图片</div>
+              <button className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200" onClick={() => setSelectedTool(null)} aria-label="关闭">×</button>
+            </div>
+            <ImageUpload value={''} onChange={handleImagePicked} className="" />
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">也可以直接把图片从桌面拖到页面中</div>
+          </div>
+        )}
+
         {/* 右下角工具条（不缩放，固定屏幕 UI） */}
         <div className="absolute right-4 bottom-4 z-30 flex flex-col items-end gap-2">
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 shadow px-2 py-1 flex items-center gap-1">
@@ -1364,6 +1503,14 @@ const CanvasMode = ({
         >
           鼠标中键拖拽画布，Ctrl+滚轮缩放
         </div>
+        {/* 全局拖拽提示 */}
+        {showGlobalDropHint && (
+          <div className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center">
+            <div className="rounded-xl border border-blue-300/70 bg-blue-500/10 px-4 py-2 text-sm text-blue-700 dark:text-blue-200 shadow">
+              松开以上传图片到画布
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1449,6 +1596,13 @@ function isHitShape(shape, x, y, eraserR = 0) {
     }
     return false;
   }
+  if (shape.type === 'image') {
+    const x0 = p.x, y0 = p.y, w = Math.abs(p.w || 0), h = Math.abs(p.h || 0);
+    const x1 = x0 + w, y1 = y0 + h;
+    // 视作填充矩形命中
+    if (x >= x0 - eraserR && y >= y0 - eraserR && x <= x1 + eraserR && y <= y1 + eraserR) return true;
+    return false;
+  }
   if (shape.type === 'text') {
     // 使用一个简易包围盒
     const w = 200;
@@ -1484,6 +1638,9 @@ function getShapeBBox(shape) {
       if (pt.y > maxY) maxY = pt.y;
     }
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+  if (shape.type === 'image') {
+    return { x: p.x, y: p.y, w: Math.abs(p.w || 0), h: Math.abs(p.h || 0) };
   }
   if (shape.type === 'text') {
     // 与渲染时 foreignObject 的大小一致

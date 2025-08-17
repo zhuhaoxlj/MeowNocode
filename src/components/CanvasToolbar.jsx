@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Square, Circle, Type, ArrowRight, Minus, Pencil, Eraser } from 'lucide-react';
+import { Square, Circle, Type, ArrowRight, Minus, Pencil, Eraser, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TOOLS = [
@@ -12,6 +12,7 @@ const TOOLS = [
   { id: 'line', icon: Minus, hotkey: '5', label: '直线' },
   { id: 'pencil', icon: Pencil, hotkey: '6', label: '画笔' },
   { id: 'eraser', icon: Eraser, hotkey: '7', label: '橡皮擦' },
+  { id: 'image', icon: ImageIcon, hotkey: '8', label: '图片' },
 ];
 
 const CanvasToolbar = ({ selectedTool, onSelectTool }) => {
