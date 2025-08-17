@@ -116,8 +116,9 @@ export function SettingsProvider({ children }) {
             keptLocal.push(m);
             continue;
           }
-          const lTime = new Date(m.updatedAt || m.lastModified || m.timestamp || m.createdAt || 0).getTime();
-          if (lTime > lastSyncAt) {
+          const lRaw = m.updatedAt || m.lastModified || m.timestamp || m.createdAt || null;
+          const lTime = lRaw ? new Date(lRaw).getTime() : NaN;
+          if (!Number.isFinite(lTime) || lastSyncAt === 0 || lTime > lastSyncAt) {
             // 本地较新（可能离线新增/编辑），保留，待上行
             keptLocal.push(m);
           } else {
@@ -508,9 +509,11 @@ export function SettingsProvider({ children }) {
             merged.push({ id, content: c.content, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at, timestamp: c.created_at, lastModified: c.updated_at });
           }
         } else if (l && !c) {
-          // 云端无该 memo：若本地更新时间不晚于 lastSyncAt，视为“云端已删除”，不再复活
-          const lTime = new Date(l.updatedAt || l.lastModified || l.timestamp || l.createdAt || 0).getTime();
-          if (lTime > lastSyncAt) {
+          // 云端无该 memo：若无法判断本地时间（新建未带时间戳）或 lastSyncAt 为 0，则保留；
+          // 否则若本地更新时间不晚于 lastSyncAt，视为“云端已删除”，不再复活
+          const lRaw = l.updatedAt || l.lastModified || l.timestamp || l.createdAt || null;
+          const lTime = lRaw ? new Date(lRaw).getTime() : NaN;
+          if (!Number.isFinite(lTime) || lastSyncAt === 0 || lTime > lastSyncAt) {
             merged.push(l);
           }
         } else if (!l && c) {
