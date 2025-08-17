@@ -104,6 +104,10 @@ export function SettingsProvider({ children }) {
         const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
         const localMap = new Map((localMemos || []).map(m => [String(m.id), m]));
         const cloudMap = new Map((cloudMemos || []).map(m => [String(m.memo_id), m]));
+        
+        // 获取当前的删除墓碑，避免恢复已标记删除的memo
+        const tombstones = getDeletedMemoTombstones();
+        const deletedSet = new Set((tombstones || []).map(t => String(t.id)));
 
         let changed = false;
 
@@ -131,6 +135,11 @@ export function SettingsProvider({ children }) {
         // 2) 远端较新覆盖本地；远端新增补齐到本地
         const mergedById = new Map(keptLocal.map(m => [String(m.id), m]));
         for (const [id, cm] of cloudMap.entries()) {
+          // 跳过已标记删除的memo，避免恢复
+          if (deletedSet.has(id)) {
+            continue;
+          }
+          
           const lm = mergedById.get(id);
           const cTime = new Date(cm.updated_at || cm.created_at || 0).getTime();
           if (!lm) {
