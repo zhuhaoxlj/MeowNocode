@@ -11,27 +11,32 @@ const MemoEditor = ({
   placeholder = '现在的想法是……',
   onSubmit,
   disabled = false,
-  maxLength = 5000,
-  showCharCount = true,
+  maxLength,
+  showCharCount = false,
   autoFocus = false,
   className = '',
+  // backlinks related
+  memosList = [],
+  currentMemoId = null,
+  backlinks = [],
+  onAddBacklink,
+  onRemoveBacklink,
+  onPreviewMemo,
+  // optional focus callbacks
   onFocus,
   onBlur,
-  // 新增：双链相关
-  memosList = [],            // 所有可选 memo 列表（用于下拉选择）
-  currentMemoId = null,      // 当前编辑 memo 的 id
-  backlinks = [],            // 当前 memo 的反链 id 列表
-  onAddBacklink,             // (fromId|null, toId) => void
-  onPreviewMemo,             // (memoId) => void
-  onRemoveBacklink           // (fromId|null, toId) => void
 }) => {
+  // theme & settings
+  const { themeColor } = useTheme();
+  const { fontConfig, hitokotoConfig } = useSettings();
+  const currentFont = fontConfig?.selectedFont || 'default';
+
+  // local states / refs
+  const textareaRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [compositionValue, setCompositionValue] = useState('');
-  const [hitokoto, setHitokoto] = useState({ text: '加载中...', uuid: '' });
-  const textareaRef = useRef(null);
-  const { darkMode, themeColor, currentFont } = useTheme();
-  const { hitokotoConfig } = useSettings();
+  const [hitokoto, setHitokoto] = useState({ text: '' });
   const [showBacklinkPicker, setShowBacklinkPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState(null);
   const backlinkBtnRef = useRef(null);
@@ -315,24 +320,24 @@ const MemoEditor = ({
       {isFocused && backlinkMemos.length > 0 && (
         <div className="px-3 pb-1 -mt-2 flex flex-wrap gap-2">
           {backlinkMemos.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onPreviewMemo?.(m.id); }}
-              className="group max-w-full inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              <span className="truncate inline-block max-w-[180px]">{m.content?.replace(/\n/g, ' ').slice(0, 50) || '（无内容）'}</span>
-              <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
-              <span
-                role="button"
+            <span key={m.id} className="inline-flex items-center group">
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onPreviewMemo?.(m.id); }}
+                className="max-w-full inline-flex items-center gap-1 pl-2 pr-2 py-0.5 rounded-md bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <span className="truncate inline-block max-w-[180px]">{m.content?.replace(/\n/g, ' ').slice(0, 50) || '（无内容）'}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+              </button>
+              <button
+                type="button"
                 aria-label="移除反链"
                 className="ml-1 w-4 h-4 rounded hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onRemoveBacklink?.(currentMemoId || null, m.id); }}
-                title="移除"
               >
                 ×
-              </span>
-            </button>
+              </button>
+            </span>
           ))}
         </div>
       )}
@@ -424,7 +429,7 @@ const MemoEditor = ({
                           key={m.id}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handlePickBacklink(m.id); }}
-                          title={m.content}
+                             
                         >
                           <div className="truncate">{m.content?.replace(/\n/g, ' ') || '（无内容）'}</div>
                           <div className="text-[11px] text-gray-400 mt-0.5">{new Date(m.updatedAt || m.createdAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</div>
