@@ -9,6 +9,7 @@ import ShareDialog from '@/components/ShareDialog';
 import AIButton from '@/components/AIButton';
 import AIDialog from '@/components/AIDialog';
 import DailyReview from '@/components/DailyReview';
+import MemoPreviewDialog from '@/components/MemoPreviewDialog';
 import { useSettings } from '@/context/SettingsContext';
 import { addDeletedMemoTombstone } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ import { toast } from 'sonner';
   const [isCanvasMode, setIsCanvasMode] = useState(false);
   const [canvasToolPanelVisible, setCanvasToolPanelVisible] = useState(false);
   const [isDailyReviewOpen, setIsDailyReviewOpen] = useState(false);
+  const [previewMemoId, setPreviewMemoId] = useState(null);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -216,6 +218,7 @@ import { toast } from 'sonner';
           lastModified: memo.lastModified || memo.updatedAt || new Date().toISOString(),
           createdAt: memo.createdAt || memo.timestamp || new Date().toISOString(),
       updatedAt: memo.updatedAt || memo.lastModified || new Date().toISOString(),
+      backlinks: Array.isArray(memo.backlinks) ? memo.backlinks : [],
       // 画布位置：优先使用 memo 自身保存的，退回到 canvasState.memoPositions
       canvasX: (typeof memo.canvasX === 'number' ? memo.canvasX : (memoPositions[memo.id]?.x)),
       canvasY: (typeof memo.canvasY === 'number' ? memo.canvasY : (memoPositions[memo.id]?.y))
@@ -302,6 +305,7 @@ import { toast } from 'sonner';
             lastModified: memo.lastModified || memo.updatedAt || new Date().toISOString(),
             createdAt: memo.createdAt || memo.timestamp || new Date().toISOString(),
             updatedAt: memo.updatedAt || memo.lastModified || new Date().toISOString(),
+            backlinks: Array.isArray(memo.backlinks) ? memo.backlinks : [],
             canvasX: (typeof memo.canvasX === 'number' ? memo.canvasX : (memoPositions[memo.id]?.x)),
             canvasY: (typeof memo.canvasY === 'number' ? memo.canvasY : (memoPositions[memo.id]?.y))
           }));
@@ -542,8 +546,17 @@ import { toast } from 'sonner';
         }
         break;
       case 'delete':
-  setMemos(memos.filter(memo => memo.id !== memoId));
-  setPinnedMemos(pinnedMemos.filter(memo => memo.id !== memoId));
+  // 先移除被删 memo
+  const nextMemos = memos.filter(memo => memo.id !== memoId).map(m => ({
+    ...m,
+    backlinks: Array.isArray(m.backlinks) ? m.backlinks.filter(id => id !== memoId) : []
+  }));
+  const nextPinned = pinnedMemos.filter(memo => memo.id !== memoId).map(m => ({
+    ...m,
+    backlinks: Array.isArray(m.backlinks) ? m.backlinks.filter(id => id !== memoId) : []
+  }));
+  setMemos(nextMemos);
+  setPinnedMemos(nextPinned);
   // 记录删除墓碑用于云端删除
   addDeletedMemoTombstone(memoId);
         break;
@@ -588,6 +601,31 @@ import { toast } from 'sonner';
   const cancelEdit = () => {
     setEditingId(null);
     setEditContent('');
+  };
+
+  // 建立双链：在 from 和 to 的 backlinks 中互相加入，避免重复
+  const handleAddBacklink = (fromId, toId) => {
+    if (!fromId || !toId || fromId === toId) return;
+    const updateOne = (memo, targetId) => {
+      const curr = Array.isArray(memo.backlinks) ? memo.backlinks : [];
+      if (curr.includes(targetId)) return curr;
+      return [...curr, targetId];
+    };
+    setMemos(prev => prev.map(m => {
+      if (m.id === fromId) return { ...m, backlinks: updateOne(m, toId), updatedAt: new Date().toISOString() };
+      if (m.id === toId) return { ...m, backlinks: updateOne(m, fromId), updatedAt: new Date().toISOString() };
+      return m;
+    }));
+    setPinnedMemos(prev => prev.map(m => {
+      if (m.id === fromId) return { ...m, backlinks: updateOne(m, toId), updatedAt: new Date().toISOString() };
+      if (m.id === toId) return { ...m, backlinks: updateOne(m, fromId), updatedAt: new Date().toISOString() };
+      return m;
+    }));
+  };
+
+  // 预览某条 memo
+  const handlePreviewMemo = (memoId) => {
+    setPreviewMemoId(memoId);
   };
 
   // 处理菜单容器的鼠标事件
@@ -1156,6 +1194,10 @@ import { toast } from 'sonner';
             clearFilters={clearFilters} // 传递清除筛选函数
             onEditorFocus={handleEditorFocus}
             onEditorBlur={handleEditorBlur}
+            // backlinks props
+            allMemos={[...memos, ...pinnedMemos]}
+            onAddBacklink={handleAddBacklink}
+            onPreviewMemo={handlePreviewMemo}
           />
         )}
 
@@ -1212,6 +1254,13 @@ import { toast } from 'sonner';
         isOpen={isDailyReviewOpen}
         onClose={() => setIsDailyReviewOpen(false)}
         memos={[...memos, ...pinnedMemos]}
+      />
+
+      {/* 预览弹窗 */}
+      <MemoPreviewDialog
+        memo={([...memos, ...pinnedMemos].find(m => m.id === previewMemoId)) || null}
+        open={!!previewMemoId}
+        onClose={() => setPreviewMemoId(null)}
       />
 
       {/* AI按钮 - 在画布模式下不显示 */}
