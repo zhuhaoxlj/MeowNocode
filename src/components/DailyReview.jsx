@@ -251,7 +251,7 @@ const DailyReview = ({ isOpen, onClose, memos = [], onTagClick }) => {
                       {/* 翻转容器 */}
                       <div
                         className={`relative transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform`}
-                        style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)', height: '60vh', minHeight: '300px' }}
+                        style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)', height: '52vh', minHeight: '260px' }}
                       >
                         {/* 正面 */}
                         <div
