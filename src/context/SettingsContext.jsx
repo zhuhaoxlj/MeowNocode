@@ -102,8 +102,10 @@ export function SettingsProvider({ children }) {
 
       // 与本地对比并应用远端删除/更新/新增
       try {
-        const localMemos = JSON.parse(localStorage.getItem('memos') || '[]');
-        const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
+  const localMemos = JSON.parse(localStorage.getItem('memos') || '[]');
+  const pinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
+  const pinnedMap = new Map((Array.isArray(pinned) ? pinned : []).map(m => [String(m.id), m]));
+  const pinnedIds = new Set(Array.isArray(pinned) ? pinned.map(m => String(m.id)) : []);
         const localMap = new Map((localMemos || []).map(m => [String(m.id), m]));
         const cloudMap = new Map((cloudMemos || []).map(m => [String(m.memo_id), m]));
         
@@ -142,9 +144,28 @@ export function SettingsProvider({ children }) {
 
         // 2) 远端较新覆盖本地；远端新增补齐到本地
         const mergedById = new Map(keptLocal.map(m => [String(m.id), m]));
+        let pinnedChanged = false;
         for (const [id, cm] of cloudMap.entries()) {
           // 跳过已标记删除的memo，避免恢复
           if (deletedSet.has(id)) {
+            continue;
+          }
+          // 若该 memo 当前在本地处于置顶，则仅更新置顶数据，不回灌到 memos 列表，避免 pin 操作被下行合并“打回”
+          if (pinnedIds.has(id)) {
+            const pm = pinnedMap.get(id);
+            const pTime = new Date(pm?.updatedAt || pm?.lastModified || pm?.timestamp || pm?.createdAt || 0).getTime();
+            const cTime = new Date(cm.updated_at || cm.created_at || 0).getTime();
+            if (cTime > pTime) {
+              pinnedMap.set(id, {
+                ...pm,
+                content: cm.content,
+                tags: cm.tags || [],
+                backlinks: cm.backlinks || [],
+                updatedAt: cm.updated_at,
+                lastModified: cm.updated_at
+              });
+              pinnedChanged = true;
+            }
             continue;
           }
           
@@ -194,6 +215,11 @@ export function SettingsProvider({ children }) {
             }
           }
           // 通知页面刷新本地缓存
+          try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'sync.downmerge' } })); } catch {}
+        }
+        if (pinnedChanged) {
+          const nextPinnedArr = Array.from(pinnedMap.values());
+          localStorage.setItem('pinnedMemos', JSON.stringify(nextPinnedArr));
           try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'sync.downmerge' } })); } catch {}
         }
       } catch {

@@ -9,6 +9,7 @@ import ShareDialog from '@/components/ShareDialog';
 import AIButton from '@/components/AIButton';
 import AIDialog from '@/components/AIDialog';
 import DailyReview from '@/components/DailyReview';
+import TutorialDialog from '@/components/TutorialDialog';
 import MemoPreviewDialog from '@/components/MemoPreviewDialog';
 import { useSettings } from '@/context/SettingsContext';
 import { addDeletedMemoTombstone } from '@/lib/utils';
@@ -47,6 +48,7 @@ import { toast } from 'sonner';
   const [isDailyReviewOpen, setIsDailyReviewOpen] = useState(false);
   const [previewMemoId, setPreviewMemoId] = useState(null);
   const [pendingNewBacklinks, setPendingNewBacklinks] = useState([]);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -399,6 +401,18 @@ import { toast } from 'sonner';
     }
   }, [isInitialLoad]);
 
+  // 首次未查看则自动弹出教程（本地记录，不云同步）
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem('hasSeenTutorialV1');
+      if (!seen) {
+        // 延迟打开，等主界面渲染稳定
+        const t = setTimeout(() => setIsTutorialOpen(true), 300);
+        return () => clearTimeout(t);
+      }
+    } catch {}
+  }, []);
+
   // 添加新memo
   const addMemo = () => {
     if (newMemo.trim() === '') return;
@@ -525,13 +539,15 @@ import { toast } from 'sonner';
     e.stopPropagation();
 
     switch (action) {
-      case 'pin':
+  case 'pin':
         const memoToPin = memos.find(memo => memo.id === memoId);
         if (memoToPin && !pinnedMemos.some(p => p.id === memoId)) {
           const pinnedMemo = {
             ...memoToPin,
             isPinned: true,
-            pinnedAt: new Date().toISOString()
+    pinnedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastModified: new Date().toISOString()
           };
           setPinnedMemos([pinnedMemo, ...pinnedMemos]);
           setMemos(memos.filter(memo => memo.id !== memoId));
@@ -540,7 +556,7 @@ import { toast } from 'sonner';
       case 'unpin':
         const memoToUnpin = pinnedMemos.find(memo => memo.id === memoId);
         if (memoToUnpin) {
-          const unpinnedMemo = { ...memoToUnpin, isPinned: false };
+          const unpinnedMemo = { ...memoToUnpin, isPinned: false, updatedAt: new Date().toISOString(), lastModified: new Date().toISOString() };
           delete unpinnedMemo.pinnedAt;
           setMemos([unpinnedMemo, ...memos]);
           setPinnedMemos(pinnedMemos.filter(memo => memo.id !== memoId));
@@ -1272,7 +1288,8 @@ import { toast } from 'sonner';
       {/* 设置卡片 */}
       <SettingsCard
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+  onClose={() => setIsSettingsOpen(false)}
+  onOpenTutorial={() => setIsTutorialOpen(true)}
       />
 
       {/* 分享图对话框 */}
@@ -1294,6 +1311,12 @@ import { toast } from 'sonner';
         isOpen={isDailyReviewOpen}
         onClose={() => setIsDailyReviewOpen(false)}
         memos={[...memos, ...pinnedMemos]}
+      />
+
+      {/* 教程弹窗 */}
+      <TutorialDialog
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
       />
 
       {/* 预览弹窗 */}

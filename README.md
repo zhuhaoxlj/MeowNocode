@@ -130,21 +130,6 @@ npm run dev
 
 本项目支持两套后端存储：Cloudflare D1 与 Supabase。以下指引用于「全新初始化」与「更新既有数据库」。
 
-### 全新初始化（推荐）
-
-- Cloudflare D1
-   - 使用 `d1-schema.sql` 初始化：该脚本会创建如下表结构（不区分用户 ID）：
-      - memos(id, memo_id, content, tags, created_at, updated_at)
-      - user_settings(pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, avatar_config, canvas_config, created_at, updated_at)
-   - 如果你使用 Cloudflare Pages/Workers 的初始化接口 `/api/init`，该端点也会为「带 user_id 的多用户结构」创建表；两者均可使用，但不要混用两种 schema。
-
-- Supabase
-   - 使用 `supabase-schema.sql` 初始化：
-      - memos(memo_id, user_id, content, tags, created_at, updated_at, UNIQUE(memo_id, user_id))
-      - user_settings(user_id, pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, avatar_config, canvas_config, created_at, updated_at)
-      - 已启用 RLS 策略与更新时间触发器
-
-> 备注：应用的云端同步会把画布状态（shapes、eraseByShape、viewport、memoPositions）写入 `user_settings.canvas_config`，头像配置写入 `user_settings.avatar_config`。
 
 ### 更新既有数据库（迁移）
 

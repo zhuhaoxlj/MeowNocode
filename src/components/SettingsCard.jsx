@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard } from 'lucide-react';
+import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard, Star } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
@@ -13,7 +13,7 @@ import ImageUpload from './ImageUpload';
 import { toast } from 'sonner';
 import MemosImport from './MemosImport';
 
-const SettingsCard = ({ isOpen, onClose }) => {
+const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
   const { themeColor, updateThemeColor } = useTheme();
   const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, manualSync, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
@@ -27,8 +27,12 @@ const SettingsCard = ({ isOpen, onClose }) => {
     font: false,
     appearance: false,
     ai: false,
-    keyboard: false
+    keyboard: false,
+    about: false
   });
+  const [githubStars, setGithubStars] = useState(null);
+  const [githubLoading, setGithubLoading] = useState(false);
+  const [githubError, setGithubError] = useState(null);
   const [fontLoading, setFontLoading] = useState(false);
   const [recordingShortcut, setRecordingShortcut] = useState(null);
   const [tempShortcuts, setTempShortcuts] = useState(keyboardShortcuts);
@@ -417,6 +421,26 @@ const SettingsCard = ({ isOpen, onClose }) => {
       [section]: !prev[section]
     }));
   };
+
+  // 当展开关于时拉取 GitHub star 数
+  useEffect(() => {
+    const fetchStars = async () => {
+      if (!expandedSections.about) return;
+      setGithubLoading(true);
+      setGithubError(null);
+      try {
+        const res = await fetch('https://api.github.com/repos/y-shi23/MeowNocode', { headers: { 'Accept': 'application/vnd.github+json' } });
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+        setGithubStars(typeof data.stargazers_count === 'number' ? data.stargazers_count : null);
+      } catch (e) {
+        setGithubError('无法获取 Star 数');
+      } finally {
+        setGithubLoading(false);
+      }
+    };
+    fetchStars();
+  }, [expandedSections.about]);
 
   if (!isOpen) return null;
 
@@ -1096,6 +1120,77 @@ const SettingsCard = ({ isOpen, onClose }) => {
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         提示：点击快捷键框，然后按住修饰键（Ctrl、Alt、Shift）再按其他键进行录制。支持组合键如 Ctrl+Space、Alt+Enter 等。
                       </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 关于 - 折叠面板 */}
+              <div className="space-y-4">
+                <div
+                  className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => toggleSection('about')}
+                >
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <Github className="h-4 w-4 mr-2" />
+                    关于
+                  </Label>
+                  <button
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('about');
+                    }}
+                  >
+                    {expandedSections.about ?
+                      <ChevronUp className="h-4 w-4" /> :
+                      <ChevronDown className="h-4 w-4" />
+                    }
+                  </button>
+                </div>
+
+                {expandedSections.about && (
+                  <div className="animate-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-3 pl-4 pr-2 pb-4">
+                      {/* GitHub 链接按钮 */}
+                      <button
+                        onClick={() => window.open('https://github.com/y-shi23/MeowNocode', '_blank')}
+                        className="w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all bg-white dark:bg-gray-700 hover:shadow-md"
+                        style={{ borderColor: themeColor }}
+                        title="前往 GitHub 仓库"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
+                            <Github className="h-5 w-5" style={{ color: themeColor }} />
+                          </div>
+                          <div className="text-left">
+                            <div className="text-sm font-medium">y-shi23/MeowNocode</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">GitHub 仓库</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          {githubLoading ? (
+                            <span className="text-gray-500">加载中...</span>
+                          ) : githubError ? (
+                            <span className="text-gray-500">--</span>
+                          ) : (
+                            <span className="font-medium">{githubStars ?? '--'}</span>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* 教程按钮 */}
+                      <button
+                        onClick={() => {
+                          if (typeof onOpenTutorial === 'function') onOpenTutorial();
+                          if (typeof onClose === 'function') onClose();
+                        }}
+                        className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-left bg-gray-50 dark:bg-gray-800/50"
+                      >
+                        <div className="text-sm font-medium mb-0.5">用户教程</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">查看 Memo 编辑与画布模式的基本用法</div>
+                      </button>
                     </div>
                   </div>
                 )}
