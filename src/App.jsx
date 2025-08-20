@@ -6,6 +6,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { navItems } from "./nav-items";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { MusicProvider } from "@/context/MusicContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { PasswordAuthProvider, usePasswordAuth } from "@/context/PasswordAuthContext";
 import Login from "@/pages/Login";
@@ -51,10 +52,12 @@ const App = () => (
       <AuthProvider>
         <ThemeProvider>
           <SettingsProvider>
-            <TooltipProvider>
-              <Toaster />
-              <AppContent />
-            </TooltipProvider>
+            <MusicProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AppContent />
+              </TooltipProvider>
+            </MusicProvider>
           </SettingsProvider>
         </ThemeProvider>
       </AuthProvider>

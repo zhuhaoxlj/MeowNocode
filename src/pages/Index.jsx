@@ -1366,18 +1366,10 @@ import { toast } from 'sonner';
           <MusicModal
             isOpen={musicModal.isOpen}
             onClose={() => setMusicModal((m) => ({ ...m, isOpen: false }))}
-            title={musicModal.title}
-            musicUrl={musicModal.musicUrl}
-            author={musicModal.author}
-            cover={musicModal.cover}
             danmakuText={musicModal.danmakuText}
             enableDanmaku={musicModal.enableDanmaku}
           />
           <MiniMusicPlayer
-            title={musicModal.title}
-            author={musicModal.author}
-            cover={musicModal.cover}
-            musicUrl={musicModal.musicUrl}
             onOpenFull={() => setMusicModal((m) => ({ ...m, isOpen: true }))}
           />
         </>

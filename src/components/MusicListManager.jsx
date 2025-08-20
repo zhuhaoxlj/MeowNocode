@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,13 +11,36 @@ import { toast } from 'sonner';
 export default function MusicListManager({ musicConfig, updateMusicConfig }) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
+  const [createdUrls, setCreatedUrls] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
     musicUrl: '',
     coverUrl: '',
-    lyrics: ''
+    lyrics: '',
+    audioFile: null,
+    imageFile: null
   });
+
+  // 清理创建的对象URL
+  useEffect(() => {
+    return () => {
+      createdUrls.forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn('Failed to revoke URL:', url, error);
+        }
+      });
+    };
+  }, [createdUrls]);
+
+  // 添加URL到清理列表
+  const addUrlToCleanup = (url) => {
+    if (url && url.startsWith('blob:')) {
+      setCreatedUrls(prev => [...prev, url]);
+    }
+  };
 
   // 获取音乐列表（包括内置和自定义）
   const getMusicList = () => {
@@ -33,7 +56,8 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       }
     ];
 
-    const customSongs = (musicConfig.customSongs || []).map((song, index) => ({
+    // 重新生成本地文件的URL
+    const customSongs = regenerateLocalUrls(musicConfig.customSongs || []).map((song, index) => ({
       ...song,
       id: `custom-${index}`,
       isBuiltin: false
@@ -54,6 +78,8 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       musicUrl: formData.musicUrl.trim(),
       coverUrl: formData.coverUrl.trim(),
       lyrics: formData.lyrics.trim(),
+      audioFile: formData.audioFile || null,
+      imageFile: formData.imageFile || null,
       createdAt: new Date().toISOString()
     };
 
@@ -68,7 +94,9 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       artist: '',
       musicUrl: '',
       coverUrl: '',
-      lyrics: ''
+      lyrics: '',
+      audioFile: null,
+      imageFile: null
     });
     setIsAddDialogOpen(false);
     toast.success('歌曲添加成功');
@@ -81,7 +109,9 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       artist: song.artist,
       musicUrl: song.musicUrl,
       coverUrl: song.coverUrl,
-      lyrics: song.lyrics || ''
+      lyrics: song.lyrics || '',
+      audioFile: song.audioFile || null,
+      imageFile: song.imageFile || null
     });
   };
 
@@ -100,6 +130,8 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
           musicUrl: formData.musicUrl.trim(),
           coverUrl: formData.coverUrl.trim(),
           lyrics: formData.lyrics.trim(),
+          audioFile: formData.audioFile || song.audioFile || null,
+          imageFile: formData.imageFile || song.imageFile || null,
           updatedAt: new Date().toISOString()
         };
       }
@@ -117,7 +149,9 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       artist: '',
       musicUrl: '',
       coverUrl: '',
-      lyrics: ''
+      lyrics: '',
+      audioFile: null,
+      imageFile: null
     });
     toast.success('歌曲更新成功');
   };
@@ -149,12 +183,89 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       return;
     }
 
-    // 这里简化处理，实际应用中需要上传到服务器或使用本地URL
+    // 创建对象URL用于预览
     const url = URL.createObjectURL(file);
-    setFormData(prev => ({
-      ...prev,
-      [type === 'audio' ? 'musicUrl' : 'coverUrl']: url
-    }));
+    addUrlToCleanup(url);
+    
+    // 读取文件为Base64用于持久化存储
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Data = event.target.result;
+      const fileInfo = {
+        data: base64Data,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        isLocal: true,
+        lastModified: file.lastModified
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        [type === 'audio' ? 'musicUrl' : 'coverUrl']: url,
+        [type === 'audio' ? 'audioFile' : 'imageFile']: fileInfo
+      }));
+    };
+    
+    if (type === 'audio') {
+      reader.readAsDataURL(file);
+    } else {
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 从Base64数据重新创建Blob和URL
+  const createBlobFromBase64 = (base64Data, mimeType) => {
+    try {
+      // 移除Base64前缀（如果有）
+      const base64Content = base64Data.split(',')[1] || base64Data;
+      const byteCharacters = atob(base64Content);
+      const byteNumbers = new Array(byteCharacters.length);
+      
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      addUrlToCleanup(url);
+      return url;
+    } catch (error) {
+      console.error('Failed to create blob from base64:', error);
+      return null;
+    }
+  };
+
+  // 重新生成本地文件的URL
+  const regenerateLocalUrls = (songs) => {
+    return songs.map(song => {
+      const updatedSong = { ...song };
+      
+      // 处理音频文件
+      if (song.audioFile && song.audioFile.isLocal && song.audioFile.data) {
+        const audioUrl = createBlobFromBase64(song.audioFile.data, song.audioFile.type);
+        if (audioUrl) {
+          updatedSong.musicUrl = audioUrl;
+        } else {
+          console.warn('Failed to regenerate audio URL for:', song.title);
+          updatedSong.musicUrl = '';
+        }
+      }
+      
+      // 处理图片文件
+      if (song.imageFile && song.imageFile.isLocal && song.imageFile.data) {
+        const imageUrl = createBlobFromBase64(song.imageFile.data, song.imageFile.type);
+        if (imageUrl) {
+          updatedSong.coverUrl = imageUrl;
+        } else {
+          console.warn('Failed to regenerate image URL for:', song.title);
+          updatedSong.coverUrl = '/images/default-music-cover.svg';
+        }
+      }
+      
+      return updatedSong;
+    });
   };
 
   const resetForm = () => {
@@ -163,7 +274,9 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       artist: '',
       musicUrl: '',
       coverUrl: '',
-      lyrics: ''
+      lyrics: '',
+      audioFile: null,
+      imageFile: null
     });
     setEditingSong(null);
   };

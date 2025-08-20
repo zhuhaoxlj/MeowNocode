@@ -1,18 +1,16 @@
 import React from 'react';
+import { SkipBack, SkipForward, ListMusic } from 'lucide-react';
 import SvgIcon from './SvgIcon';
 import DanmakuComponent from './DanmakuComponent';
+import { useMusic } from '@/context/MusicContext';
+import MusicPlaylistDialog from './MusicPlaylistDialog';
 
 export default function MusicModal({
   isOpen,
   onClose,
-  title,
-  musicUrl,
-  author = '未知艺术家',
-  cover = '/images/default-music-cover.svg',
   danmakuText = '好听',
   enableDanmaku = true,
 }) {
-  const [isPlaying, setIsPlaying] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
   const [isLoop, setIsLoop] = React.useState(false);
@@ -21,8 +19,23 @@ export default function MusicModal({
   const [showLyrics, setShowLyrics] = React.useState(true);
   const [volume, setVolume] = React.useState(0.8);
   const [showVol, setShowVol] = React.useState(false);
+  const [showPlaylist, setShowPlaylist] = React.useState(false);
   const volRef = React.useRef(null);
   const lyricsContainerRef = React.useRef(null);
+
+  const { 
+    getCurrentSong, 
+    isPlaying, 
+    togglePlay, 
+    playNext, 
+    playPrevious, 
+    setPlayingState,
+    playSong,
+    playlist,
+    currentSongIndex
+  } = useMusic();
+
+  const currentSong = getCurrentSong();
 
   const timeToSeconds = (timeStr) => {
     const [minutes, seconds] = timeStr.split(':').map(parseFloat);
@@ -30,8 +43,8 @@ export default function MusicModal({
   };
 
   React.useEffect(() => {
-    if (isOpen && title) {
-      fetch(`/ci/${title}.json`)
+    if (isOpen && currentSong?.title) {
+      fetch(`/ci/${currentSong.title}.json`)
         .then((res) => {
           if (res.ok) return res.json();
           throw new Error('歌词文件不存在');
@@ -41,7 +54,7 @@ export default function MusicModal({
       // 请求当前播放状态，便于 UI 同步
       try { window.dispatchEvent(new CustomEvent('music:sync-request')); } catch {}
     }
-  }, [isOpen, title]);
+  }, [isOpen, currentSong?.title]);
 
   // 标记全屏音乐打开，供页面阻止侧栏唤出
   React.useEffect(() => {
@@ -80,39 +93,26 @@ export default function MusicModal({
   }, [currentLyricIndex]);
 
   React.useEffect(() => {
-      if (!isOpen) {
-        setIsPlaying(false);
-        setCurrentTime(0);
-        setCurrentLyricIndex(-1);
-        setShowLyrics(true);
-        // 不控制真实音频
-      }
+    if (!isOpen) {
+      setCurrentTime(0);
+      setCurrentLyricIndex(-1);
+      setShowLyrics(true);
+      // 不控制真实音频
+    }
   }, [isOpen]);
 
-  const togglePlay = () => {
-    const next = !isPlaying;
-    setIsPlaying(next);
-    try {
-      if (next) {
-        window.dispatchEvent(new CustomEvent('music:play'));
-      } else {
-        window.dispatchEvent(new CustomEvent('music:pause'));
-      }
-    } catch {}
-  };
-
   const toggleLoop = () => {
-  try { window.dispatchEvent(new CustomEvent('music:loop-toggle')); } catch {}
+    try { window.dispatchEvent(new CustomEvent('music:loop-toggle')); } catch {}
   };
 
   const toggleLyrics = () => setShowLyrics(!showLyrics);
 
   const handleTimeUpdate = () => {
-  // 源在迷你播放器，这里不直接读
+    // 源在迷你播放器，这里不直接读
   };
 
   const handleLoadedMetadata = () => {
-  // 源在迷你播放器，这里不直接读
+    // 源在迷你播放器，这里不直接读
   };
 
   const handleProgressClick = (e) => {
@@ -120,8 +120,8 @@ export default function MusicModal({
     const clickX = e.clientX - rect.left;
     const percentage = clickX / rect.width;
     const time = percentage * duration;
-  setCurrentTime(time);
-  try { window.dispatchEvent(new CustomEvent('music:seek', { detail: { time } })); } catch {}
+    setCurrentTime(time);
+    try { window.dispatchEvent(new CustomEvent('music:seek', { detail: { time } })); } catch {}
   };
 
   const formatTime = (time) => {
@@ -152,7 +152,7 @@ export default function MusicModal({
   React.useEffect(() => {
     const onPlaying = (e) => {
       const playing = !!(e && e.detail && e.detail.playing);
-      setIsPlaying(playing);
+      setPlayingState(playing);
     };
     const onTime = (e) => {
       const t = e?.detail?.currentTime;
@@ -180,7 +180,7 @@ export default function MusicModal({
     };
   }, []);
 
-  if (!isOpen) return null;
+  if (!isOpen || !currentSong) return null;
 
   return (
     <>
@@ -209,11 +209,18 @@ export default function MusicModal({
             <SvgIcon name="close" width={30} height={30} color="#333" />
           </button>
 
-      <div className="text-center bg-[#3F4142] w-[300px] h-[300px] rounded-[50%] relative flex items-center justify-center shadow-lg">
+          <div className="text-center bg-[#3F4142] w-[300px] h-[300px] rounded-[50%] relative flex items-center justify-center shadow-lg">
             <div className="w-[270px] h-[270px] bg-[#030303] rounded-full overflow-hidden shadow-lg flex items-center justify-center relative">
-        <img src={cover || '/images/default-music-cover.svg'} alt={title} width={200} height={200} className={`object-cover rounded-full border-3 border-[#fff] transition-transform duration-1000 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '10s' }} />
+              <img 
+                src={currentSong.coverUrl || '/images/default-music-cover.svg'} 
+                alt={currentSong.title} 
+                width={200} 
+                height={200} 
+                className={`object-cover rounded-full border-3 border-[#fff] transition-transform duration-1000 ${isPlaying ? 'animate-spin' : ''}`} 
+                style={{ animationDuration: '10s' }} 
+              />
 
-              {/* 恢复唱片中央覆盖式播放/暂停按钮（与下方控制区并存） */}
+              {/* 唱片中央播放/暂停按钮 */}
               {!isPlaying && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer bg-[rgba(0,0,0,0.5)] w-[50px] h-[50px] rounded-full" onClick={togglePlay}>
                   <SvgIcon name="play" width={50} height={50} color="#fff" />
@@ -228,13 +235,23 @@ export default function MusicModal({
             </div>
           </div>
 
-          <div className="text-xl text-white mb-2 mt-6">{title}</div>
-          <p className="text-gray-300 mb-6">{author}</p>
+          <div className="text-xl text-white mb-2 mt-6">{currentSong.title}</div>
+          <p className="text-gray-300 mb-6">{currentSong.artist}</p>
 
           <div className="flex gap-[20px] items-center mb-4">
             <span className="text-white text-sm">{formatTime(currentTime)} / {formatTime(duration)}</span>
             <div className="flex gap-[10px] items-center">
-              {/* 播放/暂停：放在循环按钮左边 */}
+              {/* 上一首按钮 */}
+              <button
+                onClick={playPrevious}
+                className="cursor-pointer text-white hover:text-gray-300 transition-colors"
+                title="上一首"
+                disabled={playlist.length <= 1}
+              >
+                <SkipBack className="w-5 h-5" />
+              </button>
+
+              {/* 播放/暂停按钮 */}
               <div onClick={togglePlay} className="cursor-pointer">
                 {isPlaying ? (
                   <SvgIcon name="pause" width={20} height={20} color="#fff" />
@@ -242,13 +259,46 @@ export default function MusicModal({
                   <SvgIcon name="play" width={20} height={20} color="#fff" />
                 )}
               </div>
+
+              {/* 下一首按钮 */}
+              <button
+                onClick={playNext}
+                className="cursor-pointer text-white hover:text-gray-300 transition-colors"
+                title="下一首"
+                disabled={playlist.length <= 1}
+              >
+                <SkipForward className="w-5 h-5" />
+              </button>
+
+              {/* 循环播放按钮 */}
               {!isLoop ? (
-                <div onClick={toggleLoop}><SvgIcon name="pepicons" width={20} height={20} color="#fff" className="cursor-pointer" /></div>
+                <div onClick={toggleLoop}>
+                  <SvgIcon name="pepicons" width={20} height={20} color="#fff" className="cursor-pointer" />
+                </div>
               ) : (
-                <div onClick={toggleLoop}><SvgIcon name="no-pepicons" width={20} height={20} color="#fff" className="cursor-pointer" /></div>
+                <div onClick={toggleLoop}>
+                  <SvgIcon name="no-pepicons" width={20} height={20} color="#fff" className="cursor-pointer" />
+                </div>
               )}
-              <span className={`cursor-pointer text-white text-sm ${showLyrics ? 'font-bold' : 'font-normal'}`} onClick={toggleLyrics}>词</span>
-              {/* 音量：hover时按钮变成音量条 */}
+
+              {/* 歌词按钮 */}
+              <span 
+                className={`cursor-pointer text-white text-sm ${showLyrics ? 'font-bold' : 'font-normal'}`} 
+                onClick={toggleLyrics}
+              >
+                词
+              </span>
+
+              {/* 播放列表按钮 */}
+              <button
+                onClick={() => setShowPlaylist(true)}
+                className="cursor-pointer text-white hover:text-gray-300 transition-colors"
+                title="播放列表"
+              >
+                <ListMusic className="w-5 h-5" />
+              </button>
+
+              {/* 音量控制 */}
               <div
                 className="relative flex items-center"
                 ref={volRef}
@@ -333,7 +383,16 @@ export default function MusicModal({
           {/* 无音频元素：音频源在迷你播放器 */}
         </div>
 
-  {/* 歌词已移动到卡片内 */}
+        {/* 播放列表弹窗 */}
+        <MusicPlaylistDialog
+          isOpen={showPlaylist}
+          onClose={() => setShowPlaylist(false)}
+          playlist={playlist}
+          currentSongIndex={currentSongIndex}
+          isPlaying={isPlaying}
+          onSongSelect={playSong}
+          onTogglePlay={togglePlay}
+        />
 
         <style>{`
           @keyframes modalSlideIn { from { opacity: 0; transform: scale(0.9) translateY(-20px);} to { opacity: 1; transform: scale(1) translateY(0);} }
