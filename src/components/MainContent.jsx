@@ -48,6 +48,8 @@ const MainContent = ({
   clearFilters, // 新增清除筛选函数
   onEditorFocus,
   onEditorBlur,
+  onOpenMusic,
+  musicEnabled = true,
   // backlinks
   allMemos,
   onAddBacklink,
@@ -72,7 +74,7 @@ const MainContent = ({
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         searchInputRef={searchInputRef}
-        onMobileMenuOpen={onMobileMenuOpen}
+  onMobileMenuOpen={onMobileMenuOpen}
       />
 
       {/* 编辑区域 */}

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard, Star } from 'lucide-react';
+import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard, Star, Music2 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
@@ -15,7 +15,7 @@ import MemosImport from './MemosImport';
 
 const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, manualSync, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, manualSync, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync, musicConfig, updateMusicConfig } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -26,7 +26,8 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
     hitokoto: false,
     font: false,
     appearance: false,
-    ai: false,
+  ai: false,
+  music: false,
     keyboard: false,
     about: false
   });
@@ -720,6 +721,68 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                           }
                         </p>
                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 音乐功能 - 折叠面板（放在外观设置下面） */}
+              <div className="space-y-4">
+                <div
+                  className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => toggleSection('music')}
+                >
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <Music2 className="h-4 w-4 mr-2" />
+                    音乐功能
+                  </Label>
+                  <button
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSection('music');
+                    }}
+                  >
+                    {expandedSections.music ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+
+                {expandedSections.music && (
+                  <div className="animate-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-4 pl-4 pr-2 pb-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">启用音乐功能</Label>
+                        <button
+                          onClick={() => {
+                            const next = !musicConfig.enabled;
+                            updateMusicConfig({ enabled: next });
+                            if (!next) {
+                              try {
+                                window.dispatchEvent(new CustomEvent('music:globalDisable'));
+                              } catch {}
+                            }
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            musicConfig.enabled
+                              ? 'bg-blue-600'
+                              : 'bg-gray-200 dark:bg-gray-700'
+                          }`}
+                          style={musicConfig.enabled ? { backgroundColor: themeColor } : {}}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              musicConfig.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        关闭后：隐藏所有音乐按钮与小组件，且停止播放。
+                      </p>
                     </div>
                   </div>
                 )}

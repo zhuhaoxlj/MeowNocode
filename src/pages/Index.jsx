@@ -11,6 +11,8 @@ import AIDialog from '@/components/AIDialog';
 import DailyReview from '@/components/DailyReview';
 import TutorialDialog from '@/components/TutorialDialog';
 import MemoPreviewDialog from '@/components/MemoPreviewDialog';
+import MusicModal from '@/components/MusicModal';
+import MiniMusicPlayer from '@/components/MiniMusicPlayer';
 import { useSettings } from '@/context/SettingsContext';
 import { addDeletedMemoTombstone } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -49,6 +51,15 @@ import { toast } from 'sonner';
   const [previewMemoId, setPreviewMemoId] = useState(null);
   const [pendingNewBacklinks, setPendingNewBacklinks] = useState([]);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [musicModal, setMusicModal] = useState({
+    isOpen: false,
+    title: '鲜花',
+    musicUrl: 'https://pic.oneloved.top/2025-08/回春丹 - 鲜花_1755699293512.flac',
+    cover: '/images/xh.jpg',
+    author: '回春丹',
+    danmakuText: '好听',
+    enableDanmaku: true,
+  });
 
   // Refs
   const hoverTimerRef = useRef(null);
@@ -57,7 +68,17 @@ import { toast } from 'sonner';
   const memosContainerRef = useRef(null);
 
   // Context
-  const { backgroundConfig, aiConfig, keyboardShortcuts } = useSettings();
+  const { backgroundConfig, aiConfig, keyboardShortcuts, musicConfig } = useSettings();
+
+  // 临时：如果没有音乐 URL，可使用浏览器可播放的示例音频占位（需用户在设置里替换真实地址）
+  useEffect(() => {
+    if (!musicModal.musicUrl) {
+      setMusicModal((m) => ({
+        ...m,
+        musicUrl: 'https://file-examples.com/storage/fe9b7a6c9f3a8b2e9b0b8d3/2017/11/file_example_MP3_700KB.mp3',
+      }));
+    }
+  }, []);
 
   // 控制移动端侧栏打开时的页面滚动
   useEffect(() => {
@@ -77,7 +98,11 @@ import { toast } from 'sonner';
     let hoverTimer;
     
     const handleMouseMove = (e) => {
-      if (canvasToolPanelVisible || isAIDialogOpen || isDailyReviewOpen) {
+      // 若鼠标位于禁止触发区域（如迷你播放器），不处理侧栏唤起
+      if (e.target && (e.target.closest && e.target.closest('.sidebar-hover-block'))) {
+        return;
+      }
+  if (canvasToolPanelVisible || isAIDialogOpen || isDailyReviewOpen || document.body.getAttribute('data-music-modal-open') === 'true') {
         // 工具面板可见时禁用左侧 hover 触发逻辑
         return;
       }
@@ -121,7 +146,11 @@ import { toast } from 'sonner';
     let hoverTimer;
     
     const handleMouseMove = (e) => {
-      if (isAIDialogOpen || isDailyReviewOpen) {
+      // 若鼠标位于禁止触发区域（如迷你播放器），不处理侧栏唤起
+      if (e.target && (e.target.closest && e.target.closest('.sidebar-hover-block'))) {
+        return;
+      }
+  if (isAIDialogOpen || isDailyReviewOpen || document.body.getAttribute('data-music-modal-open') === 'true') {
         return;
       }
       if (!isRightSidebarPinned) {
@@ -1254,6 +1283,10 @@ import { toast } from 'sonner';
             onPreviewMemo={handlePreviewMemo}
             pendingNewBacklinks={pendingNewBacklinks}
             onRemoveBacklink={handleRemoveBacklink}
+              onOpenMusic={() => {
+                if (musicConfig?.enabled) setMusicModal((m) => ({ ...m, isOpen: true }));
+              }}
+              musicEnabled={!!musicConfig?.enabled}
           />
         )}
 
@@ -1283,6 +1316,7 @@ import { toast } from 'sonner';
         setActiveTag={setActiveTag}
         onSettingsOpen={() => setIsSettingsOpen(true)}
         onDateClick={handleDateClick}
+  onOpenMusic={() => { if (musicConfig?.enabled) setMusicModal((m) => ({ ...m, isOpen: true })); }}
       />
 
       {/* 设置卡片 */}
@@ -1325,6 +1359,29 @@ import { toast } from 'sonner';
         open={!!previewMemoId}
         onClose={() => setPreviewMemoId(null)}
       />
+
+      {/* 音乐功能（受全局开关控制） */}
+      {musicConfig?.enabled && (
+        <>
+          <MusicModal
+            isOpen={musicModal.isOpen}
+            onClose={() => setMusicModal((m) => ({ ...m, isOpen: false }))}
+            title={musicModal.title}
+            musicUrl={musicModal.musicUrl}
+            author={musicModal.author}
+            cover={musicModal.cover}
+            danmakuText={musicModal.danmakuText}
+            enableDanmaku={musicModal.enableDanmaku}
+          />
+          <MiniMusicPlayer
+            title={musicModal.title}
+            author={musicModal.author}
+            cover={musicModal.cover}
+            musicUrl={musicModal.musicUrl}
+            onOpenFull={() => setMusicModal((m) => ({ ...m, isOpen: true }))}
+          />
+        </>
+      )}
 
       {/* AI按钮 - 在画布模式下不显示 */}
       {!isCanvasMode && (

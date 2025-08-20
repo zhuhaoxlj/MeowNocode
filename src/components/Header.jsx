@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search } from 'lucide-react';
+import { Menu, Search, Headphones } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -7,7 +7,9 @@ const Header = ({
   searchQuery, 
   setSearchQuery, 
   searchInputRef, 
-  onMobileMenuOpen 
+  onMobileMenuOpen,
+  onOpenMusic,
+  musicEnabled = true,
 }) => {
   const { themeColor } = useTheme();
 
@@ -38,25 +40,27 @@ const Header = ({
           Meow
         </span>
       </div>
-      
-      {/* 搜索框 */}
-      <div className="relative w-1/3">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-          <Search className="h-4 w-4 text-gray-400" />
-        </div>
-        <Input
-          ref={searchInputRef}
-          type="text"
-          placeholder="搜索想法..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-20"
-        />
-        {/* Ctrl+K快捷键提示 */}
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-          <kbd className="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">Ctrl</kbd>
-          <span className="mx-1 text-xs">+</span>
-          <kbd className="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">K</kbd>
+
+      {/* 右侧：搜索框（恢复到右侧位置） */}
+      <div className="flex items-center gap-2">
+        <div className="relative w-48 sm:w-64 md:w-80">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          <Input
+            ref={searchInputRef}
+            type="text"
+            placeholder="搜索想法..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-20"
+          />
+          {/* Ctrl+K快捷键提示 */}
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <kbd className="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">Ctrl</kbd>
+            <span className="mx-1 text-xs">+</span>
+            <kbd className="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">K</kbd>
+          </div>
         </div>
       </div>
     </div>

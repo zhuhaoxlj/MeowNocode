@@ -37,6 +37,11 @@ export function SettingsProvider({ children }) {
     enabled: false
   });
 
+  // 音乐功能配置（目前仅有总开关，后续可扩展）
+  const [musicConfig, setMusicConfig] = useState({
+    enabled: true
+  });
+
   const [keyboardShortcuts, setKeyboardShortcuts] = useState({
     toggleSidebar: 'Tab',
     openAIDialog: 'Ctrl+Space',
@@ -369,6 +374,18 @@ export function SettingsProvider({ children }) {
     }
   }, []);
 
+  // 从localStorage加载音乐配置
+  useEffect(() => {
+    const savedMusicConfig = localStorage.getItem('musicConfig');
+    if (savedMusicConfig) {
+      try {
+        setMusicConfig(JSON.parse(savedMusicConfig));
+      } catch (error) {
+        console.warn('Failed to parse music config:', error);
+      }
+    }
+  }, []);
+
   // 从localStorage加载快捷键配置
   useEffect(() => {
     const savedKeyboardShortcuts = localStorage.getItem('keyboardShortcuts');
@@ -428,6 +445,12 @@ export function SettingsProvider({ children }) {
     // 保存快捷键配置到localStorage
     localStorage.setItem('keyboardShortcuts', JSON.stringify(keyboardShortcuts));
   }, [keyboardShortcuts]);
+
+  // 保存音乐配置
+  useEffect(() => {
+    localStorage.setItem('musicConfig', JSON.stringify(musicConfig));
+    dispatchDataChanged({ part: 'music' });
+  }, [musicConfig]);
 
   // Subscribe to app-level data change events and page lifecycle to auto sync
   useEffect(() => {
@@ -686,6 +709,10 @@ export function SettingsProvider({ children }) {
     setKeyboardShortcuts(prev => ({ ...prev, ...newConfig }));
   };
 
+  const updateMusicConfig = (newConfig) => {
+    setMusicConfig(prev => ({ ...prev, ...newConfig }));
+  };
+
 
   // Supabase同步功能
   const syncToSupabase = async () => {
@@ -837,6 +864,8 @@ export function SettingsProvider({ children }) {
       keyboardShortcuts,
   updateKeyboardShortcuts,
   manualSync,
+  musicConfig,
+  updateMusicConfig,
   // Sync public helpers
   _scheduleCloudSync: scheduleSync
     }}>
