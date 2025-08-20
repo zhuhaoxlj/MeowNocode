@@ -37,9 +37,10 @@ export function SettingsProvider({ children }) {
     enabled: false
   });
 
-  // 音乐功能配置（目前仅有总开关，后续可扩展）
+  // 音乐功能配置
   const [musicConfig, setMusicConfig] = useState({
-    enabled: true
+    enabled: true,
+    customSongs: []
   });
 
   const [keyboardShortcuts, setKeyboardShortcuts] = useState({
@@ -249,7 +250,8 @@ export function SettingsProvider({ children }) {
               fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
               backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
               avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
-              canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
+              canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
+              musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
             };
             await D1ApiClient.syncUserData(localData);
           } catch (_) {
@@ -526,7 +528,8 @@ export function SettingsProvider({ children }) {
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
         backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
         avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
-        canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
+        canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
+        musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
       };
 
       // 拉取云端
@@ -619,7 +622,8 @@ export function SettingsProvider({ children }) {
         fontConfig: local.fontConfig,
         backgroundConfig: local.backgroundConfig,
         avatarConfig: local.avatarConfig,
-        canvasConfig: local.canvasConfig
+        canvasConfig: local.canvasConfig,
+        musicConfig: local.musicConfig
       };
       if (cloudSettings) {
         mergedSettings.pinnedMemos = local.pinnedMemos?.length ? local.pinnedMemos : (cloudSettings.pinned_memos ? JSON.parse(cloudSettings.pinned_memos) : []);
@@ -630,6 +634,7 @@ export function SettingsProvider({ children }) {
         mergedSettings.backgroundConfig = local.backgroundConfig || (cloudSettings.background_config ? JSON.parse(cloudSettings.background_config) : { imageUrl: '', brightness: 50, blur: 10 });
         mergedSettings.avatarConfig = local.avatarConfig || (cloudSettings.avatar_config ? JSON.parse(cloudSettings.avatar_config) : { imageUrl: '' });
         mergedSettings.canvasConfig = local.canvasConfig ?? (cloudSettings.canvas_config ? JSON.parse(cloudSettings.canvas_config) : null);
+        mergedSettings.musicConfig = local.musicConfig || (cloudSettings.music_config ? JSON.parse(cloudSettings.music_config) : { enabled: true, customSongs: [] });
       }
       localStorage.setItem('pinnedMemos', JSON.stringify(mergedSettings.pinnedMemos || []));
       localStorage.setItem('themeColor', mergedSettings.themeColor || '#818CF8');
@@ -639,6 +644,7 @@ export function SettingsProvider({ children }) {
       localStorage.setItem('backgroundConfig', JSON.stringify(mergedSettings.backgroundConfig || { imageUrl: '', brightness: 50, blur: 10 }));
       localStorage.setItem('avatarConfig', JSON.stringify(mergedSettings.avatarConfig || { imageUrl: '' }));
       if (mergedSettings.canvasConfig != null) localStorage.setItem('canvasState', JSON.stringify(mergedSettings.canvasConfig));
+      localStorage.setItem('musicConfig', JSON.stringify(mergedSettings.musicConfig || { enabled: true, customSongs: [] }));
 
       // 删除墓碑
       const toDeleteIds = Array.from(deletedSet);

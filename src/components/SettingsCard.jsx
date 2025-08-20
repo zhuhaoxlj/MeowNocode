@@ -12,6 +12,7 @@ import { D1ApiClient } from '@/lib/d1-api';
 import ImageUpload from './ImageUpload';
 import { toast } from 'sonner';
 import MemosImport from './MemosImport';
+import MusicListManager from './MusicListManager';
 
 const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
   const { themeColor, updateThemeColor } = useTheme();
@@ -783,6 +784,16 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         关闭后：隐藏所有音乐按钮与小组件，且停止播放。
                       </p>
+                      
+                      {/* 音乐列表管理器 */}
+                      {musicConfig.enabled && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <MusicListManager 
+                            musicConfig={musicConfig} 
+                            updateMusicConfig={updateMusicConfig} 
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
