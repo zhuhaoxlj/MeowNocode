@@ -383,6 +383,15 @@ export function SettingsProvider({ children }) {
       if (savedS3Config) {
         const parsedConfig = JSON.parse(savedS3Config);
         setS3Config(parsedConfig);
+        // 若配置已启用，则初始化 S3 客户端
+        try {
+          if (parsedConfig && parsedConfig.enabled) {
+            const svc = require('@/lib/s3Storage').default;
+            svc.init(parsedConfig);
+          }
+        } catch (e) {
+          console.warn('Init S3 on load failed:', e);
+        }
       }
     } catch (error) {
       console.warn('Failed to parse S3 config:', error);
@@ -483,6 +492,16 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('s3Config', JSON.stringify(s3Config));
     dispatchDataChanged({ part: 's3' });
+    // 若开启则保证运行期已初始化
+    try {
+      const svc = require('@/lib/s3Storage').default;
+      if (s3Config && s3Config.enabled) {
+        svc.init(s3Config);
+      }
+    } catch (e) {
+      // 仅日志，不打断设置保存
+      console.warn('Init S3 on change failed:', e);
+    }
   }, [s3Config]);
 
   // Subscribe to app-level data change events and page lifecycle to auto sync

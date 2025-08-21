@@ -30,7 +30,9 @@ class S3StorageService {
         secretAccessKey: this.config.secretAccessKey
       },
       // 对于Cloudflare R2，需要强制使用路径寻址
-      forcePathStyle: this.config.provider === 'r2'
+      forcePathStyle: this.config.provider === 'r2',
+      // 关闭请求端校验计算，避免浏览器端触发 streaming trailer 导致 getReader 报错
+      requestChecksumCalculation: 'never'
     });
     
     this.initialized = true;
@@ -125,8 +127,14 @@ class S3StorageService {
     // 验证配置
     this.validateConfig();
 
-    const fileName = options.fileName || this.generateFileName(file.name, options.type || 'file');
+    const fileName = options.fileName || this.generateFileName(file.name || 'blob', options.type || 'file');
     const contentType = file.type || 'application/octet-stream';
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+
+    // 对于R2，优先使用单次PUT以避免浏览器端多段上传需要读取每段ETag（若CORS未暴露ETag会失败）
+    const SINGLE_PUT_MAX_BYTES = options.singlePutMaxBytes
+      || this.config.singlePutMaxBytes
+      || 512 * 1024 * 1024; // 512MB 默认阈值
 
     try {
       console.log('准备上传文件到S3:', {
@@ -141,7 +149,36 @@ class S3StorageService {
       // 使用AWS SDK直接上传
       console.log('使用AWS SDK上传...');
 
-      // 对于大文件，使用分片上传
+      // R2 且文件小于阈值 -> 强制单次 PutObject，规避多段上传对 ETag 的 CORS 依赖
+      const useSinglePut = this.config.provider === 'r2' && typeof file.size === 'number' && file.size <= SINGLE_PUT_MAX_BYTES;
+
+      if (useSinglePut) {
+        if (onProgress) onProgress('uploading', 5);
+        const putCmd = new PutObjectCommand({
+          Bucket: this.config.bucket,
+          Key: fileName,
+          Body: file,
+          ContentType: contentType
+        });
+        const result = await this.client.send(putCmd);
+        console.log('PutObject 上传成功:', result);
+
+        if (onProgress) onProgress('complete', 100);
+
+        return {
+          success: true,
+          fileName: fileName,
+          originalName: file.name,
+          size: file.size,
+          type: file.type,
+          url: this.getPublicUrl(fileName),
+          storageType: 's3',
+          uploadedAt: new Date().toISOString(),
+          uploadMethod: 'put-object'
+        };
+      }
+
+      // 超过阈值时使用分片上传
       const upload = new Upload({
         client: this.client,
         params: {
@@ -153,11 +190,13 @@ class S3StorageService {
       });
 
       upload.on('httpUploadProgress', (progress) => {
-        console.log('上传进度:', Math.round((progress.loaded / progress.total) * 100) + '%');
+        const percent = progress.total ? Math.round((progress.loaded / progress.total) * 100) : 0;
+        console.log('上传进度:', percent + '%');
+        if (onProgress) onProgress('uploading', percent);
       });
 
       const result = await upload.done();
-      console.log('AWS SDK上传成功:', result);
+      console.log('Multipart 上传成功:', result);
 
       return {
         success: true,
@@ -168,7 +207,7 @@ class S3StorageService {
         url: this.getPublicUrl(fileName),
         storageType: 's3',
         uploadedAt: new Date().toISOString(),
-        uploadMethod: 'aws-sdk'
+        uploadMethod: 'multipart'
       };
 
     } catch (error) {
@@ -184,8 +223,9 @@ class S3StorageService {
         errorMessage = '访问被拒绝：请检查存储桶权限和API密钥';
       } else if (error.name === 'NetworkError') {
         errorMessage = '网络错误：请检查端点URL和网络连接';
-      } else if (error.message.includes('CORS')) {
-        errorMessage = 'CORS错误：请检查Cloudflare R2的CORS配置';
+      } else if (error.message?.toLowerCase().includes('etag') || error.message?.toLowerCase().includes('cors')) {
+        // 针对 R2 多段上传常见问题：浏览器无法读取每段响应中的 ETag（未在 CORS 中暴露）
+        errorMessage = 'CORS错误：R2需在桶的CORS中将 ETag 加入 Access-Control-Expose-Headers，或改用单次上传/提高singlePut阈值';
       }
       
       throw new Error(`S3上传失败: ${errorMessage}`);

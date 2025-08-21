@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Cloud, Upload, TestTube, Save, Trash2 } from 'lucide-react';
+import { Cloud, Upload, TestTube, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import s3StorageService from '@/lib/s3Storage';
 
@@ -63,21 +63,9 @@ export default function S3ConfigPanel({ s3Config, updateS3Config }) {
     toast.success('S3配置已保存');
   };
 
-  // 清除配置
-  const clearConfig = () => {
-    const emptyConfig = {
-      enabled: false,
-      endpoint: '',
-      accessKeyId: '',
-      secretAccessKey: '',
-      bucket: '',
-      region: 'auto',
-      publicUrl: '',
-      provider: 'r2'
-    };
-    
-    updateS3Config(emptyConfig);
-    toast.success('S3配置已清除');
+  // 顶部卡片内的启用开关
+  const toggleEnabled = (checked) => {
+    updateS3Config({ ...s3Config, enabled: checked });
   };
 
   // 获取提供商配置模板
@@ -135,7 +123,10 @@ export default function S3ConfigPanel({ s3Config, updateS3Config }) {
 
   return (
     <>
-      <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+      <div
+        className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+        onClick={() => setIsConfigDialogOpen(true)}
+      >
         <div className="flex items-center gap-3">
           <Cloud className="h-4 w-4 text-gray-600 dark:text-gray-400" />
           <div>
@@ -145,26 +136,12 @@ export default function S3ConfigPanel({ s3Config, updateS3Config }) {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setIsConfigDialogOpen(true)}
-            size="sm"
-            variant="outline"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            配置
-          </Button>
-          {s3Config.enabled && (
-            <Button
-              onClick={clearConfig}
-              size="sm"
-              variant="outline"
-              className="text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              清除
-            </Button>
-          )}
+        {/* 集成启用开关，阻止冒泡以免触发打开对话框 */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            checked={!!s3Config.enabled}
+            onCheckedChange={toggleEnabled}
+          />
         </div>
       </div>
 
