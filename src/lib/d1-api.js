@@ -26,7 +26,7 @@ export class D1ApiClient {
         headers,
       });
       
-      const result = await response.json();
+  const result = await response.json();
       return result;
     } catch (error) {
       console.error('初始化D1数据库失败:', error);
@@ -83,7 +83,7 @@ export class D1ApiClient {
       const memosResult = await memosResponse.json();
       
       // 获取用户设置
-      const settingsResponse = await fetch(`${baseUrl}/api/settings`, {
+  const settingsResponse = await fetch(`${baseUrl}/api/settings`, {
         method: 'GET',
         headers,
       });
@@ -136,7 +136,7 @@ export class D1ApiClient {
         }),
       });
       
-      const result = await response.json();
+  const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.message || '保存memo失败');
@@ -170,8 +170,9 @@ export class D1ApiClient {
           font_config: settings.fontConfig,
       background_config: settings.backgroundConfig,
       avatar_config: settings.avatarConfig,
-      canvas_config: settings.canvasConfig,
-      music_config: settings.musicConfig
+  canvas_config: settings.canvasConfig,
+  music_config: settings.musicConfig,
+  s3_config: settings.s3Config
         }),
       });
       

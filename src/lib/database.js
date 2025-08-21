@@ -16,7 +16,8 @@ export class DatabaseService {
   backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
   avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
   canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
-  musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
+  musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}'),
+  s3Config: JSON.parse(localStorage.getItem('s3Config') || '{"enabled":false,"endpoint":"","accessKeyId":"","secretAccessKey":"","bucket":"","region":"auto","publicUrl":"","provider":"r2"}')
       }
 
       // 同步memos
@@ -34,7 +35,8 @@ export class DatabaseService {
   backgroundConfig: localData.backgroundConfig,
   avatarConfig: localData.avatarConfig,
   canvasConfig: localData.canvasConfig,
-  musicConfig: localData.musicConfig
+  musicConfig: localData.musicConfig,
+  s3Config: localData.s3Config
       })
 
       return { success: true, message: '数据同步成功' }
@@ -110,6 +112,9 @@ export class DatabaseService {
         if (settings.music_config) {
           localStorage.setItem('musicConfig', JSON.stringify(settings.music_config))
         }
+    if (settings.s3_config) {
+          localStorage.setItem('s3Config', JSON.stringify(settings.s3_config))
+        }
       }
 
       return { success: true, message: '数据恢复成功，请刷新页面查看' }
@@ -152,13 +157,14 @@ export class DatabaseService {
         user_id: userId,
         pinned_memos: settings.pinnedMemos,
         theme_color: settings.themeColor,
-        dark_mode: settings.darkMode === 'true',
+    dark_mode: String(settings.darkMode) === 'true',
         hitokoto_config: settings.hitokotoConfig,
         font_config: settings.fontConfig,
   background_config: settings.backgroundConfig,
   avatar_config: settings.avatarConfig,
   canvas_config: settings.canvasConfig,
   music_config: settings.musicConfig,
+  s3_config: settings.s3Config,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id'

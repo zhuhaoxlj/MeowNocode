@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   avatar_config TEXT DEFAULT '{"imageUrl":""}',
   canvas_config TEXT DEFAULT NULL,
   music_config TEXT DEFAULT '{"enabled":true,"customSongs":[]}',
+  s3_config TEXT DEFAULT '{"enabled":false,"endpoint":"","accessKeyId":"","secretAccessKey":"","bucket":"","region":"auto","publicUrl":"","provider":"r2"}',
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

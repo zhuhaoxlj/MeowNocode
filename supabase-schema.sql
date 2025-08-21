@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   avatar_config JSONB DEFAULT '{"imageUrl":""}'::jsonb,
   canvas_config JSONB,
   music_config JSONB DEFAULT '{"enabled":true,"customSongs":[]}'::jsonb,
+  s3_config JSONB DEFAULT '{"enabled":false,"endpoint":"","accessKeyId":"","secretAccessKey":"","bucket":"","region":"auto","publicUrl":"","provider":"r2"}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

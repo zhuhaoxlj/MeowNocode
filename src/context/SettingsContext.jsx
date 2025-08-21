@@ -583,8 +583,8 @@ export function SettingsProvider({ children }) {
       };
 
       // 拉取云端
-      let cloudMemos = [];
-      let cloudSettings = null;
+  let cloudMemos = [];
+  let cloudSettings = null;
       if (cloudProvider === 'supabase') {
         if (!user) throw new Error('请先登录');
         cloudMemos = await DatabaseService.getUserMemos(user.id);
@@ -673,18 +673,29 @@ export function SettingsProvider({ children }) {
         backgroundConfig: local.backgroundConfig,
         avatarConfig: local.avatarConfig,
         canvasConfig: local.canvasConfig,
-        musicConfig: local.musicConfig
+        musicConfig: local.musicConfig,
+        s3Config: JSON.parse(localStorage.getItem('s3Config') || '{"enabled":false,"endpoint":"","accessKeyId":"","secretAccessKey":"","bucket":"","region":"auto","publicUrl":"","provider":"r2"}')
       };
       if (cloudSettings) {
-        mergedSettings.pinnedMemos = local.pinnedMemos?.length ? local.pinnedMemos : (cloudSettings.pinned_memos ? JSON.parse(cloudSettings.pinned_memos) : []);
+        const asObj = (v, fallback) => {
+          if (v == null) return fallback;
+          if (typeof v === 'string') {
+            const t = v.trim();
+            if (!t) return fallback;
+            try { return JSON.parse(t); } catch { return fallback; }
+          }
+          return v;
+        };
+        mergedSettings.pinnedMemos = local.pinnedMemos?.length ? local.pinnedMemos : asObj(cloudSettings.pinned_memos, []);
         mergedSettings.themeColor = local.themeColor || cloudSettings.theme_color || '#818CF8';
         mergedSettings.darkMode = local.darkMode ?? (cloudSettings.dark_mode != null ? String(!!cloudSettings.dark_mode) : 'false');
-        mergedSettings.hitokotoConfig = local.hitokotoConfig || (cloudSettings.hitokoto_config ? JSON.parse(cloudSettings.hitokoto_config) : { enabled: true, types: ["a","b","c","d","i","j","k"] });
-        mergedSettings.fontConfig = local.fontConfig || (cloudSettings.font_config ? JSON.parse(cloudSettings.font_config) : { selectedFont: 'default' });
-        mergedSettings.backgroundConfig = local.backgroundConfig || (cloudSettings.background_config ? JSON.parse(cloudSettings.background_config) : { imageUrl: '', brightness: 50, blur: 10 });
-        mergedSettings.avatarConfig = local.avatarConfig || (cloudSettings.avatar_config ? JSON.parse(cloudSettings.avatar_config) : { imageUrl: '' });
-        mergedSettings.canvasConfig = local.canvasConfig ?? (cloudSettings.canvas_config ? JSON.parse(cloudSettings.canvas_config) : null);
-        mergedSettings.musicConfig = local.musicConfig || (cloudSettings.music_config ? JSON.parse(cloudSettings.music_config) : { enabled: true, customSongs: [] });
+        mergedSettings.hitokotoConfig = local.hitokotoConfig || asObj(cloudSettings.hitokoto_config, { enabled: true, types: ["a","b","c","d","i","j","k"] });
+        mergedSettings.fontConfig = local.fontConfig || asObj(cloudSettings.font_config, { selectedFont: 'default' });
+        mergedSettings.backgroundConfig = local.backgroundConfig || asObj(cloudSettings.background_config, { imageUrl: '', brightness: 50, blur: 10 });
+        mergedSettings.avatarConfig = local.avatarConfig || asObj(cloudSettings.avatar_config, { imageUrl: '' });
+        mergedSettings.canvasConfig = local.canvasConfig ?? asObj(cloudSettings.canvas_config, null);
+        mergedSettings.musicConfig = local.musicConfig || asObj(cloudSettings.music_config, { enabled: true, customSongs: [] });
+        mergedSettings.s3Config = mergedSettings.s3Config || asObj(cloudSettings.s3_config, { enabled: false, endpoint: '', accessKeyId: '', secretAccessKey: '', bucket: '', region: 'auto', publicUrl: '', provider: 'r2' });
       }
       localStorage.setItem('pinnedMemos', JSON.stringify(mergedSettings.pinnedMemos || []));
       localStorage.setItem('themeColor', mergedSettings.themeColor || '#818CF8');
@@ -695,6 +706,7 @@ export function SettingsProvider({ children }) {
       localStorage.setItem('avatarConfig', JSON.stringify(mergedSettings.avatarConfig || { imageUrl: '' }));
       if (mergedSettings.canvasConfig != null) localStorage.setItem('canvasState', JSON.stringify(mergedSettings.canvasConfig));
       localStorage.setItem('musicConfig', JSON.stringify(mergedSettings.musicConfig || { enabled: true, customSongs: [] }));
+  localStorage.setItem('s3Config', JSON.stringify(mergedSettings.s3Config || { enabled: false, endpoint: '', accessKeyId: '', secretAccessKey: '', bucket: '', region: 'auto', publicUrl: '', provider: 'r2' }));
 
       // 删除墓碑
       const toDeleteIds = Array.from(deletedSet);
@@ -706,7 +718,7 @@ export function SettingsProvider({ children }) {
         for (const memo of merged) {
           await DatabaseService.upsertMemo(user.id, memo);
         }
-        await DatabaseService.upsertUserSettings(user.id, mergedSettings);
+  await DatabaseService.upsertUserSettings(user.id, mergedSettings);
       } else {
         for (const id of toDeleteIds) {
           try { await D1ApiClient.deleteMemo(id); } catch { try { await D1DatabaseService.deleteMemo(id); } catch {} }
