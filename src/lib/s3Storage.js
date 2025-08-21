@@ -1,7 +1,11 @@
-// S3存储服务 - 支持Cloudflare R2（使用预签名URL）
+// S3存储服务 - 使用AWS SDK版本，支持Cloudflare R2
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
+
 class S3StorageService {
   constructor() {
     this.config = null;
+    this.client = null;
     this.initialized = false;
   }
 
@@ -13,16 +17,59 @@ class S3StorageService {
       secretAccessKey: config.secretAccessKey,
       bucket: config.bucket,
       region: config.region || 'auto',
-      publicUrl: config.publicUrl || config.endpoint
+      publicUrl: config.publicUrl || config.endpoint,
+      provider: config.provider || 'r2'
     };
+    
+    // 创建S3客户端
+    this.client = new S3Client({
+      endpoint: this.config.endpoint,
+      region: this.config.region,
+      credentials: {
+        accessKeyId: this.config.accessKeyId,
+        secretAccessKey: this.config.secretAccessKey
+      },
+      // 对于Cloudflare R2，需要强制使用路径寻址
+      forcePathStyle: this.config.provider === 'r2'
+    });
+    
     this.initialized = true;
   }
 
   // 检查是否已配置
   isConfigured() {
+    const required = ['endpoint', 'accessKeyId', 'secretAccessKey', 'bucket'];
     return this.initialized && this.config && 
-           this.config.endpoint && this.config.accessKeyId && 
-           this.config.secretAccessKey && this.config.bucket;
+           required.every(key => this.config[key]);
+  }
+
+  // 验证S3配置
+  validateConfig() {
+    const errors = [];
+    
+    if (!this.config.endpoint) {
+      errors.push('缺少端点URL');
+    } else if (!this.config.endpoint.startsWith('http')) {
+      errors.push('端点URL格式不正确');
+    }
+    
+    if (!this.config.bucket) {
+      errors.push('缺少存储桶名称');
+    }
+    
+    if (!this.config.accessKeyId) {
+      errors.push('缺少访问密钥ID');
+    }
+    
+    if (!this.config.secretAccessKey) {
+      errors.push('缺少秘密访问密钥');
+    }
+    
+    if (errors.length > 0) {
+      throw new Error(`S3配置验证失败: ${errors.join(', ')}`);
+    }
+    
+    return true;
   }
 
   // 生成唯一文件名
@@ -31,40 +78,86 @@ class S3StorageService {
     const random = Math.random().toString(36).substring(2, 8);
     const extension = originalName.split('.').pop();
     const cleanName = originalName.split('.')[0].replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_');
+    // 对于测试文件，直接放在根目录，不添加类型前缀
+    if (type === 'test') {
+      return `connection_test_${timestamp}_${random}_${cleanName}.${extension}`;
+    }
     return `${type}/${timestamp}_${random}_${cleanName}.${extension}`;
   }
 
-  // 上传文件到S3（使用预签名URL）
+  // 构建S3 URL的统一方法
+  buildS3Url(baseEndpoint, fileName) {
+    // 移除末尾的斜杠
+    const cleanEndpoint = baseEndpoint.replace(/\/$/, '');
+    
+    // 对于Cloudflare R2，需要正确构建URL
+    if (this.config.provider === 'r2') {
+      // 检查端点URL是否已经包含了桶名
+      if (cleanEndpoint.includes(`/${this.config.bucket}`)) {
+        return `${cleanEndpoint}/${fileName}`;
+      } else {
+        return `${cleanEndpoint}/${this.config.bucket}/${fileName}`;
+      }
+    }
+    // 对于其他提供商，需要包含桶名
+    return `${cleanEndpoint}/${this.config.bucket}/${fileName}`;
+  }
+
+  // 获取正确的S3端点URL
+  getS3Url(fileName) {
+    return this.buildS3Url(this.config.endpoint, fileName);
+  }
+
+  // 获取公共URL
+  getPublicUrl(fileName) {
+    if (this.config.publicUrl) {
+      return this.buildS3Url(this.config.publicUrl, fileName);
+    }
+    return this.getS3Url(fileName);
+  }
+
+  // 上传文件到S3
   async uploadFile(file, options = {}) {
     if (!this.isConfigured()) {
       throw new Error('S3存储未配置');
     }
+    
+    // 验证配置
+    this.validateConfig();
 
     const fileName = options.fileName || this.generateFileName(file.name, options.type || 'file');
     const contentType = file.type || 'application/octet-stream';
 
     try {
-      // 构建上传URL
-      const uploadUrl = `${this.config.endpoint}/${this.config.bucket}/${fileName}`;
-      
-      // 创建预签名URL（这里简化处理，实际应该在后端生成签名）
-      const signedUrl = await this.createPresignedUrl(uploadUrl, 'PUT', contentType);
-      
-      // 上传文件
-      const response = await fetch(signedUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': contentType,
-        },
-        body: file
+      console.log('准备上传文件到S3:', {
+        fileName,
+        bucket: this.config.bucket,
+        endpoint: this.config.endpoint,
+        provider: this.config.provider,
+        fileSize: file.size,
+        contentType
       });
 
-      if (!response.ok) {
-        throw new Error(`上传失败: ${response.statusText}`);
-      }
+      // 使用AWS SDK直接上传
+      console.log('使用AWS SDK上传...');
 
-      // 生成公共URL
-      const publicUrl = this.getPublicUrl(fileName);
+      // 对于大文件，使用分片上传
+      const upload = new Upload({
+        client: this.client,
+        params: {
+          Bucket: this.config.bucket,
+          Key: fileName,
+          Body: file,
+          ContentType: contentType
+        }
+      });
+
+      upload.on('httpUploadProgress', (progress) => {
+        console.log('上传进度:', Math.round((progress.loaded / progress.total) * 100) + '%');
+      });
+
+      const result = await upload.done();
+      console.log('AWS SDK上传成功:', result);
 
       return {
         success: true,
@@ -72,34 +165,31 @@ class S3StorageService {
         originalName: file.name,
         size: file.size,
         type: file.type,
-        url: publicUrl,
+        url: this.getPublicUrl(fileName),
         storageType: 's3',
-        uploadedAt: new Date().toISOString()
+        uploadedAt: new Date().toISOString(),
+        uploadMethod: 'aws-sdk'
       };
+
     } catch (error) {
       console.error('S3上传失败:', error);
-      throw error;
+      
+      // 提供更详细的错误信息
+      let errorMessage = error.message;
+      if (error.name === 'CredentialsProviderError') {
+        errorMessage = '认证失败：请检查API密钥配置';
+      } else if (error.name === 'NoSuchBucket') {
+        errorMessage = '存储桶不存在：请检查存储桶名称';
+      } else if (error.name === 'AccessDenied') {
+        errorMessage = '访问被拒绝：请检查存储桶权限和API密钥';
+      } else if (error.name === 'NetworkError') {
+        errorMessage = '网络错误：请检查端点URL和网络连接';
+      } else if (error.message.includes('CORS')) {
+        errorMessage = 'CORS错误：请检查Cloudflare R2的CORS配置';
+      }
+      
+      throw new Error(`S3上传失败: ${errorMessage}`);
     }
-  }
-
-  // 创建预签名URL（简化版本，实际应该在后端实现）
-  async createPresignedUrl(url, method, contentType) {
-    // 注意：这是一个简化的实现
-    // 在生产环境中，预签名URL应该在后端服务器生成
-    // 这里我们假设已经配置了CORS和适当的权限
-    
-    // 对于Cloudflare R2，可以直接使用R2的域名进行上传
-    // 如果需要预签名，应该通过后端API获取
-    
-    return url;
-  }
-
-  // 获取公共URL
-  getPublicUrl(fileName) {
-    if (this.config.publicUrl) {
-      return `${this.config.publicUrl}/${this.config.bucket}/${fileName}`;
-    }
-    return `${this.config.endpoint}/${this.config.bucket}/${fileName}`;
   }
 
   // 删除文件
@@ -107,23 +197,51 @@ class S3StorageService {
     if (!this.isConfigured()) {
       throw new Error('S3存储未配置');
     }
+    
+    // 验证配置
+    this.validateConfig();
 
     try {
-      const deleteUrl = `${this.config.endpoint}/${this.config.bucket}/${fileName}`;
-      const signedUrl = await this.createPresignedUrl(deleteUrl, 'DELETE');
-      
-      const response = await fetch(signedUrl, {
-        method: 'DELETE'
+      console.log('准备删除文件:', {
+        fileName,
+        bucket: this.config.bucket,
+        provider: this.config.provider
       });
 
-      if (!response.ok) {
-        throw new Error(`删除失败: ${response.statusText}`);
-      }
+      // 使用AWS SDK直接删除
+      console.log('使用AWS SDK删除...');
 
-      return { success: true };
+      const command = new DeleteObjectCommand({
+        Bucket: this.config.bucket,
+        Key: fileName
+      });
+
+      const result = await this.client.send(command);
+      console.log('AWS SDK删除成功:', result);
+
+      return { 
+        success: true, 
+        fileName: fileName,
+        deletedAt: new Date().toISOString(),
+        deleteMethod: 'aws-sdk'
+      };
+
     } catch (error) {
       console.error('S3删除失败:', error);
-      throw error;
+      
+      // 提供更详细的错误信息
+      let errorMessage = error.message;
+      if (error.name === 'CredentialsProviderError') {
+        errorMessage = '认证失败：请检查API密钥配置';
+      } else if (error.name === 'NoSuchBucket') {
+        errorMessage = '存储桶不存在：请检查存储桶名称';
+      } else if (error.name === 'AccessDenied') {
+        errorMessage = '访问被拒绝：请检查存储桶权限和API密钥';
+      } else if (error.name === 'NetworkError') {
+        errorMessage = '网络错误：请检查端点URL和网络连接';
+      }
+      
+      throw new Error(`S3删除失败: ${errorMessage}`);
     }
   }
 
@@ -134,13 +252,18 @@ class S3StorageService {
     }
 
     try {
-      const fileUrl = this.getPublicUrl(fileName);
-      const response = await fetch(fileUrl, {
-        method: 'HEAD'
+      const command = new HeadObjectCommand({
+        Bucket: this.config.bucket,
+        Key: fileName
       });
 
-      return response.ok;
+      await this.client.send(command);
+      return true;
     } catch (error) {
+      if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
+        return false;
+      }
+      console.error('检查文件存在性失败:', error);
       return false;
     }
   }
@@ -155,7 +278,8 @@ class S3StorageService {
       provider: 'S3/Cloudflare R2',
       endpoint: this.config.endpoint,
       bucket: this.config.bucket,
-      configured: true
+      configured: true,
+      sdk: 'AWS SDK v3'
     };
   }
 
@@ -166,21 +290,82 @@ class S3StorageService {
     }
 
     try {
+      console.log('开始测试S3连接...');
+      console.log('配置信息:', {
+        endpoint: this.config.endpoint,
+        bucket: this.config.bucket,
+        provider: this.config.provider,
+        region: this.config.region
+      });
+
+      // 首先验证配置
+      this.validateConfig();
+
       // 创建一个测试文件来验证连接
-      const testFileName = `test/connection_test_${Date.now()}.txt`;
-      const testContent = new Blob(['Connection test'], { type: 'text/plain' });
+      const testFileName = `connection_test_${Date.now()}.txt`;
+      const testContent = new Blob(['Connection test ' + new Date().toISOString()], { type: 'text/plain' });
       
-      await this.uploadFile(testContent, { 
+      console.log('上传测试文件:', testFileName);
+      
+      const uploadResult = await this.uploadFile(testContent, { 
         fileName: testFileName,
         type: 'test'
       });
       
-      // 清理测试文件
-      await this.deleteFile(testFileName);
+      console.log('上传成功:', uploadResult);
       
-      return { success: true };
+      // 验证文件是否可以访问
+      const exists = await this.fileExists(testFileName);
+      console.log('文件存在性检查:', exists);
+      
+      // 清理测试文件
+      console.log('删除测试文件...');
+      await this.deleteFile(testFileName);
+      console.log('测试文件删除成功');
+      
+      return { 
+        success: true, 
+        message: 'S3连接测试成功',
+        details: {
+          provider: this.config.provider,
+          endpoint: this.config.endpoint,
+          bucket: this.config.bucket,
+          uploadMethod: uploadResult.uploadMethod,
+          sdk: 'AWS SDK v3'
+        }
+      };
     } catch (error) {
-      return { success: false, error: error.message };
+      console.error('S3连接测试失败:', error);
+      
+      // 提供更具体的错误信息
+      let errorMessage = error.message;
+      if (error.message.includes('配置验证失败')) {
+        errorMessage = 'S3配置不完整或格式错误，请检查所有必填字段';
+      } else if (error.name === 'CredentialsProviderError') {
+        errorMessage = '认证失败：请检查API密钥配置';
+      } else if (error.name === 'NoSuchBucket') {
+        errorMessage = '存储桶不存在：请检查存储桶名称和端点配置';
+      } else if (error.name === 'AccessDenied') {
+        errorMessage = '访问被拒绝：请检查存储桶权限和API密钥';
+      } else if (error.name === 'NetworkError') {
+        errorMessage = '网络错误：请检查端点URL和网络连接';
+      } else if (error.message.includes('CORS')) {
+        errorMessage = 'CORS配置错误，请确保Cloudflare R2存储桶允许跨域请求';
+      }
+      
+      return { 
+        success: false, 
+        error: errorMessage,
+        details: {
+          originalError: error.message,
+          errorName: error.name,
+          config: {
+            provider: this.config.provider,
+            endpoint: this.config.endpoint,
+            bucket: this.config.bucket
+          }
+        }
+      };
     }
   }
 }

@@ -11,6 +11,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { PasswordAuthProvider, usePasswordAuth } from "@/context/PasswordAuthContext";
 import Login from "@/pages/Login";
 
+// S3代理功能已移除，现在直接使用AWS SDK
+
 const queryClient = new QueryClient();
 
 // 主应用内容组件

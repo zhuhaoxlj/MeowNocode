@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.872.0",
+    "@aws-sdk/lib-storage": "^3.872.0",
     "@hookform/resolvers": "^3.6.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.0",
@@ -64,7 +66,7 @@
     "react-router-dom": "^6.23.1",
     "recharts": "^2.12.7",
     "sonner": "^1.5.0",
-  "sql.js": "^1.9.0",
+    "sql.js": "^1.9.0",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.1",

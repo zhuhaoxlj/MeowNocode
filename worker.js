@@ -317,6 +317,8 @@ async function handleSettings(request, env, headers) {
   }
 }
 
+// S3代理功能已移除，现在直接使用AWS SDK
+
 // 处理静态文件请求
 async function handleStaticFiles(request, env, headers) {
   // 这里可以添加静态文件处理逻辑
