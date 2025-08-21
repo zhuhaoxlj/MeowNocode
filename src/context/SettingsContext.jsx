@@ -43,6 +43,18 @@ export function SettingsProvider({ children }) {
     customSongs: []
   });
 
+  // S3存储配置
+  const [s3Config, setS3Config] = useState({
+    enabled: false,
+    endpoint: '',
+    accessKeyId: '',
+    secretAccessKey: '',
+    bucket: '',
+    region: 'auto',
+    publicUrl: '',
+    provider: 'r2' // r2, s3, minio
+  });
+
   const [keyboardShortcuts, setKeyboardShortcuts] = useState({
     toggleSidebar: 'Tab',
     openAIDialog: 'Ctrl+Space',
@@ -364,6 +376,19 @@ export function SettingsProvider({ children }) {
 
   }, []);
 
+  // 从localStorage加载S3配置
+  useEffect(() => {
+    try {
+      const savedS3Config = localStorage.getItem('s3Config');
+      if (savedS3Config) {
+        const parsedConfig = JSON.parse(savedS3Config);
+        setS3Config(parsedConfig);
+      }
+    } catch (error) {
+      console.warn('Failed to parse S3 config:', error);
+    }
+  }, []);
+
   // 从localStorage加载AI配置
   useEffect(() => {
     const savedAiConfig = localStorage.getItem('aiConfig');
@@ -453,6 +478,12 @@ export function SettingsProvider({ children }) {
     localStorage.setItem('musicConfig', JSON.stringify(musicConfig));
     dispatchDataChanged({ part: 'music' });
   }, [musicConfig]);
+
+  // 保存S3配置
+  useEffect(() => {
+    localStorage.setItem('s3Config', JSON.stringify(s3Config));
+    dispatchDataChanged({ part: 's3' });
+  }, [s3Config]);
 
   // Subscribe to app-level data change events and page lifecycle to auto sync
   useEffect(() => {
@@ -872,6 +903,8 @@ export function SettingsProvider({ children }) {
   manualSync,
   musicConfig,
   updateMusicConfig,
+      s3Config,
+      updateS3Config: setS3Config,
   // Sync public helpers
   _scheduleCloudSync: scheduleSync
     }}>

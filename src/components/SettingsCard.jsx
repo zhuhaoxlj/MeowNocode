@@ -13,10 +13,11 @@ import ImageUpload from './ImageUpload';
 import { toast } from 'sonner';
 import MemosImport from './MemosImport';
 import MusicListManager from './MusicListManager';
+import S3ConfigPanel from './S3ConfigPanel';
 
 const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
   const { themeColor, updateThemeColor } = useTheme();
-  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, manualSync, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync, musicConfig, updateMusicConfig } = useSettings();
+  const { hitokotoConfig, updateHitokotoConfig, fontConfig, updateFontConfig, backgroundConfig, updateBackgroundConfig, avatarConfig, updateAvatarConfig, cloudSyncEnabled, updateCloudSyncEnabled, manualSync, cloudProvider, updateCloudProvider, aiConfig, updateAiConfig, keyboardShortcuts, updateKeyboardShortcuts, _scheduleCloudSync, musicConfig, updateMusicConfig, s3Config, updateS3Config } = useSettings();
   const { user, isAuthenticated, loginWithGitHub } = useAuth();
   const [tempColor, setTempColor] = useState(themeColor);
   const [activeTab, setActiveTab] = useState('general');
@@ -30,6 +31,7 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
   ai: false,
   music: false,
     keyboard: false,
+    storage: false,
     about: false
   });
   const [githubStars, setGithubStars] = useState(null);
@@ -799,6 +801,9 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                 )}
               </div>
 
+              {/* S3存储配置 - 移动到数据标签页 */}
+              {/* 已移动到数据标签页 */}
+
               {/* 一言设置 - 改为折叠面板 */}
               <div className="space-y-4">
                 <div
@@ -1419,6 +1424,11 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                     )}
                   </>
                 )}
+              </div>
+
+              {/* S3存储配置 */}
+              <div className="space-y-4">
+                <S3ConfigPanel s3Config={s3Config} updateS3Config={updateS3Config} />
               </div>
 
               {/* 本地数据管理 */}
