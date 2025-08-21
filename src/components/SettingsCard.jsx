@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard, Star, Music2 } from 'lucide-react';
+import { X, Palette, Download, Upload, AlertCircle, CheckCircle, Settings, Database, ChevronDown, ChevronUp, Check, Image as ImageIcon, Github, Cloud, Server, Key, Bot, Keyboard, Star, Music2, Type, Quote } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
@@ -534,7 +534,10 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                   className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   onClick={() => toggleSection('font')}
                 >
-                  <Label className="text-sm font-medium cursor-pointer">字体设置</Label>
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <Type className="h-4 w-4 mr-2" />
+                    字体设置
+                  </Label>
                   <button
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
                     onClick={(e) => {
@@ -812,7 +815,10 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                   className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   onClick={() => toggleSection('hitokoto')}
                 >
-                  <Label className="text-sm font-medium cursor-pointer">一言设置</Label>
+                  <Label className="text-sm font-medium cursor-pointer flex items-center">
+                    <Quote className="h-4 w-4 mr-2" />
+                    一言设置
+                  </Label>
                   <button
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
                     onClick={(e) => {

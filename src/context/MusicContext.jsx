@@ -14,6 +14,7 @@ export function MusicProvider({ children }) {
   const [playlist, setPlaylist] = useState([]);
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [createdUrls, setCreatedUrls] = useState([]);
+  const [volume, setVolume] = useState(0.8);
 
   // 清理创建的对象URL
   useEffect(() => {
@@ -101,6 +102,26 @@ export function MusicProvider({ children }) {
     }
   }, [musicConfig]);
 
+  // 从localStorage加载音量设置
+  useEffect(() => {
+    const savedVolume = localStorage.getItem('musicVolume');
+    if (savedVolume) {
+      try {
+        const volumeValue = parseFloat(savedVolume);
+        if (!isNaN(volumeValue) && volumeValue >= 0 && volumeValue <= 1) {
+          setVolume(volumeValue);
+        }
+      } catch (error) {
+        console.warn('Failed to parse music volume:', error);
+      }
+    }
+  }, []);
+
+  // 保存音量设置到localStorage
+  useEffect(() => {
+    localStorage.setItem('musicVolume', volume.toString());
+  }, [volume]);
+
   // 播放指定歌曲
   const playSong = (index) => {
     if (index >= 0 && index < playlist.length) {
@@ -184,6 +205,12 @@ export function MusicProvider({ children }) {
     };
   }, []);
 
+  // 设置音量
+  const setMusicVolume = (newVolume) => {
+    const clampedVolume = Math.max(0, Math.min(1, newVolume));
+    setVolume(clampedVolume);
+  };
+
   return (
     <MusicContext.Provider value={{
       currentSongIndex,
@@ -196,7 +223,9 @@ export function MusicProvider({ children }) {
       playPrevious,
       togglePlay,
       setPlayingState,
-      getCurrentSong
+      getCurrentSong,
+      volume,
+      setVolume: setMusicVolume
     }}>
       {children}
     </MusicContext.Provider>

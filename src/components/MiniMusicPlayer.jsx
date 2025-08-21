@@ -14,7 +14,6 @@ export default function MiniMusicPlayer({
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
   const [isLoop, setIsLoop] = React.useState(false);
-  const [volume, setVolume] = React.useState(0.8);
   const [volOpen, setVolOpen] = React.useState(false);
   const volRef = React.useRef(null);
   const [lyrics, setLyrics] = React.useState([]);
@@ -22,18 +21,20 @@ export default function MiniMusicPlayer({
   const [currentLyricIndex, setCurrentLyricIndex] = React.useState(-1);
   const lyricsRef = React.useRef(null);
 
-  const { 
-    getCurrentSong, 
-    isPlaying, 
-    togglePlay, 
-    playNext, 
-    playPrevious, 
+  const {
+    getCurrentSong,
+    isPlaying,
+    togglePlay,
+    playNext,
+    playPrevious,
     setPlayingState,
     playSong,
     playlist,
     currentSongIndex,
     showPlaylist,
-    setShowPlaylist
+    setShowPlaylist,
+    volume,
+    setVolume
   } = useMusic();
 
   const currentSong = getCurrentSong();
@@ -373,7 +374,7 @@ export default function MiniMusicPlayer({
                   <div className="flex items-center gap-2 mb-2">
                     <button
                       className="p-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                      onClick={() => setVolume(v => (v > 0 ? 0 : 0.8))}
+                      onClick={() => setVolume(volume > 0 ? 0 : 0.8)}
                       title={volume > 0 ? '静音' : '取消静音'}
                     >
                       {volume > 0 ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
