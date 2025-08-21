@@ -128,22 +128,47 @@ export class DatabaseService {
   static async upsertMemo(userId, memo) {
     // 确保时间戳不为空，使用当前时间作为备用
     const now = new Date().toISOString()
-    const createdAt = memo.timestamp || now
-    const updatedAt = memo.lastModified || memo.timestamp || now
+    const createdAt = memo.createdAt || memo.timestamp || now
+    const updatedAt = memo.updatedAt || memo.lastModified || memo.timestamp || now
+
+    // 变更检测：若远端已有相同 memo，则仅在内容/字段发生变化时才更新，避免无用更新导致 updated_at 被重写
+    const { data: existing, error: fetchErr } = await supabase
+      .from(TABLES.MEMOS)
+      .select('content,tags,backlinks,created_at,updated_at')
+      .eq('user_id', userId)
+      .eq('memo_id', memo.id)
+      .maybeSingle()
+
+    if (fetchErr && fetchErr.code !== 'PGRST116') {
+      // 查询错误（非未找到），抛出
+      throw fetchErr
+    }
+
+    const payload = {
+      memo_id: memo.id,
+      user_id: userId,
+      content: memo.content,
+      tags: memo.tags || [],
+      backlinks: Array.isArray(memo.backlinks) ? memo.backlinks : [],
+      created_at: createdAt,
+      updated_at: updatedAt
+    }
+
+    if (existing) {
+      const sameContent = (existing.content || '') === (memo.content || '')
+      const normalizeArr = (v) => Array.isArray(v) ? v : []
+      const sameTags = JSON.stringify(normalizeArr(existing.tags)) === JSON.stringify(normalizeArr(memo.tags))
+      const sameBacklinks = JSON.stringify(normalizeArr(existing.backlinks)) === JSON.stringify(normalizeArr(memo.backlinks))
+
+      // 若主要字段均无变化，则跳过更新，避免无意义地触发 updated_at
+      if (sameContent && sameTags && sameBacklinks) {
+        return existing
+      }
+    }
 
     const { data, error } = await supabase
       .from(TABLES.MEMOS)
-      .upsert({
-        memo_id: memo.id,
-        user_id: userId,
-        content: memo.content,
-  tags: memo.tags || [],
-  backlinks: Array.isArray(memo.backlinks) ? memo.backlinks : [],
-        created_at: createdAt,
-        updated_at: updatedAt
-      }, {
-        onConflict: 'memo_id,user_id'
-      })
+      .upsert(payload, { onConflict: 'memo_id,user_id' })
 
     if (error) throw error
     return data

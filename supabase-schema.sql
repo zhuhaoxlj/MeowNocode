@@ -64,11 +64,21 @@ CREATE POLICY "Users can update their own settings" ON user_settings
 CREATE POLICY "Users can delete their own settings" ON user_settings
   FOR DELETE USING (auth.uid() = user_id);
 
--- 创建触发器函数来自动更新updated_at字段
+-- 创建/更新触发器函数：仅在未显式提供 updated_at 时才自动更新时间
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
+  -- 对 INSERT：如果未提供 updated_at，则填充为 NOW()；若已提供则尊重客户端值
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.updated_at IS NULL THEN
+      NEW.updated_at = NOW();
+    END IF;
+  ELSE
+    -- 对 UPDATE：仅当未提供或仍等于旧值时，才自动更新时间
+    IF NEW.updated_at IS NULL OR NEW.updated_at = OLD.updated_at THEN
+      NEW.updated_at = NOW();
+    END IF;
+  END IF;
   RETURN NEW;
 END;
 $$ language 'plpgsql';
