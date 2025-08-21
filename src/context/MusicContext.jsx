@@ -35,54 +35,19 @@ export function MusicProvider({ children }) {
     }
   };
 
-  // 从Base64数据重新创建Blob和URL
-  const createBlobFromBase64 = (base64Data, mimeType) => {
-    try {
-      // 移除Base64前缀（如果有）
-      const base64Content = base64Data.split(',')[1] || base64Data;
-      const byteCharacters = atob(base64Content);
-      const byteNumbers = new Array(byteCharacters.length);
-      
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      addUrlToCleanup(url);
-      return url;
-    } catch (error) {
-      console.error('Failed to create blob from base64:', error);
-      return null;
-    }
-  };
-
-  // 重新生成本地文件的URL
+  // 重新生成本地文件的URL（仅处理S3文件）
   const regenerateLocalUrls = (songs) => {
     return songs.map(song => {
       const updatedSong = { ...song };
       
-      // 处理音频文件
-      if (song.audioFile && song.audioFile.isLocal && song.audioFile.data) {
-        const audioUrl = createBlobFromBase64(song.audioFile.data, song.audioFile.type);
-        if (audioUrl) {
-          updatedSong.musicUrl = audioUrl;
-        } else {
-          console.warn('Failed to regenerate audio URL for:', song.title);
-          updatedSong.musicUrl = '';
-        }
+      // 处理音频文件（仅S3文件）
+      if (song.audioFile && song.audioFile.storageType === 's3' && song.audioFile.url) {
+        updatedSong.musicUrl = song.audioFile.url;
       }
       
-      // 处理图片文件
-      if (song.imageFile && song.imageFile.isLocal && song.imageFile.data) {
-        const imageUrl = createBlobFromBase64(song.imageFile.data, song.imageFile.type);
-        if (imageUrl) {
-          updatedSong.coverUrl = imageUrl;
-        } else {
-          console.warn('Failed to regenerate image URL for:', song.title);
-          updatedSong.coverUrl = '/images/default-music-cover.svg';
-        }
+      // 处理图片文件（仅S3文件）
+      if (song.imageFile && song.imageFile.storageType === 's3' && song.imageFile.url) {
+        updatedSong.coverUrl = song.imageFile.url;
       }
       
       return updatedSong;

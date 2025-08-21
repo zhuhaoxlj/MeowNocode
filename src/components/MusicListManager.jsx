@@ -5,10 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Music, Upload, X, Database, HardDrive } from 'lucide-react';
+import { Plus, Edit, Trash2, Music, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
-import largeFileStorage from '@/lib/largeFileStorage';
 import fileStorageService from '@/lib/fileStorageService';
+import s3StorageService from '@/lib/s3Storage';
 
 export default function MusicListManager({ musicConfig, updateMusicConfig }) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -16,8 +16,6 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
   const [createdUrls, setCreatedUrls] = useState([]);
   const [musicList, setMusicList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [storageStats, setStorageStats] = useState(null);
-  const [isStorageDialogOpen, setIsStorageDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
@@ -48,17 +46,13 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
     }
   }, [musicConfig]);
 
-  // 异步加载音乐列表和存储统计
+  // 异步加载音乐列表
   useEffect(() => {
     const loadMusicList = async () => {
       try {
         setIsLoading(true);
         const list = await getMusicList();
         setMusicList(list);
-        
-        // 加载存储统计
-        const stats = await fileStorageService.getStorageStats();
-        setStorageStats(stats);
       } catch (error) {
         console.error('Failed to load music list:', error);
         toast.error('加载音乐列表失败');
@@ -259,29 +253,31 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
     }
   };
 
-  // 处理文件用于存储（使用统一文件存储服务）
+  // 处理文件用于存储（强制使用S3）
   const processFileForStorage = async (fileInfo) => {
-    // 如果已经有存储信息，直接返回
-    if (fileInfo.storageType && (fileInfo.url || fileInfo.data || fileInfo.id)) {
+    // 如果已经有S3存储信息，直接返回
+    if (fileInfo.storageType === 's3' && fileInfo.url) {
       return fileInfo;
     }
 
-    // 如果有文件对象，使用统一文件存储服务
+    // 如果有文件对象，强制使用S3上传
     if (fileInfo.file) {
       try {
+        // 检查S3是否已配置
+        if (!s3StorageService.isConfigured()) {
+          throw new Error('请先在设置中配置S3存储');
+        }
+
         const onProgress = (stage, progress) => {
           switch (stage) {
             case 'start':
               toast.loading('正在处理文件...', { id: 'processing-file' });
               break;
             case 'uploading':
-              toast.loading(`正在上传文件... ${progress}%`, { id: 'processing-file' });
-              break;
-            case 'processing':
-              toast.loading(`正在处理文件... ${progress}%`, { id: 'processing-file' });
+              toast.loading(`正在上传到S3... ${progress}%`, { id: 'processing-file' });
               break;
             case 'complete':
-              toast.success('文件处理完成', { id: 'processing-file' });
+              toast.success('文件已上传到S3', { id: 'processing-file' });
               break;
             case 'error':
               toast.error('文件处理失败', { id: 'processing-file' });
@@ -289,7 +285,7 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
           }
         };
 
-        const result = await fileStorageService.processFile(fileInfo.file, {
+        const result = await s3StorageService.uploadFile(fileInfo.file, {
           type: fileInfo.type || 'file',
           onProgress
         });
@@ -302,7 +298,7 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
         };
       } catch (error) {
         console.error('Failed to process file:', error);
-        toast.error('文件处理失败', { id: 'processing-file' });
+        toast.error('文件处理失败: ' + error.message, { id: 'processing-file' });
         throw error;
       }
     }
@@ -388,28 +384,24 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       return;
     }
 
-    // 文件大小限制（仅限制图片文件，音频文件无大小限制）
-    const maxSize = type === 'image' ? 10 * 1024 * 1024 : null; // 图片10MB，音频无限制
-    if (maxSize && file.size > maxSize) {
-      toast.error(`文件大小超过限制（${type === 'image' ? '10MB' : '无限制'}）`);
+    // 检查S3配置
+    if (!s3StorageService.isConfigured()) {
+      toast.error('请先在设置中配置S3存储');
       return;
     }
 
-    // 创建对象URL用于预览和播放
+    // 创建对象URL用于预览
     const url = URL.createObjectURL(file);
     addUrlToCleanup(url);
     
-    // 优化方案：只存储文件句柄，不立即转换Base64
+    // 存储文件信息，稍后会自动上传到S3
     const fileInfo = {
-      // 存储文件对象引用（仅在当前会话有效）
       file: file,
       name: file.name,
       size: file.size,
       type: file.type,
       isLocal: true,
-      lastModified: file.lastModified,
-      // 暂时不存储Base64，只在需要时才转换
-      base64Data: null
+      lastModified: file.lastModified
     };
 
     setFormData(prev => ({
@@ -418,17 +410,9 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       [type === 'audio' ? 'audioFile' : 'imageFile']: fileInfo
     }));
     
-    // 根据文件大小和S3配置显示不同的提示
+    // 显示文件选择提示
     const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-    const recommendation = fileStorageService.getRecommendedStorage(file.size);
-    
-    if (recommendation.type === 's3') {
-      toast.success(`文件已选择 (${fileSizeInMB}MB)，将使用S3存储`, { id: 'file-processing' });
-    } else if (recommendation.type === 'indexeddb') {
-      toast.success(`文件已选择 (${fileSizeInMB}MB)，将使用本地存储`, { id: 'file-processing' });
-    } else {
-      toast.success(`文件已选择 (${fileSizeInMB}MB)`, { id: 'file-processing' });
-    }
+    toast.success(`文件已选择 (${fileSizeInMB}MB)，保存时将自动上传到S3`);
   };
 
   
@@ -552,32 +536,17 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
     });
   };
 
-  // 重新生成本地文件的URL（支持统一文件存储服务）
+  // 重新生成本地文件的URL（仅支持S3文件）
   const regenerateLocalUrls = async (songs) => {
     const processedSongs = await Promise.all(songs.map(async (song) => {
       const updatedSong = { ...song };
       
       // 处理音频文件
-      if (song.audioFile) {
+      if (song.audioFile && song.audioFile.storageType === 's3') {
         try {
-          const audioResult = await fileStorageService.restoreFile(song.audioFile);
-          if (audioResult) {
-            if (audioResult.url) {
-              // S3文件直接使用URL
-              updatedSong.musicUrl = audioResult.url;
-            } else if (audioResult.data) {
-              // 本地文件创建Blob URL
-              const audioUrl = await createBlobFromBase64(audioResult.data, song.audioFile.type);
-              if (audioUrl) {
-                updatedSong.musicUrl = audioUrl;
-              } else {
-                console.warn('Failed to regenerate audio URL for:', song.title);
-                updatedSong.musicUrl = '';
-              }
-            }
-          } else {
-            console.warn('Failed to restore audio file for:', song.title);
-            updatedSong.musicUrl = '';
+          if (song.audioFile.url) {
+            // S3文件直接使用URL
+            updatedSong.musicUrl = song.audioFile.url;
           }
         } catch (error) {
           console.error('Error regenerating audio URL for:', song.title, error);
@@ -586,26 +555,11 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       }
       
       // 处理图片文件
-      if (song.imageFile) {
+      if (song.imageFile && song.imageFile.storageType === 's3') {
         try {
-          const imageResult = await fileStorageService.restoreFile(song.imageFile);
-          if (imageResult) {
-            if (imageResult.url) {
-              // S3文件直接使用URL
-              updatedSong.coverUrl = imageResult.url;
-            } else if (imageResult.data) {
-              // 本地文件创建Blob URL
-              const imageUrl = await createBlobFromBase64(imageResult.data, song.imageFile.type);
-              if (imageUrl) {
-                updatedSong.coverUrl = imageUrl;
-              } else {
-                console.warn('Failed to regenerate image URL for:', song.title);
-                updatedSong.coverUrl = '/images/default-music-cover.svg';
-              }
-            }
-          } else {
-            console.warn('Failed to restore image file for:', song.title);
-            updatedSong.coverUrl = '/images/default-music-cover.svg';
+          if (song.imageFile.url) {
+            // S3文件直接使用URL
+            updatedSong.coverUrl = song.imageFile.url;
           }
         } catch (error) {
           console.error('Error regenerating image URL for:', song.title, error);
@@ -632,50 +586,13 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
     setEditingSong(null);
   };
 
-  // 存储管理功能
-  const handleStorageManagement = async () => {
-    try {
-      setIsStorageDialogOpen(true);
-      const stats = await fileStorageService.getStorageStats();
-      setStorageStats(stats);
-    } catch (error) {
-      console.error('Failed to get storage stats:', error);
-      toast.error('获取存储信息失败');
-    }
-  };
-
-  // 清理存储空间
-  const handleCleanupStorage = async () => {
-    try {
-      toast.loading('正在清理存储空间...', { id: 'cleanup-storage' });
-      const deletedCount = await largeFileStorage.cleanupOldFiles();
-      
-      // 重新加载存储统计
-      const stats = await fileStorageService.getStorageStats();
-      setStorageStats(stats);
-      
-      toast.success(`清理完成，删除了 ${deletedCount} 个文件`, { id: 'cleanup-storage' });
-    } catch (error) {
-      console.error('Failed to cleanup storage:', error);
-      toast.error('清理存储空间失败', { id: 'cleanup-storage' });
-    }
-  };
 
   return (
     <div className="space-y-4">
-      {/* 添加歌曲按钮 */}
-      <div className="flex justify-between items-center">
-        <Label className="text-sm font-medium">音乐列表</Label>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleStorageManagement}
-            size="sm"
-            variant="outline"
-            className="text-xs"
-          >
-            <Database className="h-4 w-4 mr-1" />
-            存储管理
-          </Button>
+      {/* 音乐列表容器 */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">音乐列表</Label>
           <Dialog open={isAddDialogOpen || !!editingSong} onOpenChange={(open) => {
             if (!open) {
               setIsAddDialogOpen(false);
@@ -790,7 +707,7 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
                 />
                 <p className="text-xs text-gray-500">
                   提示：直接输入歌词文本，每行一句歌词。系统会自动处理时间轴。<br />
-                  📁 音频文件无大小限制，支持无损音乐格式。大文件将在保存时处理。
+                  📁 音频文件将自动上传到S3存储，支持无损音乐格式。
                 </p>
               </div>
 
@@ -820,7 +737,6 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
         </div>
 
       {/* 音乐列表 */}
-      <div className="space-y-2">
         {isLoading ? (
           <div className="text-center py-8 text-gray-500">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -843,10 +759,7 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm truncate">{song.title}</div>
                   <div className="text-xs text-gray-500 truncate">{song.artist}</div>
-                  {song.isBuiltin && (
-                    <div className="text-xs text-blue-600">内置歌曲</div>
-                  )}
-                </div>
+                  </div>
                 {!song.isBuiltin && (
                   <div className="flex gap-1">
                     <Button
@@ -876,119 +789,12 @@ export default function MusicListManager({ musicConfig, updateMusicConfig }) {
       {/* 统计信息 */}
       <div className="text-xs text-gray-500 pt-2 border-t">
         共 {musicList.length} 首歌曲（{musicList.filter(s => s.isBuiltin).length} 首内置，{musicList.filter(s => !s.isBuiltin).length} 首自定义）
-        {storageStats && (
+        {s3StorageService.isConfigured() && (
           <span className="ml-2">
-            • 本地存储: {storageStats.indexeddb?.totalSizeMB || 0}MB ({storageStats.indexeddb?.totalFiles || 0} 个文件)
-            {storageStats.s3 && (
-              <span className="ml-1">
-                • S3存储: 已启用
-              </span>
-            )}
+            • S3存储: 已启用
           </span>
         )}
       </div>
-
-      {/* 存储管理对话框 */}
-      <Dialog open={isStorageDialogOpen} onOpenChange={setIsStorageDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              存储管理
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* 存储统计 */}
-            {storageStats && (
-              <div className="space-y-3">
-                {/* S3存储状态 */}
-                {storageStats.s3 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded">
-                    <div className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                      S3存储状态
-                    </div>
-                    <div className="text-sm text-blue-700 dark:text-blue-300">
-                      <div>提供商: {storageStats.s3.provider}</div>
-                      <div>端点: {storageStats.s3.endpoint}</div>
-                      <div>存储桶: {storageStats.s3.bucket}</div>
-                      <div className="mt-1">
-                        状态: <span className="text-green-600 font-medium">已配置</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 本地存储统计 */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                    <div className="font-medium">本地文件数</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {storageStats.indexeddb?.totalFiles || 0}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                    <div className="font-medium">本地存储</div>
-                    <div className="text-lg font-bold text-green-600">
-                      {storageStats.indexeddb?.totalSizeMB || 0}MB
-                    </div>
-                  </div>
-                </div>
-                
-                {/* 文件列表 */}
-                {storageStats.indexeddb?.files && storageStats.indexeddb.files.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">本地文件列表</h4>
-                    <div className="max-h-60 overflow-y-auto space-y-1">
-                      {storageStats.indexeddb.files.map((file) => (
-                        <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{file.fileName}</div>
-                            <div className="text-gray-500">{file.fileSizeMB}MB</div>
-                          </div>
-                          <div className="text-gray-400 text-xs">
-                            {new Date(file.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* 存储说明 */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-xs">
-              <div className="font-medium mb-1">💾 存储说明</div>
-              <ul className="space-y-1 text-gray-600 dark:text-gray-300">
-                <li>• 大文件(&gt;1MB)且启用S3时，自动使用S3存储</li>
-                <li>• 大文件(&gt;5MB)未启用S3时，使用IndexedDB存储</li>
-                <li>• 小文件(&lt;1MB)使用Base64本地存储</li>
-                <li>• 支持背景图片、头像图片、音乐文件</li>
-                <li>• 定期清理过期文件释放空间</li>
-              </ul>
-            </div>
-            
-            {/* 操作按钮 */}
-            <div className="flex gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setIsStorageDialogOpen(false)}
-                className="flex-1"
-              >
-                关闭
-              </Button>
-              <Button
-                onClick={handleCleanupStorage}
-                className="flex-1 bg-orange-600 hover:bg-orange-700"
-              >
-                <HardDrive className="h-4 w-4 mr-2" />
-                清理存储
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-        </div>
     </div>
   );
 }
