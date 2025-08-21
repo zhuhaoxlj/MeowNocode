@@ -54,7 +54,10 @@ export class D1DatabaseService {
         darkMode: localStorage.getItem('darkMode') || 'false',
         hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}')
+  backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+  avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
+  canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
+  musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
       };
 
       // 同步memos
@@ -70,8 +73,9 @@ export class D1DatabaseService {
         hitokotoConfig: localData.hitokotoConfig,
         fontConfig: localData.fontConfig,
         backgroundConfig: localData.backgroundConfig,
-        avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
-        canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
+        avatarConfig: localData.avatarConfig,
+        canvasConfig: localData.canvasConfig,
+        musicConfig: localData.musicConfig
       });
 
       return { success: true, message: '数据同步到D1成功' };
@@ -136,6 +140,9 @@ export class D1DatabaseService {
         if (settings.canvas_config) {
           localStorage.setItem('canvasState', settings.canvas_config);
         }
+        if (settings.music_config) {
+          localStorage.setItem('musicConfig', settings.music_config);
+        }
       }
 
       return { success: true, message: '从D1恢复数据成功，请刷新页面查看' };
@@ -187,7 +194,7 @@ export class D1DatabaseService {
     if (existingSettings) {
       // 更新现有设置
       await db
-        .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, avatar_config = ?, canvas_config = ?, updated_at = ?')
+        .prepare('UPDATE user_settings SET pinned_memos = ?, theme_color = ?, dark_mode = ?, hitokoto_config = ?, font_config = ?, background_config = ?, avatar_config = ?, canvas_config = ?, music_config = ?, updated_at = ?')
         .bind(
           JSON.stringify(settings.pinnedMemos),
           settings.themeColor,
@@ -197,13 +204,14 @@ export class D1DatabaseService {
           JSON.stringify(settings.backgroundConfig),
           JSON.stringify(settings.avatarConfig || { imageUrl: '' }),
           settings.canvasConfig ? JSON.stringify(settings.canvasConfig) : null,
+          JSON.stringify(settings.musicConfig || { enabled: true, customSongs: [] }),
           new Date().toISOString()
         )
         .run();
     } else {
       // 插入新设置
       await db
-        .prepare('INSERT INTO user_settings (pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, avatar_config, canvas_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .prepare('INSERT INTO user_settings (pinned_memos, theme_color, dark_mode, hitokoto_config, font_config, background_config, avatar_config, canvas_config, music_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .bind(
           JSON.stringify(settings.pinnedMemos),
           settings.themeColor,
@@ -213,6 +221,7 @@ export class D1DatabaseService {
           JSON.stringify(settings.backgroundConfig),
           JSON.stringify(settings.avatarConfig || { imageUrl: '' }),
           settings.canvasConfig ? JSON.stringify(settings.canvasConfig) : null,
+          JSON.stringify(settings.musicConfig || { enabled: true, customSongs: [] }),
           new Date().toISOString(),
           new Date().toISOString()
         )
@@ -280,7 +289,8 @@ export class D1DatabaseService {
           font_config TEXT DEFAULT '{"selectedFont":"default"}',
       background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
       avatar_config TEXT DEFAULT '{"imageUrl":""}',
-      canvas_config TEXT DEFAULT NULL,
+  canvas_config TEXT DEFAULT NULL,
+  music_config TEXT DEFAULT '{"enabled":true,"customSongs":[]}',
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )

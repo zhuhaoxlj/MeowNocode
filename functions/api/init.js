@@ -48,7 +48,8 @@ export async function onRequest(context) {
         font_config TEXT DEFAULT '{"selectedFont":"default"}',
     background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
     avatar_config TEXT DEFAULT '{"imageUrl":""}',
-    canvas_config TEXT DEFAULT NULL,
+  canvas_config TEXT DEFAULT NULL,
+  music_config TEXT DEFAULT '{"enabled":true,"customSongs":[]}',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )

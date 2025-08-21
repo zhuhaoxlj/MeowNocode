@@ -15,7 +15,8 @@ export class DatabaseService {
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
   backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
   avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
-  canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
+  canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
+  musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
       }
 
       // 同步memos
@@ -30,9 +31,10 @@ export class DatabaseService {
         darkMode: localData.darkMode,
         hitokotoConfig: localData.hitokotoConfig,
         fontConfig: localData.fontConfig,
-        backgroundConfig: localData.backgroundConfig,
-        avatarConfig: localData.avatarConfig,
-        canvasConfig: localData.canvasConfig
+  backgroundConfig: localData.backgroundConfig,
+  avatarConfig: localData.avatarConfig,
+  canvasConfig: localData.canvasConfig,
+  musicConfig: localData.musicConfig
       })
 
       return { success: true, message: '数据同步成功' }
@@ -105,6 +107,9 @@ export class DatabaseService {
         if (settings.canvas_config) {
           localStorage.setItem('canvasState', JSON.stringify(settings.canvas_config))
         }
+        if (settings.music_config) {
+          localStorage.setItem('musicConfig', JSON.stringify(settings.music_config))
+        }
       }
 
       return { success: true, message: '数据恢复成功，请刷新页面查看' }
@@ -153,6 +158,7 @@ export class DatabaseService {
   background_config: settings.backgroundConfig,
   avatar_config: settings.avatarConfig,
   canvas_config: settings.canvasConfig,
+  music_config: settings.musicConfig,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id'

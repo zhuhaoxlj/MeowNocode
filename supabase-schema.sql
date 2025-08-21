@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   background_config JSONB DEFAULT '{"imageUrl":"","brightness":50,"blur":10}'::jsonb,
   avatar_config JSONB DEFAULT '{"imageUrl":""}'::jsonb,
   canvas_config JSONB,
+  music_config JSONB DEFAULT '{"enabled":true,"customSongs":[]}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

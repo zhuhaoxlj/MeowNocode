@@ -661,6 +661,7 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                           value={avatarConfig?.imageUrl || ''}
                           onChange={(url) => handleAvatarConfigChange('imageUrl', url)}
                           onClear={() => handleAvatarConfigChange('imageUrl', '')}
+                          uploadType="avatar"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {avatarConfig?.imageUrl
@@ -680,6 +681,7 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                           value={backgroundConfig.imageUrl}
                           onChange={(url) => handleBackgroundConfigChange('imageUrl', url)}
                           onClear={() => handleBackgroundConfigChange('imageUrl', '')}
+                          uploadType="background"
                         />
 
                         {/* 只有当有背景图片时才显示效果调节 */}

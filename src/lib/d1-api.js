@@ -45,7 +45,7 @@ export class D1ApiClient {
       }
 
       // 同步用户设置
-      await this.upsertUserSettings({
+    await this.upsertUserSettings({
         pinnedMemos: data.pinnedMemos,
         themeColor: data.themeColor,
         darkMode: data.darkMode,
@@ -53,7 +53,8 @@ export class D1ApiClient {
         fontConfig: data.fontConfig,
   backgroundConfig: data.backgroundConfig,
   avatarConfig: data.avatarConfig,
-  canvasConfig: data.canvasConfig
+  canvasConfig: data.canvasConfig,
+  musicConfig: data.musicConfig
       });
 
       return { success: true, message: '数据同步到D1成功' };
@@ -169,7 +170,8 @@ export class D1ApiClient {
           font_config: settings.fontConfig,
       background_config: settings.backgroundConfig,
       avatar_config: settings.avatarConfig,
-      canvas_config: settings.canvasConfig
+      canvas_config: settings.canvasConfig,
+      music_config: settings.musicConfig
         }),
       });
       

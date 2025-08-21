@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, X, Image as ImageIcon, Link } from 'lucide-react';
+import { toast } from 'sonner';
+import s3StorageService from '@/lib/s3Storage';
 
-const ImageUpload = ({ value, onChange, onClear, className = '' }) => {
+const ImageUpload = ({ value, onChange, onClear, className = '', uploadType = 'image' }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,19 +19,46 @@ const ImageUpload = ({ value, onChange, onClear, className = '' }) => {
       return;
     }
 
-    // 创建本地URL
-    const localUrl = URL.createObjectURL(file);
-    
-    // 模拟保存到本地缓存（实际项目中可能需要上传到服务器或IndexedDB）
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target.result;
-      // 保存到localStorage作为缓存
-      const cacheKey = `bg_image_${Date.now()}`;
-      localStorage.setItem(cacheKey, base64);
-      onChange(base64);
+    // 若已配置 S3，优先直传到 S3
+    const tryUploadToS3 = async () => {
+      try {
+        if (s3StorageService.isConfigured()) {
+          toast.loading('正在上传图片到S3...', { id: 'img-upload' });
+          const result = await s3StorageService.uploadFile(file, {
+            type: uploadType || 'image',
+            onProgress: (stage, progress) => {
+              if (stage === 'uploading') {
+                toast.loading(`上传中... ${progress}%`, { id: 'img-upload' });
+              }
+            }
+          });
+          toast.success('已上传到S3', { id: 'img-upload' });
+          onChange(result.url);
+          return true;
+        }
+      } catch (e) {
+        console.error('S3 上传图片失败，回退为本地 Base64:', e);
+        toast.error(`S3上传失败，已回退本地：${e?.message || ''}`, { id: 'img-upload' });
+      }
+      return false;
     };
-    reader.readAsDataURL(file);
+
+    const fallbackToBase64 = () => {
+      // 创建本地URL并转 Base64 作为回退
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target.result;
+        const cacheKey = `img_${uploadType}_${Date.now()}`;
+        try { localStorage.setItem(cacheKey, base64); } catch {}
+        onChange(base64);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // 执行上传或回退
+    tryUploadToS3().then((ok) => {
+      if (!ok) fallbackToBase64();
+    });
   }, [onChange]);
 
   // 处理文件输入变化

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
   avatar_config TEXT DEFAULT '{"imageUrl":""}',
   canvas_config TEXT DEFAULT NULL,
+  music_config TEXT DEFAULT '{"enabled":true,"customSongs":[]}',
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
