@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const DanmakuComponent = ({
   isVisible,
-  text,
+  text, // backward-compatible single text
+  getText, // optional: function to get dynamic text each spawn
+  texts, // optional: array of candidates
   opacity = 0.8,
   speed = 5,
   isLoop = true,
@@ -52,9 +54,21 @@ const DanmakuComponent = ({
     const containerHeight = window.innerHeight * screenRatio;
     const lineHeight = fontSize * 1.5;
     const maxTop = Math.max(0, containerHeight - lineHeight);
+    // Determine content per item
+    let content = text;
+    try {
+      if (typeof getText === 'function') {
+        content = getText();
+      } else if (Array.isArray(texts) && texts.length) {
+        content = texts[Math.floor(Math.random() * texts.length)];
+      }
+    } catch (e) {
+      // fallback to provided text on any error
+      content = text;
+    }
     return {
       id: Math.random().toString(36).substr(2, 9),
-      text,
+      text: content,
       top: randomHeight ? Math.random() * maxTop : Math.random() * maxLines * lineHeight,
       left: window.innerWidth,
       speed: randomSpeed ? speed * (0.5 + Math.random()) : speed,
@@ -62,7 +76,7 @@ const DanmakuComponent = ({
       fontSize: randomSize ? fontSize * (0.8 + Math.random() * 0.4) : fontSize,
       color,
     };
-  }, [text, screenRatio, fontSize, randomHeight, maxLines, randomSpeed, speed, opacity, randomSize, color]);
+  }, [text, getText, texts, screenRatio, fontSize, randomHeight, maxLines, randomSpeed, speed, opacity, randomSize, color]);
 
   const addDanmaku = useCallback(() => {
     if (!isVisible || !isPageVisible) return;

@@ -10,7 +10,8 @@ Meow App 是一个简洁的笔记应用，支持本地存储和云端同步。�
 ....
 
 ## 特别感谢
-使用nocode<https://nocode.cn> 和vscode制作。
+- 使用nocode<https://nocode.cn>制作。
+- 部分组件代码源于网络。
 
 ## demo
 不含D1数据库（麻烦帮我冲一下UV和PV，球球了）：https://flomo.nocode.host/

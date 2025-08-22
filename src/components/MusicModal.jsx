@@ -21,6 +21,8 @@ export default function MusicModal({
   const [showVol, setShowVol] = React.useState(false);
   const [showPlaylist, setShowPlaylist] = React.useState(false);
   const volRef = React.useRef(null);
+  const volTrackRef = React.useRef(null);
+  const isDraggingVolRef = React.useRef(false);
   const lyricsContainerRef = React.useRef(null);
 
   const { 
@@ -180,6 +182,56 @@ export default function MusicModal({
     };
   }, []);
 
+  // 计算弹幕文本：当前句 / 前后句 / 兜底短语
+  const getDanmakuText = React.useCallback(() => {
+    const phrases = ['好听', '太好听了', '绝了', '单曲循环ing', '有感觉', '❤️', '♪', '好想跟着哼', '入耳即爱'];
+    const safeTitle = currentSong?.title || '';
+    const safeArtist = currentSong?.artist || '';
+    if (safeTitle) phrases.push(`${safeTitle} yyds`);
+    if (safeArtist) phrases.push(`${safeArtist} 牛！`);
+
+    if (Array.isArray(lyrics) && lyrics.length > 0) {
+      const idx = currentLyricIndex;
+      const pick = [];
+      if (idx >= 0 && lyrics[idx]?.text) pick.push(lyrics[idx].text);
+      if (idx - 1 >= 0 && lyrics[idx - 1]?.text) pick.push(lyrics[idx - 1].text);
+      if (idx + 1 < lyrics.length && lyrics[idx + 1]?.text) pick.push(lyrics[idx + 1].text);
+      // 用当前句+装饰
+      if (idx >= 0 && lyrics[idx]?.text) pick.push(`♪ ${lyrics[idx].text}`);
+      const all = [...pick, ...phrases];
+      return all[Math.floor(Math.random() * all.length)] || danmakuText;
+    }
+    return phrases[Math.floor(Math.random() * phrases.length)] || danmakuText;
+  }, [lyrics, currentLyricIndex, currentSong?.title, currentSong?.artist, danmakuText]);
+
+  // 垂直音量条：位置->音量
+  const setVolumeByClientY = (clientY) => {
+    const track = volTrackRef.current;
+    if (!track) return;
+    const rect = track.getBoundingClientRect();
+    const ratio = 1 - clamp((clientY - rect.top) / rect.height, 0, 1);
+    setVolume(ratio);
+  };
+
+  const onVolMouseDown = (e) => {
+    isDraggingVolRef.current = true;
+    setVolumeByClientY(e.clientY);
+    e.preventDefault();
+  };
+  React.useEffect(() => {
+    const onMove = (e) => {
+      if (!isDraggingVolRef.current) return;
+      setVolumeByClientY(e.clientY);
+    };
+    const onUp = () => { isDraggingVolRef.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
   if (!isOpen || !currentSong) return null;
 
   return (
@@ -187,7 +239,7 @@ export default function MusicModal({
       {enableDanmaku && (
         <DanmakuComponent
           isVisible={isOpen}
-          text={danmakuText}
+          getText={getDanmakuText}
           opacity={0.7}
           speed={3}
           isLoop={true}
@@ -302,31 +354,44 @@ export default function MusicModal({
               <div
                 className="relative flex items-center"
                 ref={volRef}
-                onMouseEnter={() => setShowVol(true)}
-                onMouseLeave={() => setShowVol(false)}
                 onWheel={(e) => {
                   e.preventDefault();
                   const delta = e.deltaY > 0 ? -0.05 : 0.05;
                   setVolume(v => clamp(v + delta, 0, 1));
                 }}
               >
-                {!showVol ? (
-                  <button
-                    className="cursor-pointer text-white text-sm px-2 py-1 rounded hover:bg-[#4a4c4d]"
-                    title="音量"
+                <button
+                  className="cursor-pointer text-white text-sm px-2 py-1 rounded hover:bg-[#4a4c4d]"
+                  title={volume > 0 ? '静音' : '取消静音'}
+                  onClick={() => setVolume(v => (v > 0 ? 0 : 0.8))}
+                  onMouseEnter={() => setShowVol(true)}
+                >
+                  {volume > 0 ? '🔊' : '🔇'}
+                </button>
+                {showVol && (
+                  <div
+                    className="absolute bottom-9 left-1/2 -translate-x-1/2 bg-[#2f3132] border border-gray-700 rounded-xl px-3 py-3 shadow-2xl z-50"
+                    onMouseLeave={() => setShowVol(false)}
                   >
-                    🔊
-                  </button>
-                ) : (
-                  <div className="w-32 h-8 bg-[#3F4142] rounded-md border border-gray-600 flex items-center px-3 shadow-inner">
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={Math.round(volume * 100)}
-                      onChange={(e) => setVolume(clamp(Number(e.target.value) / 100, 0, 1))}
-                      className="w-full accent-white"
-                    />
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="text-[11px] text-gray-300 select-none">{Math.round(volume * 100)}%</div>
+                      <div
+                        ref={volTrackRef}
+                        className="relative w-2 h-28 rounded-full bg-gray-700 cursor-pointer"
+                        onMouseDown={onVolMouseDown}
+                        onClick={(e) => setVolumeByClientY(e.clientY)}
+                      >
+                        <div
+                          className="absolute bottom-0 left-0 w-full bg-white rounded-full"
+                          style={{ height: `${Math.round(volume * 100)}%` }}
+                        />
+                        <div
+                          className="absolute left-1/2 -translate-x-1/2 rounded-full w-4 h-4 bg-white shadow"
+                          style={{ bottom: `calc(${Math.round(volume * 100)}% - 0.5rem)` }}
+                          onMouseDown={onVolMouseDown}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
