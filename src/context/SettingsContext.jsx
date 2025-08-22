@@ -226,8 +226,11 @@ export function SettingsProvider({ children }) {
           })).sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0));
           localStorage.setItem('memos', JSON.stringify(merged));
           if (removedIds.length && Array.isArray(pinned)) {
-            const removedSet = new Set(removedIds);
-            const nextPinned = pinned.filter(id => !removedSet.has(String(id)));
+            const removedSet = new Set(removedIds.map(String));
+            const nextPinned = pinned.filter((p) => {
+              const pid = (p && typeof p === 'object') ? p.id : p;
+              return !removedSet.has(String(pid));
+            });
             if (nextPinned.length !== pinned.length) {
               localStorage.setItem('pinnedMemos', JSON.stringify(nextPinned));
             }
@@ -658,7 +661,10 @@ export function SettingsProvider({ children }) {
       try {
         const mergedIds = new Set(merged.map(m => String(m.id)));
         const pinned = Array.isArray(local.pinnedMemos) ? local.pinnedMemos : [];
-        const nextPinned = pinned.filter(pid => mergedIds.has(String(pid)));
+        const nextPinned = pinned.filter((p) => {
+          const pid = (p && typeof p === 'object') ? p.id : p;
+          return mergedIds.has(String(pid));
+        });
         if (nextPinned.length !== pinned.length) {
           localStorage.setItem('pinnedMemos', JSON.stringify(nextPinned));
         }

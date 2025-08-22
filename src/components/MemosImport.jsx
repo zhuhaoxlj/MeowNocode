@@ -81,13 +81,20 @@ function mergeMemosIntoLocalStorage(parsed) {
   const existingMemos = JSON.parse(localStorage.getItem('memos') || '[]');
   const existingPinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
 
-  const existingIds = new Set(existingMemos.map((m) => m.id).concat(existingPinned.map((m) => m.id)));
+  // 兼容 pinned 为「对象数组」或「ID数组」两种存储形态
+  const getId = (x) => (x && typeof x === 'object') ? x.id : x;
+  const existingIds = new Set(
+    [...existingMemos, ...existingPinned]
+      .map(getId)
+      .filter(Boolean)
+      .map(String)
+  );
 
   const imported = [];
   const importedPinned = [];
 
   for (const { memoObj, pinned } of parsed) {
-    if (existingIds.has(memoObj.id)) {
+    if (existingIds.has(String(memoObj.id))) {
       // 跳过重复（来自相同来源的再次导入）
       continue;
     }
@@ -100,6 +107,14 @@ function mergeMemosIntoLocalStorage(parsed) {
 
   localStorage.setItem('memos', JSON.stringify(newMemos));
   localStorage.setItem('pinnedMemos', JSON.stringify(newPinned));
+
+  // 广播数据变更事件，便于 UI 与云同步感知
+  try {
+    // 将最近云同步时间重置，避免下行合并把本地导入误判为“云端已删除”
+    localStorage.setItem('lastCloudSyncAt', '0');
+    // 触发页面刷新本地状态（Index.jsx 监听包含 'restore.' 的事件）
+    window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.import' } }));
+  } catch {}
 
   return { importedCount: imported.length, pinnedCount: importedPinned.length };
 }
@@ -162,15 +177,10 @@ export default function MemosImport() {
 
       // 目前使用 sql.js 直接读取 .db；如果同时提供了 -wal/-shm，我们会接受但不保证未 checkpoint 的事务被包含
       const parsed = await parseMemosFromSQLite(mainDbFile);
-      const { importedCount, pinnedCount } = mergeMemosIntoLocalStorage(parsed);
-      setDone({ importedCount, pinnedCount });
-      toast.success(`导入完成：新增 ${importedCount} 条，置顶 ${pinnedCount} 条。正在刷新以载入最新数据…`);
-      // 短暂停留以显示提示，然后自动刷新页面
-      setTimeout(() => {
-        try {
-          window.location.reload();
-        } catch (_) {}
-      }, 600);
+  const { importedCount, pinnedCount } = mergeMemosIntoLocalStorage(parsed);
+  setDone({ importedCount, pinnedCount });
+  toast.success(`导入完成：新增 ${importedCount} 条，置顶 ${pinnedCount} 条。`);
+  // 无需强制刷新，通过事件驱动页面感知并刷新本地状态/触发云同步
     } catch (err) {
       console.error(err);
       toast.error(`导入失败：${err.message || err}`);

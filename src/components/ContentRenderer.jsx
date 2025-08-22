@@ -135,6 +135,27 @@ const ContentRenderer = ({ content, activeTag, onTagClick }) => {
     return result;
   };
 
+  // 解析并按自定义原样 HTML 片段分割文本
+  // 语法：```__html\n ... 任意 HTML ... \n```
+  const splitByRawHtml = (text) => {
+    const result = [];
+    const re = /```__html\s*\n([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > lastIndex) {
+        result.push({ kind: 'text', value: text.slice(lastIndex, m.index) });
+      }
+      const html = (m[1] || '').trim();
+      result.push({ kind: 'rawhtml', value: html });
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      result.push({ kind: 'text', value: text.slice(lastIndex) });
+    }
+    return result;
+  };
+
   const parts = parseContent(content);
   const { darkMode } = useTheme();
 
@@ -175,123 +196,120 @@ const ContentRenderer = ({ content, activeTag, onTagClick }) => {
             </span>
           );
         } else {
-          // 渲染文本部分
-          // 检查是否以空格开头
-          const startsWithSpace = /^\s/.test(part.content);
-          
-          if (startsWithSpace) {
-            // 如果以空格开头，直接渲染为span，保留所有空格
-            return (
-              <span key={index} className="whitespace-pre-wrap">
-                {part.content}
-              </span>
-            );
-          } else {
-            // 否则：先按 spoiler 语法切分，再分别渲染
-            const segments = splitBySpoilers(part.content);
-            if (segments.length === 1 && segments[0].kind === 'text') {
-              return (
-                <ReactMarkdown
-                  key={index}
-                  components={{
-                    h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
-                    p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
-                    ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
-                    ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
-                    li: ({node, ...props}) => <li className="my-1" {...props} />,
-                    strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
-                    em: ({node, ...props}) => <em className="italic" {...props} />,
-                    br: () => <br />,
-                  }}
-                  remarkPlugins={[]}
-                  rehypePlugins={[]}
-                >
-                  {renderMarkdownText(segments[0].value)}
-                </ReactMarkdown>
-              );
-            }
-            // 强化版：按段渲染并精确处理前导/尾随换行
-            let pendingBreaks = 0; // 由上一文本段尾随换行携带到下一段
-            let lastWasSpoiler = false;
-            return (
-              <>
-                {segments.map((seg, i) => {
-                  // 渲染一个帮助函数：输出若干个 <br/>
-                  const renderBreaks = (count, keyPrefix) => Array.from({ length: count }, (_, k) => <br key={`${index}-${keyPrefix}-${i}-${k}`} />);
-
-                  if (seg.kind === 'spoiler') {
-                    const beforeEls = [];
-                    if (pendingBreaks > 0) {
-                      beforeEls.push(...renderBreaks(pendingBreaks, 'pb'));
-                      pendingBreaks = 0;
-                    }
-                    const el = (
-                      <span key={`${index}-sp-wrap-${i}`}>
-                        {beforeEls}
-                        <Spoiler text={seg.value} styleType={seg.styleType} color={seg.color} />
-                      </span>
-                    );
-                    lastWasSpoiler = true;
-                    return el;
-                  }
-
-                  // 文本段：处理与上一段的关系（spoiler 后空行/空格），以及自身的前导/尾随换行
-                  const prefixEls = [];
-                  if (pendingBreaks > 0) {
-                    prefixEls.push(...renderBreaks(pendingBreaks, 'pb')); // 来自上一文本段的结尾
-                    pendingBreaks = 0;
-                  }
-
-                  // 统计并消费前导空白+换行（将其改为 <br/>）
-                  const leading = seg.value.match(/^[ \t]*\n+/);
-                  const leadingBreaks = leading ? (leading[0].match(/\n/g) || []).length : 0;
-                  if (leadingBreaks > 0) {
-                    prefixEls.push(...renderBreaks(leadingBreaks, 'lb'));
-                  } else if (lastWasSpoiler) {
-                    // 如果上一段是 spoiler 且没有前导换行，则插入一个空格，避免紧贴
-                    prefixEls.push(' ');
-                  }
-
-                  // 去掉前导/尾随换行再交给 markdown
-                  let inner = seg.value.replace(/^[ \t]*\n+/, '');
-                  const trailing = inner.match(/\n+[ \t]*$/);
-                  const trailingBreaks = trailing ? (trailing[0].match(/\n/g) || []).length : 0;
-                  inner = inner.replace(/\n+[ \t]*$/, '');
-
-                  const node = (
-                    <span key={`${index}-tx-wrap-${i}`}>
-                      {prefixEls}
-                      <ReactMarkdown
-                        components={{
-                          h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
-                          h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
-                          h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
-                          p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
-                          ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
-                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
-                          li: ({node, ...props}) => <li className="my-1" {...props} />,
-                          strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
-                          em: ({node, ...props}) => <em className="italic" {...props} />,
-                          br: () => <br />,
-                        }}
-                        remarkPlugins={[]}
-                        rehypePlugins={[]}
-                      >
-                        {renderMarkdownText(inner)}
-                      </ReactMarkdown>
-                    </span>
+          // 渲染文本部分：支持 __html 原样 HTML + spoiler + markdown
+          const rawSegments = splitByRawHtml(part.content);
+          return (
+            <>
+              {rawSegments.map((rawSeg, rawIdx) => {
+                if (rawSeg.kind === 'rawhtml') {
+                  // 直接渲染原样 HTML（来自 ```__html ... ``` 块）
+                  return (
+                    <div key={`${index}-raw-${rawIdx}`} dangerouslySetInnerHTML={{ __html: rawSeg.value }} />
                   );
+                }
 
-                  // 将尾随换行携带到下一段
-                  pendingBreaks = trailingBreaks;
-                  lastWasSpoiler = false;
-                  return node;
-                })}
-              </>
-            );
-          }
+                // 普通文本：先按 spoiler 切分，再交给 ReactMarkdown
+                const segments = splitBySpoilers(rawSeg.value);
+                if (segments.length === 1 && segments[0].kind === 'text') {
+                  return (
+                    <ReactMarkdown
+                      key={`${index}-md-${rawIdx}`}
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
+                        p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
+                        ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
+                        li: ({node, ...props}) => <li className="my-1" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                        em: ({node, ...props}) => <em className="italic" {...props} />,
+                        br: () => <br />,
+                      }}
+                      remarkPlugins={[]}
+                      rehypePlugins={[]}
+                    >
+                      {renderMarkdownText(segments[0].value)}
+                    </ReactMarkdown>
+                  );
+                }
+
+                // 多段（含 spoiler）的情况：处理前后换行与拼接
+                let pendingBreaks = 0;
+                let lastWasSpoiler = false;
+                return (
+                  <React.Fragment key={`${index}-mdsp-${rawIdx}`}>
+                    {segments.map((seg, i) => {
+                      const renderBreaks = (count, keyPrefix) => Array.from({ length: count }, (_, k) => <br key={`${index}-${keyPrefix}-${rawIdx}-${i}-${k}`} />);
+
+                      if (seg.kind === 'spoiler') {
+                        const beforeEls = [];
+                        if (pendingBreaks > 0) {
+                          beforeEls.push(...renderBreaks(pendingBreaks, 'pb'));
+                          pendingBreaks = 0;
+                        }
+                        const el = (
+                          <span key={`${index}-sp-wrap-${rawIdx}-${i}`}>
+                            {beforeEls}
+                            <Spoiler text={seg.value} styleType={seg.styleType} color={seg.color} />
+                          </span>
+                        );
+                        lastWasSpoiler = true;
+                        return el;
+                      }
+
+                      const prefixEls = [];
+                      if (pendingBreaks > 0) {
+                        prefixEls.push(...renderBreaks(pendingBreaks, 'pb'));
+                        pendingBreaks = 0;
+                      }
+
+                      const leading = seg.value.match(/^[ \t]*\n+/);
+                      const leadingBreaks = leading ? (leading[0].match(/\n/g) || []).length : 0;
+                      if (leadingBreaks > 0) {
+                        prefixEls.push(...renderBreaks(leadingBreaks, 'lb'));
+                      } else if (lastWasSpoiler) {
+                        prefixEls.push(' ');
+                      }
+
+                      let inner = seg.value.replace(/^[ \t]*\n+/, '');
+                      const trailing = inner.match(/\n+[ \t]*$/);
+                      const trailingBreaks = trailing ? (trailing[0].match(/\n/g) || []).length : 0;
+                      inner = inner.replace(/\n+[ \t]*$/, '');
+
+                      const node = (
+                        <span key={`${index}-tx-wrap-${rawIdx}-${i}`}>
+                          {prefixEls}
+                          <ReactMarkdown
+                            components={{
+                              h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
+                              h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
+                              h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
+                              p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
+                              ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
+                              ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
+                              li: ({node, ...props}) => <li className="my-1" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                              em: ({node, ...props}) => <em className="italic" {...props} />,
+                              br: () => <br />,
+                            }}
+                            remarkPlugins={[]}
+                            rehypePlugins={[]}
+                          >
+                            {renderMarkdownText(inner)}
+                          </ReactMarkdown>
+                        </span>
+                      );
+
+                      pendingBreaks = trailingBreaks;
+                      lastWasSpoiler = false;
+                      return node;
+                    })}
+                  </React.Fragment>
+                );
+              })}
+            </>
+          );
         }
       })}
     </div>
