@@ -234,6 +234,17 @@ export default function MiniMusicPlayer({
     const t = audioRef.current.currentTime;
     setCurrentTime(t);
     try { window.dispatchEvent(new CustomEvent('music:time', { detail: { currentTime: t, duration } })); } catch {}
+    // 持久化播放进度（包括用于匹配的标识）
+    try {
+      const s = currentSong || {};
+      localStorage.setItem('music:lastProgress', JSON.stringify({
+        title: s.title || '',
+        artist: s.artist || '',
+        musicUrl: s.musicUrl || '',
+        time: t,
+        updatedAt: Date.now()
+      }));
+    } catch {}
   };
   
   const handleLoadedMetadata = () => {
@@ -241,6 +252,21 @@ export default function MiniMusicPlayer({
     const d = audioRef.current.duration || 0;
     setDuration(d);
     try { window.dispatchEvent(new CustomEvent('music:time', { detail: { currentTime, duration: d } })); } catch {}
+    // 加载完成后尝试恢复进度
+    try {
+      const raw = localStorage.getItem('music:lastProgress');
+      if (raw) {
+        const lp = JSON.parse(raw);
+        const sameByUrl = lp.musicUrl && currentSong?.musicUrl && lp.musicUrl === currentSong.musicUrl;
+        const sameByMeta = (lp.title || '').trim() === (currentSong?.title || '').trim() && (lp.artist || '').trim() === (currentSong?.artist || '').trim();
+        if ((sameByUrl || sameByMeta) && typeof lp.time === 'number' && isFinite(lp.time)) {
+          const t = Math.max(0, Math.min(lp.time, d || lp.time));
+          audioRef.current.currentTime = t;
+          setCurrentTime(t);
+          try { window.dispatchEvent(new CustomEvent('music:time', { detail: { currentTime: t, duration: d } })); } catch {}
+        }
+      }
+    } catch {}
   };
 
   const formatTime = (t) => {
@@ -277,6 +303,15 @@ export default function MiniMusicPlayer({
       playNext();
     }
   };
+
+  // 从本地恢复歌词显示状态
+  React.useEffect(() => {
+    try {
+      const v = localStorage.getItem('music:showLyrics');
+      if (v === '1') setShowLyrics(true);
+      if (v === '0') setShowLyrics(false);
+    } catch {}
+  }, []);
 
   // 如果没有当前歌曲，不显示播放器
   if (!currentSong) {
@@ -389,7 +424,13 @@ export default function MiniMusicPlayer({
             {/* 歌词按钮 */}
             <button
               className={`px-2 py-1 rounded text-xs border border-transparent hover:bg-gray-100 dark:hover:bg-gray-700 ${showLyrics ? 'text-white' : 'text-gray-300'}`}
-              onClick={() => setShowLyrics(v => !v)}
+              onClick={() => {
+                setShowLyrics(v => {
+                  const next = !v;
+                  try { localStorage.setItem('music:showLyrics', next ? '1' : '0'); } catch {}
+                  return next;
+                });
+              }}
               title="显示/隐藏歌词"
             >
               词

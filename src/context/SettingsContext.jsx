@@ -37,10 +37,14 @@ export function SettingsProvider({ children }) {
     enabled: false
   });
 
-  // 音乐功能配置
-  const [musicConfig, setMusicConfig] = useState({
-    enabled: true,
-    customSongs: []
+  // 音乐功能配置（启动即从 localStorage 读取，避免初始空列表导致恢复失败）
+  const [musicConfig, setMusicConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicConfig');
+      return saved ? JSON.parse(saved) : { enabled: true, customSongs: [] };
+    } catch {
+      return { enabled: true, customSongs: [] };
+    }
   });
 
   // S3存储配置
@@ -413,17 +417,7 @@ export function SettingsProvider({ children }) {
     }
   }, []);
 
-  // 从localStorage加载音乐配置
-  useEffect(() => {
-    const savedMusicConfig = localStorage.getItem('musicConfig');
-    if (savedMusicConfig) {
-      try {
-        setMusicConfig(JSON.parse(savedMusicConfig));
-      } catch (error) {
-        console.warn('Failed to parse music config:', error);
-      }
-    }
-  }, []);
+  // 音乐配置已在初始化时读取，这里不再重复读取，避免覆盖正在编辑的状态
 
   // 从localStorage加载快捷键配置
   useEffect(() => {

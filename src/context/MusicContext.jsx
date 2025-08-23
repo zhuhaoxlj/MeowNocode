@@ -16,7 +16,8 @@ export function MusicProvider({ children }) {
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [createdUrls, setCreatedUrls] = useState([]);
   const [volume, setVolume] = useState(0.8);
-  const pendingPlayUrlRef = useRef(null);
+  // 待播放信息：避免 URL 在后续被 S3 替换导致找不到，增加标题+歌手回退匹配
+  const pendingPlayRef = useRef(null); // { url, title, artist }
   const restoredRef = useRef(false);
 
   // 清理创建的对象URL
@@ -94,16 +95,22 @@ export function MusicProvider({ children }) {
       return;
     }
     
-    // 尝试在首次加载时恢复上次播放
+    // 尝试在首次加载时恢复上次播放（按 URL 回退到 标题+歌手）
     if (!restoredRef.current && newPlaylist.length > 0) {
       try {
         const raw = localStorage.getItem('music:lastPlayed');
         if (raw) {
           const last = JSON.parse(raw);
-          const idx = newPlaylist.findIndex(s => s.musicUrl && s.musicUrl === last?.musicUrl);
-          if (idx >= 0) {
-            setCurrentSongIndex(idx);
+          let idx = -1;
+          if (last?.musicUrl) {
+            idx = newPlaylist.findIndex(s => s.musicUrl && s.musicUrl === last.musicUrl);
           }
+          if (idx < 0) {
+            const t = (last?.title || '').trim();
+            const a = (last?.artist || '').trim();
+            idx = newPlaylist.findIndex(s => (s.title || '').trim() === t && (s.artist || '').trim() === a);
+          }
+          if (idx >= 0) setCurrentSongIndex(idx);
         }
       } catch {}
       restoredRef.current = true;
@@ -118,12 +125,45 @@ export function MusicProvider({ children }) {
       }
     }
     // 若存在挂起的待播 URL，则尝试定位并播放
-    const pendingUrl = pendingPlayUrlRef.current;
-    if (pendingUrl) {
-      const idx = newPlaylist.findIndex(s => s.musicUrl === pendingUrl);
+    const pending = pendingPlayRef.current;
+    if (pending) {
+      let idx = newPlaylist.findIndex(s => s.musicUrl === pending.url);
+      if (idx < 0) {
+        const t = (pending.title || '').trim();
+        const a = (pending.artist || '').trim();
+        idx = newPlaylist.findIndex(s => (s.title || '').trim() === t && (s.artist || '').trim() === a);
+      }
       if (idx >= 0) {
-        playSong(idx);
-        pendingPlayUrlRef.current = null;
+        // 直接基于 newPlaylist 进行播放，避免依赖可能滞后的 playlist state
+        try {
+          setCurrentSongIndex(idx);
+          setIsPlaying(true);
+          const s = newPlaylist[idx];
+          try {
+            localStorage.setItem('music:lastPlayed', JSON.stringify({
+              title: s.title,
+              artist: s.artist,
+              musicUrl: s.musicUrl,
+              coverUrl: s.coverUrl,
+              lyrics: s.lyrics || ''
+            }));
+          } catch {}
+          try {
+            window.dispatchEvent(new CustomEvent('music:pause-others'));
+            window.dispatchEvent(new CustomEvent('music:play', {
+              detail: {
+                title: s.title,
+                artist: s.artist,
+                musicUrl: s.musicUrl,
+                coverUrl: s.coverUrl
+              }
+            }));
+          } catch (error) {
+            console.error('Failed to dispatch music:play event:', error);
+          }
+        } finally {
+          pendingPlayRef.current = null;
+        }
       }
     }
   }, [musicConfig]);
@@ -164,6 +204,7 @@ export function MusicProvider({ children }) {
           lyrics: s.lyrics || ''
         }));
       } catch {}
+  // 请求迷你播放器如有需要可自行在 loadedmetadata 恢复进度
       
       // 通知全局播放器切换歌曲
       try {
@@ -198,7 +239,23 @@ export function MusicProvider({ children }) {
 
   // 暂停/恢复播放
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+    const next = !isPlaying;
+    setIsPlaying(next);
+    // 当从暂停切换到播放时，写入 lastPlayed（避免仅点击播放不切歌时 lastPlayed 不更新）
+    if (next) {
+      try {
+        const s = playlist[currentSongIndex];
+        if (s) {
+          localStorage.setItem('music:lastPlayed', JSON.stringify({
+            title: s.title,
+            artist: s.artist,
+            musicUrl: s.musicUrl,
+            coverUrl: s.coverUrl,
+            lyrics: s.lyrics || ''
+          }));
+        }
+      } catch {}
+    }
     try {
       window.dispatchEvent(new CustomEvent(isPlaying ? 'music:pause' : 'music:play'));
     } catch (error) {
@@ -209,20 +266,29 @@ export function MusicProvider({ children }) {
   // 播放外部歌曲：若已在列表则直接播放；否则追加到自定义歌曲后自动播放
   const playExternalSong = (song) => {
     if (!song || !song.musicUrl) return;
-    const existsIndex = playlist.findIndex(s => s.musicUrl === song.musicUrl);
+    // 先尝试按 URL 定位
+    let existsIndex = playlist.findIndex(s => s.musicUrl === song.musicUrl);
+    // 若 URL 不同（如一份是 S3，一份是 API 源），则退化用 标题+歌手 去匹配
+    if (existsIndex < 0) {
+      const t = (song.title || '').trim();
+      const a = (song.artist || '').trim();
+      existsIndex = playlist.findIndex(s => (s.title || '').trim() === t && (s.artist || '').trim() === a);
+    }
     if (existsIndex >= 0) {
       playSong(existsIndex);
       return;
     }
     try {
-      const next = [...(musicConfig?.customSongs || []), {
+  const next = [...(musicConfig?.customSongs || []), {
         title: song.title || '未知标题',
         artist: song.artist || '未知艺术家',
         musicUrl: song.musicUrl,
         coverUrl: song.coverUrl || '',
-        lyrics: song.lyrics || ''
+        lyrics: song.lyrics || '',
+        ...(song.audioFile ? { audioFile: song.audioFile } : {}),
+        ...(song.imageFile ? { imageFile: song.imageFile } : {})
       }];
-      pendingPlayUrlRef.current = song.musicUrl;
+  pendingPlayRef.current = { url: song.musicUrl, title: song.title, artist: song.artist };
       updateMusicConfig({ customSongs: next, lastModified: new Date().toISOString() });
     } catch (e) {
       console.error('Failed to add external song:', e);

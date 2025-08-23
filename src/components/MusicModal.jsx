@@ -45,19 +45,58 @@ export default function MusicModal({
     return minutes * 60 + seconds;
   };
 
-  React.useEffect(() => {
-    if (isOpen && currentSong?.title) {
-      fetch(`/ci/${currentSong.title}.json`)
-        .then((res) => {
-          if (res.ok) return res.json();
-          throw new Error('歌词文件不存在');
-        })
-        .then((data) => setLyrics(data.lyrics || []))
-        .catch(() => setLyrics([]));
-      // 请求当前播放状态，便于 UI 同步
-      try { window.dispatchEvent(new CustomEvent('music:sync-request')); } catch {}
+  // 解析 LRC 文本（与迷你播放器一致）
+  const parseLrc = React.useCallback((lrcText) => {
+    if (!lrcText || typeof lrcText !== 'string') return [];
+    const lines = lrcText.split(/\r?\n/);
+    const result = [];
+    const timeTagGlobal = /\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?\]/g;
+    const toTime = (m, s, ms) => (m * 60 + s + (ms || 0) / 1000);
+    const fmt = (sec) => `${Math.floor(sec / 60)}:${Math.floor(sec % 60).toString().padStart(2, '0')}`;
+    for (const raw of lines) {
+      const times = [...raw.matchAll(timeTagGlobal)];
+      if (!times.length) continue;
+      const text = raw.replace(timeTagGlobal, '').trim();
+      if (!text) continue;
+      for (const t of times) {
+        const m = parseInt(t[1], 10) || 0;
+        const s = parseInt(t[2], 10) || 0;
+        const ms = parseInt(t[3] || '0', 10) || 0;
+        const seconds = toTime(m, s, ms);
+        result.push({ time: fmt(seconds), text });
+      }
     }
-  }, [isOpen, currentSong?.title]);
+    const toSec = (ts) => {
+      const [m, s] = ts.split(':');
+      return (parseInt(m, 10) || 0) * 60 + (parseInt(s, 10) || 0);
+    };
+    return result.sort((a, b) => toSec(a.time) - toSec(b.time));
+  }, []);
+
+  React.useEffect(() => {
+    if (!isOpen || !currentSong) return;
+    const tryLocalJson = async (title) => {
+      try {
+        const r = await fetch(`/ci/${title}.json`);
+        if (!r.ok) throw new Error('no local');
+        const data = await r.json();
+        setLyrics(Array.isArray(data?.lyrics) ? data.lyrics : []);
+      } catch {
+        setLyrics([]);
+      }
+    };
+    // 优先使用 API 返回的 LRC
+    if (currentSong.lyrics && typeof currentSong.lyrics === 'string' && currentSong.lyrics.includes('[')) {
+      const parsed = parseLrc(currentSong.lyrics);
+      setLyrics(parsed);
+    } else if (currentSong.title) {
+      tryLocalJson(currentSong.title);
+    } else {
+      setLyrics([]);
+    }
+    // 请求当前播放状态，便于 UI 同步
+    try { window.dispatchEvent(new CustomEvent('music:sync-request')); } catch {}
+  }, [isOpen, currentSong?.title, currentSong?.lyrics, parseLrc]);
 
   // 标记全屏音乐打开，供页面阻止侧栏唤出
   React.useEffect(() => {
@@ -99,16 +138,31 @@ export default function MusicModal({
     if (!isOpen) {
       setCurrentTime(0);
       setCurrentLyricIndex(-1);
-      setShowLyrics(true);
+      // 不重置 showLyrics，让其遵循本地持久化
       // 不控制真实音频
     }
   }, [isOpen]);
+
+  // 从本地恢复歌词显示状态
+  React.useEffect(() => {
+    try {
+      const v = localStorage.getItem('music:showLyrics');
+      if (v === '1') setShowLyrics(true);
+      if (v === '0') setShowLyrics(false);
+    } catch {}
+  }, []);
 
   const toggleLoop = () => {
     try { window.dispatchEvent(new CustomEvent('music:loop-toggle')); } catch {}
   };
 
-  const toggleLyrics = () => setShowLyrics(!showLyrics);
+  const toggleLyrics = () => {
+    setShowLyrics((v) => {
+      const next = !v;
+      try { localStorage.setItem('music:showLyrics', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
 
   const handleTimeUpdate = () => {
     // 源在迷你播放器，这里不直接读
