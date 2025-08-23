@@ -13,6 +13,7 @@ import TutorialDialog from '@/components/TutorialDialog';
 import MemoPreviewDialog from '@/components/MemoPreviewDialog';
 import MusicModal from '@/components/MusicModal';
 import MiniMusicPlayer from '@/components/MiniMusicPlayer';
+import MusicSearchCard from '@/components/MusicSearchCard';
 import { useSettings } from '@/context/SettingsContext';
 import { addDeletedMemoTombstone } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -51,6 +52,9 @@ import { toast } from 'sonner';
   const [previewMemoId, setPreviewMemoId] = useState(null);
   const [pendingNewBacklinks, setPendingNewBacklinks] = useState([]);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  // 音乐搜索卡片
+  const [musicSearchOpen, setMusicSearchOpen] = useState(false);
+  const [musicSearchKeyword, setMusicSearchKeyword] = useState('');
   const [musicModal, setMusicModal] = useState({
     isOpen: false,
     title: '鲜花',
@@ -507,61 +511,48 @@ import { toast } from 'sonner';
     };
     
     setHeatmapData(generateHeatmapData());
-    setFilteredMemos(memos);
   }, [memos, pinnedMemos]);
 
-  // 按标签或日期过滤
+  // 统一筛选：标签 / 日期 / 搜索
   useEffect(() => {
-    let result = memos;
-    
-    // 按标签过滤
+    // 1) 基础：仅按标签和日期过滤（作为回退列表）
+    let base = memos;
+
     if (activeTag) {
-      result = result.filter(memo => {
-        if (memo.tags.includes(activeTag)) {
-          return true;
-        }
-
+      base = base.filter(memo => {
+        if (memo.tags?.includes(activeTag)) return true;
         if (!activeTag.includes('/')) {
-          return memo.tags.some(tag => tag.startsWith(activeTag + '/'));
+          return memo.tags?.some(tag => tag.startsWith(activeTag + '/'));
         }
-
         return false;
       });
     }
-    
-    // 按日期过滤
+
     if (activeDate) {
-      result = result.filter(memo => {
-        const memoDate = memo.createdAt.split('T')[0];
+      base = base.filter(memo => {
+        const src = memo.createdAt || memo.timestamp || '';
+        const memoDate = (typeof src === 'string' ? src : new Date(src).toISOString()).split('T')[0];
         return memoDate === activeDate;
       });
     }
-    
-    setFilteredMemos(result);
-  }, [activeTag, activeDate, memos]);
 
-  // 处理搜索功能
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredMemos(memos);
+    // 2) 关键词过滤：仅当有命中时采用；否则回退到 base
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      const searched = base.filter(memo => {
+        const contentHit = (memo.content || '').toLowerCase().includes(q);
+        const tagsHit = Array.isArray(memo.tags) && memo.tags.some(tag => (tag || '').toLowerCase().includes(q));
+        return contentHit || tagsHit;
+      });
+
+      // 如果没有任何命中，则保持 base（认为是“搜索歌曲”场景，memos 列表不变）
+      setFilteredMemos(searched.length > 0 ? searched : base);
       return;
     }
 
-    const query = searchQuery.toLowerCase().trim();
-    const results = memos.filter(memo => {
-      if (memo.content.toLowerCase().includes(query)) {
-        return true;
-      }
-      
-      if (memo.tags.some(tag => tag.toLowerCase().includes(query))) {
-        return true;
-      }
-      
-      return false;
-    });
-
-    setFilteredMemos(results);
-  }, [searchQuery, memos]);
+    // 无关键词，直接使用 base
+    setFilteredMemos(base);
+  }, [memos, activeTag, activeDate, searchQuery]);
 
   // 处理菜单操作
   const handleMenuAction = (e, memoId, action) => {
@@ -1287,6 +1278,10 @@ import { toast } from 'sonner';
                 if (musicConfig?.enabled) setMusicModal((m) => ({ ...m, isOpen: true }));
               }}
               musicEnabled={!!musicConfig?.enabled}
+              onOpenMusicSearch={(q) => {
+                setMusicSearchKeyword(q);
+                setMusicSearchOpen(true);
+              }}
           />
         )}
 
@@ -1294,7 +1289,7 @@ import { toast } from 'sonner';
         <RightSidebar
           memos={[...memos, ...pinnedMemos]}
           activeTag={activeTag}
-          setActiveTag={setActiveTag}
+        setActiveTag={(tag) => { setActiveTag(tag); setActiveDate(null); }}
           isRightSidebarHidden={isRightSidebarHidden}
           setIsRightSidebarHidden={setIsRightSidebarHidden}
           isRightSidebarPinned={isRightSidebarPinned}
@@ -1313,7 +1308,7 @@ import { toast } from 'sonner';
         heatmapData={heatmapData}
         memos={[...memos, ...pinnedMemos]}
         activeTag={activeTag}
-        setActiveTag={setActiveTag}
+        setActiveTag={(tag) => { setActiveTag(tag); setActiveDate(null); }}
         onSettingsOpen={() => setIsSettingsOpen(true)}
         onDateClick={handleDateClick}
   onOpenMusic={() => { if (musicConfig?.enabled) setMusicModal((m) => ({ ...m, isOpen: true })); }}
@@ -1371,6 +1366,12 @@ import { toast } from 'sonner';
           />
           <MiniMusicPlayer
             onOpenFull={() => setMusicModal((m) => ({ ...m, isOpen: true }))}
+          />
+          {/* 音乐搜索卡片 */}
+          <MusicSearchCard
+            open={musicSearchOpen}
+            keyword={musicSearchKeyword}
+            onClose={() => setMusicSearchOpen(false)}
           />
         </>
       )}

@@ -34,21 +34,64 @@ export default function MiniMusicPlayer({
     showPlaylist,
     setShowPlaylist,
     volume,
-    setVolume
+  setVolume,
+  deleteSongAtIndex
   } = useMusic();
 
   const currentSong = getCurrentSong();
 
-  // 加载歌词
+  // 解析 LRC 文本
+  const parseLrc = React.useCallback((lrcText) => {
+    if (!lrcText || typeof lrcText !== 'string') return [];
+    const lines = lrcText.split(/\r?\n/);
+    const result = [];
+    const timeTagGlobal = /\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?\]/g;
+    const toTime = (m, s, ms) => (m * 60 + s + (ms || 0) / 1000);
+    const fmt = (sec) => `${Math.floor(sec / 60)}:${Math.floor(sec % 60).toString().padStart(2, '0')}`;
+    for (const raw of lines) {
+      const times = [...raw.matchAll(timeTagGlobal)];
+      if (!times.length) continue;
+      const text = raw.replace(timeTagGlobal, '').trim();
+      if (!text) continue;
+      for (const t of times) {
+        const m = parseInt(t[1], 10) || 0;
+        const s = parseInt(t[2], 10) || 0;
+        const ms = parseInt(t[3] || '0', 10) || 0;
+        const seconds = toTime(m, s, ms);
+        result.push({ time: fmt(seconds), text });
+      }
+    }
+    const toSec = (ts) => {
+      const [m, s] = ts.split(':');
+      return (parseInt(m, 10) || 0) * 60 + (parseInt(s, 10) || 0);
+    };
+    return result.sort((a, b) => toSec(a.time) - toSec(b.time));
+  }, []);
+
+  // 加载歌词（优先使用 currentSong.lyrics 的 LRC；否则回退到本地 JSON）
   React.useEffect(() => {
-    if (!currentSong?.title) return;
     let aborted = false;
-    fetch(`/ci/${currentSong.title}.json`).then(r => (r.ok ? r.json() : Promise.reject())).then(data => {
-      if (aborted) return;
-      setLyrics(Array.isArray(data?.lyrics) ? data.lyrics : []);
-    }).catch(() => setLyrics([]));
+    const tryLocalJson = async (title) => {
+      try {
+        const r = await fetch(`/ci/${title}.json`);
+        if (!r.ok) throw new Error('no local');
+        const data = await r.json();
+        if (!aborted) setLyrics(Array.isArray(data?.lyrics) ? data.lyrics : []);
+      } catch {
+        if (!aborted) setLyrics([]);
+      }
+    };
+    if (!currentSong) return;
+    if (currentSong.lyrics && typeof currentSong.lyrics === 'string' && currentSong.lyrics.includes('[')) {
+      const parsed = parseLrc(currentSong.lyrics);
+      setLyrics(parsed);
+    } else if (currentSong.title) {
+      tryLocalJson(currentSong.title);
+    } else {
+      setLyrics([]);
+    }
     return () => { aborted = true; };
-  }, [currentSong?.title]);
+  }, [currentSong?.title, currentSong?.lyrics, parseLrc]);
 
   // 根据 currentTime 计算当前行
   const timeToSeconds = (timeStr) => {
@@ -244,7 +287,7 @@ export default function MiniMusicPlayer({
     <>
       <div className="fixed bottom-4 right-4 z-40 w-96 max-w-[90vw] bg-white/90 dark:bg-gray-800/90 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg rounded-xl overflow-visible sidebar-hover-block">
         {/* 透明歌词容器（位于迷你播放器上方） */}
-        {showLyrics && lyrics.length > 0 && (
+  {showLyrics && lyrics.length > 0 && (
           <div className="absolute -top-2 right-0 -translate-y-full w-96 max-w-[90vw] bg-transparent rounded-xl p-2 z-[41]">
             <div
               ref={lyricsRef}
@@ -263,7 +306,7 @@ export default function MiniMusicPlayer({
                   return (
                     <div
                       key={realIndex}
-                      className={`py-1.5 text-center ${active ? 'text-white text-base font-semibold' : passed ? 'text-gray-300 text-xs' : 'text-gray-200 text-xs'}`}
+          className={`py-1.5 text-center ${active ? 'text-black dark:text-white text-base font-semibold' : passed ? 'text-gray-500 dark:text-gray-300 text-xs' : 'text-gray-800 dark:text-gray-200 text-xs'}`}
                       style={{ lineHeight: 1.5, whiteSpace: 'pre-line' }}
                     >
                       {line.section && (<div className="text-[10px] text-blue-300 mb-0.5">[{line.section}]</div>)}
@@ -413,6 +456,7 @@ export default function MiniMusicPlayer({
         isPlaying={isPlaying}
         onSongSelect={playSong}
         onTogglePlay={togglePlay}
+  onDeleteSong={(idx) => deleteSongAtIndex(idx)}
       />
     </>
   );

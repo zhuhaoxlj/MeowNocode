@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Music, Play, Pause } from 'lucide-react';
+import { Music, Play, Pause, Trash2 } from 'lucide-react';
 
 export default function MusicPlaylistDialog({ 
   isOpen, 
@@ -11,7 +11,8 @@ export default function MusicPlaylistDialog({
   currentSongIndex, 
   isPlaying, 
   onSongSelect, 
-  onTogglePlay 
+  onTogglePlay,
+  onDeleteSong
 }) {
   const handleSongClick = (index) => {
     onSongSelect(index);
@@ -82,6 +83,20 @@ export default function MusicPlaylistDialog({
                       )}
                       {index === currentSongIndex && (
                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      )}
+                      {!song.isBuiltin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="删除此歌曲"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteSong && onDeleteSong(index);
+                          }}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                   </div>

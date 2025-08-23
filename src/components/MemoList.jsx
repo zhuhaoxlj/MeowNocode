@@ -120,11 +120,11 @@ const MemoList = ({
       </div>
 
       {/* 滚动容器 */}
-      <div
+  <div
         ref={memosContainerRef}
         className="flex-1 overflow-y-auto mobile-memos-container lg:mobile-memos-container-disabled px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 min-h-[250px]"
       >
-        {allMemos.length === 0 ? (
+    {memos.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <p>还没有记录任何想法</p>
@@ -134,7 +134,7 @@ const MemoList = ({
         ) : (
           <div className="flex-1 overflow-y-auto scrollbar-hidden">
             <div className="space-y-4 pb-4">
-              {allMemos.map(memo => (
+      {memos.map(memo => (
                 <Card
                   key={memo.id}
                   className={`group hover:shadow-md transition-shadow rounded-xl shadow-sm relative bg-white dark:bg-gray-800 ${

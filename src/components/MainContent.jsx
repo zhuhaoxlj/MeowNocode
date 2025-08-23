@@ -49,6 +49,7 @@ const MainContent = ({
   onEditorFocus,
   onEditorBlur,
   onOpenMusic,
+  onOpenMusicSearch,
   musicEnabled = true,
   // backlinks
   allMemos,
@@ -75,6 +76,7 @@ const MainContent = ({
         setSearchQuery={setSearchQuery}
         searchInputRef={searchInputRef}
   onMobileMenuOpen={onMobileMenuOpen}
+  onOpenMusicSearch={onOpenMusicSearch}
       />
 
       {/* 编辑区域 */}

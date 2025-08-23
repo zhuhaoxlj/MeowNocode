@@ -34,7 +34,8 @@ export default function MusicModal({
     setPlayingState,
     playSong,
     playlist,
-    currentSongIndex
+  currentSongIndex,
+  deleteSongAtIndex
   } = useMusic();
 
   const currentSong = getCurrentSong();
@@ -457,6 +458,7 @@ export default function MusicModal({
           isPlaying={isPlaying}
           onSongSelect={playSong}
           onTogglePlay={togglePlay}
+          onDeleteSong={(idx) => deleteSongAtIndex(idx)}
         />
 
         <style>{`

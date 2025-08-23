@@ -9,6 +9,7 @@ const Header = ({
   searchInputRef, 
   onMobileMenuOpen,
   onOpenMusic,
+  onOpenMusicSearch, // 新增：触发音乐搜索卡片
   musicEnabled = true,
 }) => {
   const { themeColor } = useTheme();
@@ -53,6 +54,15 @@ const Header = ({
             placeholder="搜索想法..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const q = (searchQuery || '').trim();
+                if (q) {
+                  // 仅触发音乐搜索卡片展示，不改变现有过滤逻辑
+                  onOpenMusicSearch && onOpenMusicSearch(q);
+                }
+              }
+            }}
             className="pl-10 pr-20"
           />
           {/* Ctrl+K快捷键提示 */}

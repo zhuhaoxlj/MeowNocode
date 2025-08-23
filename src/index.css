@@ -341,6 +341,49 @@
     }
   }
 
+  /* 通用滚动条主题（浅色/深色自适应），用于滚动容器的观感统一 */
+  .scrollbar-theme {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #cbd5e1 transparent; /* thumb track */
+  }
+
+  .dark .scrollbar-theme {
+    scrollbar-color: #475569 transparent; /* thumb track */
+  }
+
+  .scrollbar-theme::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-theme::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 9999px;
+  }
+
+  .dark .scrollbar-theme::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .scrollbar-theme::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1; /* slate-300 */
+    border-radius: 9999px;
+    border: 2px solid transparent; /* 让 thumb 更细致 */
+    background-clip: content-box;
+  }
+
+  .scrollbar-theme::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8; /* slate-400 */
+  }
+
+  .dark .scrollbar-theme::-webkit-scrollbar-thumb {
+    background-color: #475569; /* slate-600 */
+  }
+
+  .dark .scrollbar-theme::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b; /* slate-500 */
+  }
+
     /* 移动端侧栏动画 */
     .mobile-sidebar-enter {
       transform: translateX(-100%);
