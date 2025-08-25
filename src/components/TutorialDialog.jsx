@@ -13,7 +13,20 @@ import { useTheme } from '@/context/ThemeContext';
  */
 const TutorialDialog = ({ isOpen, onClose }) => {
 		const { themeColor } = useTheme();
-	const VIDEO_LIST = [
+	const pages = useMemo(() => [
+		{
+			key: 'agreement',
+			title: '用户协议',
+			desc: `欢迎使用本应用！
+
+本应用仅供学习和交流使用，请勿用于商业用途。
+
+音乐API来源于网络，我们未对任何内容进行破解，仅对目标站点的官方API进行了封装，所有数据均直接来源于目标站点官方。我们不对通过本应用获取的任何信息的准确性、完整性或实用性做出任何保证。
+
+用户应对自己的使用行为负责。在任何情况下，本应用的开发者均不对因使用或无法使用本应用而导致的任何直接、间接、附带、特殊、惩戒性或后果性损害承担任何责任。
+
+使用本应用即表示您同意本协议。如果您不同意本协议，请立即停止使用。`
+		},
 		{
 			key: 'memo',
 			src: '/assets/video/memo.mp4',
@@ -26,7 +39,7 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 			title: '画布模式使用指南',
 			desc: '切换到画布模式后，可在无限画布上自由摆放想法卡片，支持拖拽移动、缩放、以及双击新建卡片。工具栏可切换选择/拖拽等工具，右上角可返回列表模式。'
 		}
-	];
+	], []);
 
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(true);
@@ -35,11 +48,12 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 			useEffect(() => {
 		if (!isOpen) return;
 		// 自动播放当前视频
+		// 自动播放当前视频
 		const v = videoRef.current;
 		if (v) {
 			v.currentTime = 0;
-					setIsPlaying(true);
-					const playPromise = v.play?.();
+			setIsPlaying(true);
+			const playPromise = v.play?.();
 			if (playPromise && typeof playPromise.catch === 'function') {
 				playPromise.catch(() => {});
 			}
@@ -49,13 +63,13 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 	const handleEnded = () => {
 		// 最后一页不再自动循环，等待用户点击“完成”
 		setActiveIndex((prev) => {
-			if (prev >= VIDEO_LIST.length - 1) return prev;
+			if (prev >= pages.length - 1) return prev;
 			return prev + 1;
 		});
 	};
 
-	const handlePrev = () => setActiveIndex((prev) => (prev - 1 + VIDEO_LIST.length) % VIDEO_LIST.length);
-	const handleNext = () => setActiveIndex((prev) => (prev + 1) % VIDEO_LIST.length);
+	const handlePrev = () => setActiveIndex((prev) => (prev > 0 ? prev - 1 : 0));
+	const handleNext = () => setActiveIndex((prev) => (prev < pages.length - 1 ? prev + 1 : prev));
 
 	const handlePlayPause = () => {
 		const v = videoRef.current;
@@ -75,7 +89,9 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 		onClose?.();
 	};
 
-	const cur = VIDEO_LIST[activeIndex];
+	const cur = pages[activeIndex];
+
+	const isAgreementPage = activeIndex === 0;
 
 		return (
 			<Dialog open={isOpen} onOpenChange={(open) => !open && markViewedAndClose()}>
@@ -93,18 +109,20 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 						</CardHeader>
 									<CardContent className="space-y-4 flex-1 overflow-y-auto scrollbar-hidden pt-0">
 										{/* 视频置顶，占据主要空间 */}
-										<div className="relative rounded-xl overflow-hidden bg-black/90 aspect-video">
-											<video
-												key={cur.key}
-												ref={videoRef}
-												src={cur.src}
-												className="w-full h-full"
-												controls={false}
-												muted
-												autoPlay
-												onEnded={handleEnded}
-											/>
-										</div>
+										{cur.src && (
+											<div className="relative rounded-xl overflow-hidden bg-black/90 aspect-video">
+												<video
+													key={cur.key}
+													ref={videoRef}
+													src={cur.src}
+													className="w-full h-full"
+													controls={false}
+													muted
+													autoPlay
+													onEnded={handleEnded}
+												/>
+											</div>
+										)}
 										{/* 说明区（默认字体，去除卡片背景） */}
 										<div className="flex flex-col gap-3 sm:gap-4">
 											<div className="flex items-center gap-2">
@@ -117,11 +135,11 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 
 											{/* 导航按钮：上一步/下一步 */}
 											<div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-2">
-												<Button variant="outline" className="sm:w-auto" onClick={handlePrev}>上一步</Button>
+												{!isAgreementPage && <Button variant="outline" className="sm:w-auto" onClick={handlePrev}>上一步</Button>}
 												<Button
 													className="sm:w-auto"
 													onClick={() => {
-														if (activeIndex >= VIDEO_LIST.length - 1) {
+														if (activeIndex >= pages.length - 1) {
 															markViewedAndClose();
 														} else {
 															handleNext();
@@ -129,7 +147,7 @@ const TutorialDialog = ({ isOpen, onClose }) => {
 													}}
 													style={{ backgroundColor: themeColor }}
 												>
-													{activeIndex >= VIDEO_LIST.length - 1 ? '完成' : '下一步'}
+													{isAgreementPage ? '我同意' : (activeIndex >= pages.length - 1 ? '完成' : '下一步')}
 												</Button>
 											</div>
 										</div>
