@@ -1,6 +1,6 @@
 import React from 'react';
 import { toast } from 'sonner';
-import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff, Layout } from 'lucide-react';
+import { Calendar, Settings, ChevronLeft, Sun, Moon, Pin, PinOff, Layout, Heart } from 'lucide-react';
 import GitHubStyleHeatmap from '@/components/GitHubStyleHeatmap';
 import UsageStats from '@/components/UsageStats';
 import { BookOpen } from 'lucide-react';
@@ -23,7 +23,9 @@ const LeftSidebar = ({
   setIsCanvasMode,
   onSettingsOpen,
   onDateClick,
-  onOpenDailyReview
+  onOpenDailyReview,
+  showFavoriteRandomButton,
+  onFavoriteRandomBackground
 }) => {
   const { darkMode, toggleDarkMode, themeColor } = useTheme();
   const { cloudSyncEnabled } = useSettings();
@@ -179,6 +181,18 @@ const LeftSidebar = ({
               <Moon className="h-5 w-5 transition-transform duration-500" />
             )}
           </button>
+
+          {/* 随机背景收藏按钮（在随机模式下显示） */}
+          {showFavoriteRandomButton && (
+            <button
+              onClick={onFavoriteRandomBackground}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-300 transition-all duration-300 hover:bg-pink-200 dark:hover:bg-pink-800/60"
+              aria-label="收藏当前背景"
+              title="收藏当前背景并设为固定背景"
+            >
+              <Heart className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

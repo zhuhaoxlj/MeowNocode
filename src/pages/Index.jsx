@@ -72,7 +72,8 @@ import { toast } from 'sonner';
   const memosContainerRef = useRef(null);
 
   // Context
-  const { backgroundConfig, aiConfig, keyboardShortcuts, musicConfig } = useSettings();
+  const { backgroundConfig, updateBackgroundConfig, aiConfig, keyboardShortcuts, musicConfig } = useSettings();
+  const [currentRandomBgUrl, setCurrentRandomBgUrl] = useState('');
 
   // 临时：如果没有音乐 URL，可使用浏览器可播放的示例音频占位（需用户在设置里替换真实地址）
   useEffect(() => {
@@ -1157,26 +1158,68 @@ import { toast } from 'sonner';
     }
   };
 
+  // 当启用随机背景且没有自定义图片时，拉取一次随机图片
+  useEffect(() => {
+    const shouldUseRandom = backgroundConfig?.useRandom && !backgroundConfig?.imageUrl;
+    if (!shouldUseRandom) {
+      setCurrentRandomBgUrl('');
+      return;
+    }
+    let aborted = false;
+    // 避免重复请求：已有则不再请求
+    if (currentRandomBgUrl) return;
+    (async () => {
+      try {
+        // 优先通过本地代理获取 data URL，避免跨域与防盗链问题
+        const api = '/api/proxy-fetch?url=' + encodeURIComponent('https://imgapi.xl0408.top/index.php');
+        const res = await fetch(api);
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          const dataUrl = data?.dataUrl;
+          if (!aborted && dataUrl) {
+            setCurrentRandomBgUrl(dataUrl);
+            return;
+          }
+        }
+        // 退化：直接使用远端地址
+        if (!aborted) setCurrentRandomBgUrl('https://imgapi.xl0408.top/index.php');
+      } catch (_) {
+        // 忽略失败
+      }
+    })();
+    return () => { aborted = true; };
+  }, [backgroundConfig?.useRandom, backgroundConfig?.imageUrl, currentRandomBgUrl]);
+
   // 生成背景样式 - 亮度滤镜只应用于背景图片
-  const backgroundStyle = backgroundConfig.imageUrl ? {
-    backgroundImage: `url(${backgroundConfig.imageUrl})`,
+  const effectiveBgUrl = backgroundConfig.imageUrl || (backgroundConfig.useRandom ? currentRandomBgUrl : '');
+  const backgroundStyle = effectiveBgUrl ? {
+    backgroundImage: `url(${effectiveBgUrl})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     filter: `brightness(${backgroundConfig.brightness}%)`,
   } : {};
 
-  const overlayStyle = backgroundConfig.imageUrl ? {
+  const overlayStyle = effectiveBgUrl ? {
     backdropFilter: `blur(${backgroundConfig.blur}px)`,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   } : {};
+
+  // 收藏当前随机背景
+  const handleFavoriteRandomBackground = () => {
+    const url = currentRandomBgUrl;
+    if (!backgroundConfig.useRandom || backgroundConfig.imageUrl) return;
+    if (!url) return;
+    updateBackgroundConfig({ imageUrl: url, useRandom: false });
+    try { toast.success('已收藏并设置为背景'); } catch {}
+  };
 
   return (
     <div
       className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col lg:flex-row lg:overflow-hidden lg:h-screen relative"
     >
       {/* 背景图片层 - 亮度滤镜只应用于此层 */}
-      {backgroundConfig.imageUrl && (
+  {effectiveBgUrl && (
         <div
           className="absolute inset-0 z-0"
           style={backgroundStyle}
@@ -1184,7 +1227,7 @@ import { toast } from 'sonner';
       )}
 
       {/* 背景遮罩层 */}
-      {backgroundConfig.imageUrl && (
+  {effectiveBgUrl && (
         <div
           className="absolute inset-0 z-0"
           style={overlayStyle}
@@ -1211,6 +1254,8 @@ import { toast } from 'sonner';
           onSettingsOpen={() => setIsSettingsOpen(true)}
           onDateClick={handleDateClick}
           onOpenDailyReview={() => setIsDailyReviewOpen(true)}
+          showFavoriteRandomButton={backgroundConfig.useRandom && !backgroundConfig.imageUrl}
+          onFavoriteRandomBackground={handleFavoriteRandomBackground}
         />
 
         {/* 中央主内容区 */}

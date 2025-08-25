@@ -72,6 +72,11 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
   };
 
   const handleBackgroundConfigChange = (field, value) => {
+    // 冲突处理：当设置 imageUrl 时，自动关闭随机背景
+    if (field === 'imageUrl') {
+      updateBackgroundConfig({ imageUrl: value, useRandom: value ? false : backgroundConfig.useRandom });
+      return;
+    }
     updateBackgroundConfig({ [field]: value });
   };
 
@@ -137,7 +142,8 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
       themeColor: localStorage.getItem('themeColor') || '#818CF8',
       darkMode: localStorage.getItem('darkMode') || 'false',
       hitokotoConfig: localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}',
-      fontConfig: localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'
+      fontConfig: localStorage.getItem('fontConfig') || '{"selectedFont":"default"}',
+      backgroundConfig: localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -169,7 +175,7 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
           localStorage.setItem('darkMode', data.darkMode || 'false');
           localStorage.setItem('hitokotoConfig', data.hitokotoConfig || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}');
           localStorage.setItem('fontConfig', data.fontConfig || '{"selectedFont":"default"}');
-          localStorage.setItem('backgroundConfig', data.backgroundConfig || '{"imageUrl":"","brightness":50,"blur":10}');
+          localStorage.setItem('backgroundConfig', data.backgroundConfig || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}');
           // 通知全局数据变更并尝试触发一次自动同步
           try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'import' } })); } catch {}
           try { typeof _scheduleCloudSync === 'function' && _scheduleCloudSync('import'); } catch {}
@@ -680,15 +686,48 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                       {/* 背景图片设置 */}
                       <div className="space-y-3">
                         <Label className="text-sm font-medium">背景图片</Label>
+                        {/* 使用随机背景 开关 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">使用随机背景</span>
+                          <button
+                            onClick={() => {
+                              const next = !backgroundConfig.useRandom;
+                              // 开启随机背景时，清空自定义图片以避免冲突
+                              if (next) {
+                                updateBackgroundConfig({ useRandom: true, imageUrl: '' });
+                              } else {
+                                updateBackgroundConfig({ useRandom: false });
+                              }
+                            }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              backgroundConfig.useRandom
+                                ? 'bg-blue-600'
+                                : 'bg-gray-200 dark:bg-gray-700'
+                            }`}
+                            style={backgroundConfig.useRandom ? { backgroundColor: themeColor } : {}}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                backgroundConfig.useRandom ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        {backgroundConfig.useRandom && !backgroundConfig.imageUrl && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">启用后，将从 https://imgapi.xl0408.top/index.php 随机获取背景图片。</p>
+                        )}
                         <ImageUpload
                           value={backgroundConfig.imageUrl}
                           onChange={(url) => handleBackgroundConfigChange('imageUrl', url)}
                           onClear={() => handleBackgroundConfigChange('imageUrl', '')}
                           uploadType="background"
                         />
+                        {backgroundConfig.useRandom && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">提示：随机背景与自定义背景互斥，开启随机背景时将清空自定义背景。</p>
+                        )}
 
-                        {/* 只有当有背景图片时才显示效果调节 */}
-                        {backgroundConfig.imageUrl && (
+                        {/* 有背景或使用随机背景时显示效果调节 */}
+                        {(backgroundConfig.imageUrl || backgroundConfig.useRandom) && (
                           <div className="space-y-4">
                             {/* 亮度调节 */}
                             <div className="space-y-2">
@@ -725,7 +764,9 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {backgroundConfig.imageUrl
                             ? '调节亮度和磨砂玻璃效果，点击图片右上角×可移除背景'
-                            : '拖拽图片文件或粘贴图片链接来设置背景'
+                            : (backgroundConfig.useRandom
+                                ? '随机背景开启中，可在侧边栏点击爱心收藏当前背景'
+                                : '拖拽图片文件或粘贴图片链接来设置背景')
                           }
                         </p>
                       </div>

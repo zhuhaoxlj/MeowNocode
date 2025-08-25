@@ -23,7 +23,8 @@ export function SettingsProvider({ children }) {
   const [backgroundConfig, setBackgroundConfig] = useState({
     imageUrl: '',
     brightness: 50, // 0-100
-    blur: 10 // 0-50 磨砂玻璃程度
+  blur: 10, // 0-50 磨砂玻璃程度
+  useRandom: false // 是否使用随机背景
   });
   const [avatarConfig, setAvatarConfig] = useState({
     imageUrl: '' // 用户自定义头像URL
@@ -267,7 +268,7 @@ export function SettingsProvider({ children }) {
               darkMode: localStorage.getItem('darkMode') || 'false',
               hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
               fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-              backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+              backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'),
               avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
               canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
               musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
@@ -342,10 +343,12 @@ export function SettingsProvider({ children }) {
     }
 
     // 从localStorage加载背景设置
-    const savedBackgroundConfig = localStorage.getItem('backgroundConfig');
+  const savedBackgroundConfig = localStorage.getItem('backgroundConfig');
     if (savedBackgroundConfig) {
       try {
-        setBackgroundConfig(JSON.parse(savedBackgroundConfig));
+    const parsed = JSON.parse(savedBackgroundConfig);
+    // 兼容旧版本缺少 useRandom/blur/brightness/imageUrl 字段
+    setBackgroundConfig({ imageUrl: '', brightness: 50, blur: 10, useRandom: false, ...parsed });
       } catch (error) {
         console.warn('Failed to parse Background config:', error);
       }
@@ -573,7 +576,7 @@ export function SettingsProvider({ children }) {
         darkMode: localStorage.getItem('darkMode') || 'false',
         hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+  backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'),
         avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
         canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
         musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
@@ -691,7 +694,7 @@ export function SettingsProvider({ children }) {
         mergedSettings.darkMode = local.darkMode ?? (cloudSettings.dark_mode != null ? String(!!cloudSettings.dark_mode) : 'false');
         mergedSettings.hitokotoConfig = local.hitokotoConfig || asObj(cloudSettings.hitokoto_config, { enabled: true, types: ["a","b","c","d","i","j","k"] });
         mergedSettings.fontConfig = local.fontConfig || asObj(cloudSettings.font_config, { selectedFont: 'default' });
-        mergedSettings.backgroundConfig = local.backgroundConfig || asObj(cloudSettings.background_config, { imageUrl: '', brightness: 50, blur: 10 });
+  mergedSettings.backgroundConfig = local.backgroundConfig || asObj(cloudSettings.background_config, { imageUrl: '', brightness: 50, blur: 10, useRandom: false });
         mergedSettings.avatarConfig = local.avatarConfig || asObj(cloudSettings.avatar_config, { imageUrl: '' });
         mergedSettings.canvasConfig = local.canvasConfig ?? asObj(cloudSettings.canvas_config, null);
         mergedSettings.musicConfig = local.musicConfig || asObj(cloudSettings.music_config, { enabled: true, customSongs: [] });
@@ -702,7 +705,7 @@ export function SettingsProvider({ children }) {
       localStorage.setItem('darkMode', mergedSettings.darkMode ?? 'false');
       localStorage.setItem('hitokotoConfig', JSON.stringify(mergedSettings.hitokotoConfig || { enabled: true, types: ["a","b","c","d","i","j","k"] }));
       localStorage.setItem('fontConfig', JSON.stringify(mergedSettings.fontConfig || { selectedFont: 'default' }));
-      localStorage.setItem('backgroundConfig', JSON.stringify(mergedSettings.backgroundConfig || { imageUrl: '', brightness: 50, blur: 10 }));
+  localStorage.setItem('backgroundConfig', JSON.stringify(mergedSettings.backgroundConfig || { imageUrl: '', brightness: 50, blur: 10, useRandom: false }));
       localStorage.setItem('avatarConfig', JSON.stringify(mergedSettings.avatarConfig || { imageUrl: '' }));
       if (mergedSettings.canvasConfig != null) localStorage.setItem('canvasState', JSON.stringify(mergedSettings.canvasConfig));
       localStorage.setItem('musicConfig', JSON.stringify(mergedSettings.musicConfig || { enabled: true, customSongs: [] }));
@@ -822,7 +825,7 @@ export function SettingsProvider({ children }) {
         darkMode: localStorage.getItem('darkMode') || 'false',
         hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
         fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-        backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10}'),
+  backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'),
   avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
   canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
       };

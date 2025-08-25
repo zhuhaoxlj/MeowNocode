@@ -46,7 +46,7 @@ export async function onRequest(context) {
         dark_mode INTEGER DEFAULT 0,
         hitokoto_config TEXT DEFAULT '{"enabled":true,"types":["a","b","c","d","i","j","k"]}',
         font_config TEXT DEFAULT '{"selectedFont":"default"}',
-    background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10}',
+  background_config TEXT DEFAULT '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}',
     avatar_config TEXT DEFAULT '{"imageUrl":""}',
   canvas_config TEXT DEFAULT NULL,
   music_config TEXT DEFAULT '{"enabled":true,"customSongs":[]}',
