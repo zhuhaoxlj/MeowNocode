@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
+import { toast } from 'sonner';
 
 const MemoEditor = ({
   value = '',
@@ -153,6 +154,30 @@ const MemoEditor = ({
     setCompositionValue('');
     const newValue = e.target.value;
     onChange?.(newValue);
+  };
+
+  // 复制每日一句到剪贴板
+  const copyHitokotoToClipboard = async () => {
+    if (!hitokoto.text) return;
+    
+    try {
+      await navigator.clipboard.writeText(hitokoto.text);
+      toast.success('每日一句已复制到剪贴板');
+    } catch (err) {
+      // 如果现代 API 失败，使用传统方法
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = hitokoto.text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('每日一句已复制到剪贴板');
+      } catch (fallbackErr) {
+        toast.error('复制失败，请手动复制');
+        console.error('复制失败:', fallbackErr);
+      }
+    }
   };
 
   // 处理键盘事件
@@ -475,7 +500,7 @@ const MemoEditor = ({
           {!isFocused && hitokotoConfig.enabled ? (
             <a
               className={cn(
-                "flex-1 text-center text-xs text-gray-500 truncate px-2 transition-colors duration-300",
+                "flex-1 text-center text-xs text-gray-500 truncate px-2 transition-colors duration-300 cursor-pointer",
                 currentFont !== 'default' && "custom-font-content"
               )}
               style={{
@@ -483,6 +508,8 @@ const MemoEditor = ({
               }}
               onMouseEnter={(e) => e.target.style.color = 'var(--theme-color)'}
               onMouseLeave={(e) => e.target.style.color = ''}
+              onClick={copyHitokotoToClipboard}
+              title="点击复制每日一句"
             >
               {hitokoto.text}
             </a>

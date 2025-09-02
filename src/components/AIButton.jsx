@@ -4,7 +4,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { useTheme } from '@/context/ThemeContext';
 
 const AIButton = ({ isSettingsOpen, isShareDialogOpen, isEditorFocused, onContinue, onOptimize, onChat }) => {
-  const { aiConfig } = useSettings();
+  const { aiConfig, musicConfig } = useSettings();
   const { themeColor } = useTheme();
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -15,7 +15,7 @@ const AIButton = ({ isSettingsOpen, isShareDialogOpen, isEditorFocused, onContin
   const buttonRef = useRef(null);
   const positionInitialized = useRef(false);
 
-  // 初始化按钮位置到右下角
+  // 初始化按钮位置，根据音乐功能状态调整
   useEffect(() => {
     const updatePosition = () => {
       if (buttonRef.current) {
@@ -24,10 +24,11 @@ const AIButton = ({ isSettingsOpen, isShareDialogOpen, isEditorFocused, onContin
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         
-        // 默认位置在右下角，距离边缘20px
+        // 默认位置在右下角，根据音乐功能状态动态调整
+        const bottomOffset = musicConfig?.enabled ? 160 : 20; // 音乐启用时避开播放器区域
         setPosition({
           x: windowWidth - buttonWidth - 20,
-          y: windowHeight - buttonHeight - 20
+          y: windowHeight - buttonHeight - bottomOffset
         });
         positionInitialized.current = true;
       }
@@ -44,7 +45,7 @@ const AIButton = ({ isSettingsOpen, isShareDialogOpen, isEditorFocused, onContin
       clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
     };
-  }, []);
+  }, [musicConfig?.enabled]);
 
   // 处理鼠标按下事件
   const handleMouseDown = useCallback((e) => {
