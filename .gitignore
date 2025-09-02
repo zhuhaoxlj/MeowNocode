@@ -4,6 +4,7 @@ node_modules
 wrangler.toml
 .claude
 package-lock.json
+bun.lock
 网易云搜索api.md
 网易云音乐api.md
 .DS_Store
