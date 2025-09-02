@@ -170,6 +170,95 @@ const MemoEditor = ({
       insertTodoAtCursor();
       return;
     }
+
+    // 处理回车键的 todo 自动补齐
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      const el = textareaRef.current;
+      if (!el) return;
+
+      const start = el.selectionStart;
+      const value = el.value;
+      const lines = value.substring(0, start).split('\n');
+      const currentLine = lines[lines.length - 1];
+
+      // 检查当前行是否是 todo 格式
+      const todoMatch = currentLine.match(/^(\s*)- \[ \] (.*)$/);
+      if (todoMatch) {
+        e.preventDefault();
+        const indent = todoMatch[1];
+        const content = todoMatch[2].trim();
+        
+        // 如果当前 todo 是空的，清除它而不是创建新的
+        if (content === '') {
+          const beforeCursor = value.substring(0, start - currentLine.length);
+          const afterCursor = value.substring(start);
+          const newValue = beforeCursor + afterCursor;
+          onChange?.(newValue);
+          
+          // 设置光标位置
+          setTimeout(() => {
+            if (textareaRef.current) {
+              const newPos = start - currentLine.length;
+              textareaRef.current.setSelectionRange(newPos, newPos);
+            }
+          }, 0);
+        } else {
+          // 创建新的 todo 项
+          const newTodo = `\n${indent}- [ ] `;
+          const beforeCursor = value.substring(0, start);
+          const afterCursor = value.substring(start);
+          const newValue = beforeCursor + newTodo + afterCursor;
+          onChange?.(newValue);
+          
+          // 设置光标位置到新 todo 项的内容位置
+          setTimeout(() => {
+            if (textareaRef.current) {
+              const newPos = start + newTodo.length;
+              textareaRef.current.setSelectionRange(newPos, newPos);
+            }
+          }, 0);
+        }
+        return;
+      }
+
+      // 检查当前行是否是普通无序列表格式，保持无序列表格式
+      const listMatch = currentLine.match(/^(\s*)- (.*)$/);
+      if (listMatch) {
+        e.preventDefault();
+        const indent = listMatch[1];
+        const content = listMatch[2].trim();
+        
+        if (content === '') {
+          // 如果是空的无序列表，清除它
+          const beforeCursor = value.substring(0, start - currentLine.length);
+          const afterCursor = value.substring(start);
+          const newValue = beforeCursor + afterCursor;
+          onChange?.(newValue);
+          
+          setTimeout(() => {
+            if (textareaRef.current) {
+              const newPos = start - currentLine.length;
+              textareaRef.current.setSelectionRange(newPos, newPos);
+            }
+          }, 0);
+        } else {
+          // 创建新的无序列表项
+          const newListItem = `\n${indent}- `;
+          const beforeCursor = value.substring(0, start);
+          const afterCursor = value.substring(start);
+          const newValue = beforeCursor + newListItem + afterCursor;
+          onChange?.(newValue);
+          
+          setTimeout(() => {
+            if (textareaRef.current) {
+              const newPos = start + newListItem.length;
+              textareaRef.current.setSelectionRange(newPos, newPos);
+            }
+          }, 0);
+        }
+        return;
+      }
+    }
   };
 
   // 在光标处插入 spoiler 语法，并将光标定位到 spoiler 内容处
