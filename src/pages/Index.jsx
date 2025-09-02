@@ -1130,6 +1130,21 @@ import { toast } from 'sonner';
     setPinnedMemos(updatedPinned);
   };
 
+  const handleUpdateMemo = (id, updates) => {
+    // 更新memos
+    const updatedMemos = memos.map(memo => 
+      memo.id === id ? { ...memo, ...updates } : memo
+    );
+    
+    // 更新pinnedMemos
+    const updatedPinned = pinnedMemos.map(memo => 
+      memo.id === id ? { ...memo, ...updates } : memo
+    );
+
+    setMemos(updatedMemos);
+    setPinnedMemos(updatedPinned);
+  };
+
   const handleCanvasDeleteMemo = (id) => {
     setMemos(memos.filter(memo => memo.id !== id));
     setPinnedMemos(pinnedMemos.filter(memo => memo.id !== id));
@@ -1313,6 +1328,7 @@ import { toast } from 'sonner';
             clearFilters={clearFilters} // 传递清除筛选函数
             onEditorFocus={handleEditorFocus}
             onEditorBlur={handleEditorBlur}
+            onUpdateMemo={handleUpdateMemo}
             // backlinks props
             allMemos={[...memos, ...pinnedMemos]}
             onAddBacklink={handleAddBacklink}

@@ -1,10 +1,35 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/context/ThemeContext';
 import Spoiler from '@/components/Spoiler';
 
-const ContentRenderer = ({ content, activeTag, onTagClick }) => {
+const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) => {
   const { themeColor, currentFont } = useTheme();
+  
+  // 处理 checkbox 切换
+  const handleCheckboxToggle = (taskIndex, isChecked) => {
+    if (!onContentChange) return;
+    
+    // 找到所有的任务列表项
+    const taskRegex = /^(\s*-\s*)\[([x\s])\](.*)$/gim;
+    let taskCount = 0;
+    
+    const newContent = content.replace(taskRegex, (match, prefix, checkState, suffix) => {
+      if (taskCount === taskIndex) {
+        // 切换这个任务的状态
+        const newCheckState = isChecked ? ' ' : 'x';
+        taskCount++;
+        return `${prefix}[${newCheckState}]${suffix}`;
+      }
+      taskCount++;
+      return match;
+    });
+    
+    if (newContent !== content) {
+      onContentChange(newContent);
+    }
+  };
   // 解析内容，分离文本和标签
   const parseContent = (text) => {
     const parts = [];
@@ -158,6 +183,35 @@ const ContentRenderer = ({ content, activeTag, onTagClick }) => {
 
   const parts = parseContent(content);
   const { darkMode } = useTheme();
+  
+  // 创建组件工厂函数，为每个 ReactMarkdown 实例维护独立的任务索引
+  const createLiComponent = () => {
+    let taskIndex = 0;
+    return ({node, ...props}) => {
+      // 检查是否是 task list item
+      if (props.children && typeof props.children[0] === 'object' && props.children[0]?.props?.type === 'checkbox') {
+        const checkbox = props.children[0];
+        const isChecked = checkbox.props.checked;
+        const textContent = props.children.slice(1);
+        const currentIndex = taskIndex++;
+        
+        return (
+          <li className="my-1 flex items-start gap-2" {...props}>
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => handleCheckboxToggle(currentIndex, isChecked)}
+              className="mt-1 flex-shrink-0 cursor-pointer"
+            />
+            <span className={isChecked ? 'line-through text-gray-500 dark:text-gray-400' : ''}>
+              {textContent}
+            </span>
+          </li>
+        );
+      }
+      return <li className="my-1" {...props} />;
+    };
+  };
 
   return (
     <div className={`prose prose-sm max-w-none dark:prose-invert ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
@@ -221,12 +275,19 @@ const ContentRenderer = ({ content, activeTag, onTagClick }) => {
                         p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
                         ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
                         ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
-                        li: ({node, ...props}) => <li className="my-1" {...props} />,
+                        li: createLiComponent(),
+                        input: ({node, ...props}) => {
+                          // 处理 task list 的 checkbox
+                          if (props.type === 'checkbox') {
+                            return <input {...props} readOnly className="flex-shrink-0" />;
+                          }
+                          return <input {...props} />;
+                        },
                         strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                         em: ({node, ...props}) => <em className="italic" {...props} />,
                         br: () => <br />,
                       }}
-                      remarkPlugins={[]}
+                      remarkPlugins={[remarkGfm]}
                       rehypePlugins={[]}
                     >
                       {renderMarkdownText(segments[0].value)}
@@ -288,12 +349,19 @@ const ContentRenderer = ({ content, activeTag, onTagClick }) => {
                               p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
                               ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
                               ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
-                              li: ({node, ...props}) => <li className="my-1" {...props} />,
+                              li: createLiComponent(),
+                              input: ({node, ...props}) => {
+                                // 处理 task list 的 checkbox
+                                if (props.type === 'checkbox') {
+                                  return <input {...props} readOnly className="flex-shrink-0" />;
+                                }
+                                return <input {...props} />;
+                              },
                               strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                               em: ({node, ...props}) => <em className="italic" {...props} />,
                               br: () => <br />,
                             }}
-                            remarkPlugins={[]}
+                            remarkPlugins={[remarkGfm]}
                             rehypePlugins={[]}
                           >
                             {renderMarkdownText(inner)}

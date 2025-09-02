@@ -163,6 +163,13 @@ const MemoEditor = ({
       onSubmit?.();
       return;
     }
+    
+    // Cmd+L 插入 markdown todo
+    if (e.ctrlKey && e.key === 'l') {
+      e.preventDefault();
+      insertTodoAtCursor();
+      return;
+    }
   };
 
   // 在光标处插入 spoiler 语法，并将光标定位到 spoiler 内容处
@@ -184,6 +191,36 @@ const MemoEditor = ({
       if (textareaRef.current) {
         textareaRef.current.focus();
         const pos = start + caretOffsetInSnippet;
+        try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
+      }
+      // 调整高度
+      adjustHeight();
+    }, 0);
+  };
+
+  // 在光标处插入 markdown todo 格式
+  const insertTodoAtCursor = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    
+    // 检查是否在行首，如果不是则先添加换行
+    const isAtLineStart = start === 0 || before.endsWith('\n');
+    const prefix = isAtLineStart ? '' : '\n';
+    const snippet = '- [ ] ';
+    const insertText = prefix + snippet;
+    
+    const newValue = before + insertText + after;
+    onChange?.(newValue);
+    
+    // 聚焦并设置光标位置到 todo 内容开始位置
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const pos = start + insertText.length;
         try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
       }
       // 调整高度

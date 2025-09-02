@@ -48,6 +48,7 @@ const MainContent = ({
   clearFilters, // 新增清除筛选函数
   onEditorFocus,
   onEditorBlur,
+  onUpdateMemo,
   onOpenMusic,
   onOpenMusicSearch,
   musicEnabled = true,
@@ -116,6 +117,7 @@ const MainContent = ({
         onTagClick={onTagClick}
         onScrollToTop={onScrollToTop}
         clearFilters={clearFilters} // 传递清除筛选函数
+        onUpdateMemo={onUpdateMemo}
   // backlinks for memo cards
   allMemos={allMemos}
   onAddBacklink={onAddBacklink}

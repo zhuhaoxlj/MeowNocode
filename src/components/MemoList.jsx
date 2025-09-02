@@ -27,6 +27,7 @@ const MemoList = ({
   onTagClick,
   onScrollToTop,
   clearFilters, // 新增清除筛选函数
+  onUpdateMemo,
   // backlinks
   allMemos = [],
   onAddBacklink,
@@ -281,6 +282,7 @@ const MemoList = ({
                         content={memo.content}
                         activeTag={activeTag}
                         onTagClick={onTagClick}
+                        onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
                       />
                     )}
 
