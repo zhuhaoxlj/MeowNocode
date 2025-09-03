@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+
+# MeowNocode Project Overview
+
+MeowNocode is a modern React application built with Vite that combines a memo-taking frontend with Cloudflare Workers backend and Go-based Memos integration.
+
+## Tech Stack
+- **Frontend**: React 18 + Vite (JSX, not TypeScript)
+- **Styling**: Tailwind CSS with CSS variables for theming
+- **UI Components**: shadcn/ui + Radix UI primitives
+- **State Management**: React Context API + TanStack Query
+- **Routing**: React Router DOM with HashRouter
+- **Backend**: Cloudflare Workers + Go-based Memos backend
+- **Database**: SQLite via sql.js + D1 (Cloudflare)
+
+## Key Architecture
+- [src/App.jsx](mdc:src/App.jsx): Main application entry point with provider setup
+- [src/main.jsx](mdc:src/main.jsx): Vite application bootstrap
+- [_worker.js](mdc:_worker.js): Cloudflare Worker entry point
+- [functions/](mdc:functions/): API functions for Cloudflare Workers
+- [memos/memos/](mdc:memos/memos/): Go-based Memos backend integration
+
+## Directory Structure
+- `src/components/`: React components (UI + business logic)
+- `src/context/`: Context providers for global state
+- `src/pages/`: Top-level page components
+- `src/lib/`: Utility functions and API clients
+- `src/hooks/`: Custom React hooks
+- `public/`: Static assets and media files
+
+## Key Features
+- Memo management with rich text editing
+- Multi-provider authentication (GitHub OAuth + password)
+- AI-powered features
+- Canvas editor functionality
+- Music/media playback
+- Multi-language support (i18n)
+- Dark/light theme switching

@@ -1,0 +1,42 @@
+---
+globs: *.go,*.proto
+---
+
+# Go Backend Patterns (Memos Integration)
+
+## Project Structure
+The Go backend is located in [`memos/memos/`](mdc:memos/memos/) and follows standard Go project layout:
+- [`cmd/`](mdc:memos/memos/bin/): Main application entry points
+- [`internal/`](mdc:memos/memos/internal/): Private application code
+- [`plugin/`](mdc:memos/memos/plugin/): Plugin implementations
+- [`server/`](mdc:memos/memos/server/): HTTP server and routing
+- [`store/`](mdc:memos/memos/store/): Data access layer
+
+## Protobuf Integration
+- **API Definitions**: [`proto/api/v1/`](mdc:memos/memos/proto/api/v1/)
+- **Store Definitions**: [`proto/store/`](mdc:memos/memos/proto/store/)
+- **Generated Code**: [`proto/gen/`](mdc:memos/memos/proto/gen/)
+- Use `buf` tool for protobuf management (see [`proto/buf.yaml`](mdc:memos/memos/proto/buf.yaml))
+
+## Database Layer
+Multiple database backends supported:
+- **SQLite**: [`store/db/sqlite/`](mdc:memos/memos/store/db/sqlite/)
+- **PostgreSQL**: [`store/db/postgres/`](mdc:memos/memos/store/db/postgres/)
+- **MySQL**: [`store/db/mysql/`](mdc:memos/memos/store/db/mysql/)
+
+## Migration System
+- **Versioned migrations** in [`store/migration/`](mdc:memos/memos/store/migration/)
+- Each database type has its own migration path
+- Use `LATEST.sql` for the most current schema
+
+## Go Code Conventions
+- Follow standard Go formatting (use `gofmt`)
+- Use meaningful package names
+- Implement proper error handling with wrapped errors
+- Use context for cancellation and timeouts
+- Follow Go naming conventions (exported vs unexported)
+
+## Plugin Architecture
+- Implement plugins in [`plugin/`](mdc:memos/memos/plugin/) directory
+- Support for: cron jobs, filters, HTTP getters, IDP, storage, webhooks
+- Follow the established plugin interface patterns

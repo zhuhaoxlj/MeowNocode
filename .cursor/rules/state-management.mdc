@@ -1,0 +1,55 @@
+---
+description: "State management and React Context patterns"
+---
+
+# State Management Patterns
+
+## Context Provider Architecture
+The application uses multiple specialized context providers for state management:
+
+- [`AuthContext`](mdc:src/context/AuthContext.jsx): GitHub OAuth authentication
+- [`PasswordAuthContext`](mdc:src/context/PasswordAuthContext.jsx): Password-based authentication
+- [`ThemeContext`](mdc:src/context/ThemeContext.jsx): Dark/light theme management
+- [`SettingsContext`](mdc:src/context/SettingsContext.jsx): Application settings
+- [`MusicContext`](mdc:src/context/MusicContext.jsx): Music player state
+
+## Context Provider Pattern
+```jsx
+import React, { createContext, useContext, useState, useEffect } from 'react'
+
+const MyContext = createContext()
+
+export function MyProvider({ children }) {
+  const [state, setState] = useState(initialState)
+  const [loading, setLoading] = useState(true)
+
+  const contextValue = {
+    state,
+    setState,
+    loading,
+    // ... methods
+  }
+
+  return (
+    <MyContext.Provider value={contextValue}>
+      {children}
+    </MyContext.Provider>
+  )
+}
+
+export function useMyContext() {
+  const context = useContext(MyContext)
+  if (!context) {
+    throw new Error('useMyContext must be used within MyProvider')
+  }
+  return context
+}
+```
+
+## Data Fetching
+- Use TanStack Query (`@tanstack/react-query`) for server state
+- Combine with Context for global client state
+- Custom hooks in [`src/hooks/`](mdc:src/hooks/) for reusable logic
+
+## Provider Setup
+All providers should be composed in [`src/App.jsx`](mdc:src/App.jsx) in the correct hierarchy order.

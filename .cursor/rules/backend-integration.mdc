@@ -1,0 +1,44 @@
+# Backend Integration Guidelines
+
+## Cloudflare Workers Architecture
+
+- **Entry**: [`_worker.js`](mdc:_worker.js) → [`worker.js`](mdc:worker.js)
+- **Functions**: [`functions/`](mdc:functions/) directory contains API endpoints
+- **Database**: Cloudflare D1 with schema in [`d1-schema.sql`](mdc:d1-schema.sql)
+
+## API Client Pattern
+
+Database operations should use the clients in [`src/lib/`](mdc:src/lib/):
+
+- [`src/lib/d1-api.js`](mdc:src/lib/d1-api.js): D1 database operations
+- [`src/lib/database.js`](mdc:src/lib/database.js): General database utilities
+- [`src/lib/supabase.js`](mdc:src/lib/supabase.js): Supabase integration
+
+## Memos Backend Integration
+
+- Go backend located in [`memos/memos/`](mdc:memos/memos/)
+- Protobuf definitions in [`memos/memos/proto/`](mdc:memos/memos/proto/)
+- Use gRPC-Web for communication: [`src/grpcweb.ts`](mdc:src/grpcweb.ts)
+
+## Error Handling
+
+- Use try-catch blocks for async operations
+- Provide user-friendly error messages
+- Log errors for debugging but handle gracefully
+
+## Environment Variables
+
+- Configure via Cloudflare Workers environment
+- Use `process.env.VARIABLE_NAME` pattern
+- Document required environment variables
+
+## Data Flow
+
+1. Frontend → Cloudflare Workers (`functions/`)
+2. Workers → D1 Database or Memos Go backend
+3. Use TanStack Query for caching and state synchronization
+description:
+globs:
+alwaysApply: false
+
+---

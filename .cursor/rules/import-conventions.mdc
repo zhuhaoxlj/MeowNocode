@@ -1,0 +1,50 @@
+# Import Conventions and Path Aliases
+
+## Path Aliases
+The project uses Vite path aliases configured in [`vite.config.js`](mdc:vite.config.js):
+
+- `@/` → `src/` directory
+- Use `@/components/...` for component imports
+- Use `@/lib/...` for utility imports
+- Use `@/context/...` for context imports
+- Use `@/hooks/...` for custom hooks
+- Use `@/pages/...` for page components
+
+## Import Order Convention
+```jsx
+// 1. React and React ecosystem
+import React, { useState, useEffect } from 'react'
+import { createContext, useContext } from 'react'
+
+// 2. Third-party libraries
+import { QueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+
+// 3. UI components (shadcn/ui)
+import { Button } from "@/components/ui/button"
+import { Dialog } from "@/components/ui/dialog"
+
+// 4. Internal components and utilities
+import { cn } from "@/lib/utils"
+import { AuthProvider } from "@/context/AuthContext"
+import MyComponent from "@/components/MyComponent"
+
+// 5. Local/relative imports
+import './styles.css'
+import config from '../config'
+```
+
+## Common Imports
+- **Styling**: `import { cn } from "@/lib/utils"`
+- **UI**: Import from `@/components/ui/[component-name]`
+- **Context**: Use corresponding hook (e.g., `useAuth()` for AuthContext)
+- **Icons**: `import { IconName } from "lucide-react"`
+
+## File Extensions
+- Always use `.jsx` for React components
+- Use `.js` for utility functions and non-React modules
+- No TypeScript extensions (`.ts`, `.tsx`) in this project
+description:
+globs:
+alwaysApply: false
+---

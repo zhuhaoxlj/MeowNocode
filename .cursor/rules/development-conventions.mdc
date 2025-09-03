@@ -1,0 +1,41 @@
+---
+globs: *.jsx,*.js,*.json
+---
+
+# Development and Debugging Conventions
+
+## Development Scripts
+Use these npm scripts defined in [`package.json`](mdc:package.json):
+- `npm run dev`: Start development server (port 8080)
+- `npm run build`: Production build
+- `npm run build:dev`: Development build
+- `npm run lint`: ESLint checking
+- `npm run preview`: Preview production build
+
+## Code Quality
+- Follow ESLint rules configured in the project
+- Use consistent indentation (2 spaces)
+- Add meaningful comments in Chinese or English
+- Use descriptive variable names
+
+## Debugging Tools
+- **Dev Logger**: Uses `@meituan-nocode/vite-plugin-dev-logger` for development logging
+- **React DevTools**: For component inspection
+- **Console Logging**: Use `console.log`, `console.error` for debugging
+- **React Query DevTools**: For data fetching inspection
+
+## Local Development
+- Development server runs on `localhost:8080`
+- HMR (Hot Module Replacement) enabled
+- SQLite database: [`memos_dev.db`](mdc:memos/memos_dev.db) for local development
+
+## Asset Management
+- **Images**: Store in [`public/images/`](mdc:public/images/)
+- **Icons**: Use Lucide React icons or SVGs in [`public/svgs/`](mdc:public/svgs/)
+- **Videos**: Store in [`public/assets/video/`](mdc:public/assets/video/)
+
+## Common Debugging Patterns
+- Use React DevTools for component state inspection
+- Check browser Network tab for API calls
+- Use `localStorage` inspection for client-side data
+- Check Cloudflare Workers logs for backend issues

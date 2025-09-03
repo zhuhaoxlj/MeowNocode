@@ -1,0 +1,50 @@
+---
+globs: *.jsx,*.js
+---
+
+# Component and Styling Conventions
+
+## Component Structure
+- Use JSX (not TypeScript) for all React components
+- Follow PascalCase for component names and file names
+- Place related components in their own directories with index files when needed
+- Use functional components with hooks exclusively
+
+## Styling Standards
+- **Primary**: Tailwind CSS classes for styling
+- **Utility**: Use [`cn()`](mdc:src/lib/utils.js) helper for conditional classes
+- **Theme**: Use CSS variables via `hsl(var(--variable-name))` pattern
+- **Component Variants**: Use `class-variance-authority` for component variants
+
+## UI Component Pattern
+```jsx
+import { cn } from "@/lib/utils"
+
+export function MyComponent({ className, variant = "default", ...props }) {
+  return (
+    <div 
+      className={cn(
+        "base-classes", 
+        variant === "primary" && "variant-classes",
+        className
+      )} 
+      {...props}
+    >
+      {/* content */}
+    </div>
+  )
+}
+```
+
+## Import Organization
+1. React and React-related imports first
+2. Third-party library imports
+3. Internal components and utilities (using @ alias)
+4. Local imports
+5. Type imports last (when used)
+
+## shadcn/ui Integration
+- UI components are in [`src/components/ui/`](mdc:src/components/ui/)
+- Follow shadcn/ui patterns for component composition
+- Use Radix UI primitives as base components
+- Configure via [`components.json`](mdc:components.json)

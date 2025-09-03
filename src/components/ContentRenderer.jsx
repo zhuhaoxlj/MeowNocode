@@ -16,6 +16,7 @@ const LocalImage = ({ src, alt, ...props }) => {
     const loadLocalImage = async () => {
       console.log('LocalImage loading:', src);
       
+      // 如果不是 local: 引用，直接使用原始URL
       if (!src || !src.startsWith('local:')) {
         console.log('Not a local image, using direct src:', src);
         setImageSrc(src);
@@ -117,6 +118,11 @@ const LocalImage = ({ src, alt, ...props }) => {
       src={imageSrc} 
       alt={alt || '图片'} 
       className="max-w-full h-auto rounded-lg shadow-sm my-2"
+      onError={() => {
+        console.error('Image failed to load:', src);
+        setError(true);
+        setDebugInfo('加载失败');
+      }}
       {...props} 
     />
   );
