@@ -5,12 +5,47 @@ import { Label } from '@/components/ui/label';
 import initSqlJs from 'sql.js';
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { toast } from 'sonner';
+import fileStorageService from '@/lib/fileStorageService';
 
-// 从 memos 的 SQLite 数据库中解析 memo 表
+// 从 memos 的 SQLite 数据库中解析 memo 表和 resource 表
 async function parseMemosFromSQLite(dbFile) {
   const SQL = await initSqlJs({ locateFile: () => sqlWasmUrl });
   const buffer = new Uint8Array(await dbFile.arrayBuffer());
   const db = new SQL.Database(buffer);
+
+  // 首先获取所有资源数据
+  const resourceQuery = `
+    SELECT id, uid, filename, blob, type, size, memo_id
+    FROM resource
+    ORDER BY id ASC
+  `;
+  
+  const resourceResult = db.exec(resourceQuery);
+  const resourcesMap = new Map(); // memo_id -> resources[]
+  
+  if (resourceResult && resourceResult.length > 0) {
+    const { columns: resColumns, values: resValues } = resourceResult[0];
+    const resColIdx = Object.fromEntries(resColumns.map((c, i) => [c, i]));
+    
+    for (const resRow of resValues) {
+      const memoId = resRow[resColIdx.memo_id];
+      const resource = {
+        id: resRow[resColIdx.id],
+        uid: resRow[resColIdx.uid],
+        filename: resRow[resColIdx.filename],
+        blob: resRow[resColIdx.blob],
+        type: resRow[resColIdx.type],
+        size: resRow[resColIdx.size],
+      };
+      
+      if (memoId) {
+        if (!resourcesMap.has(memoId)) {
+          resourcesMap.set(memoId, []);
+        }
+        resourcesMap.get(memoId).push(resource);
+      }
+    }
+  }
 
   // 选择需要的字段，过滤正常行
   const query = `
@@ -21,7 +56,7 @@ async function parseMemosFromSQLite(dbFile) {
   `;
 
   const result = db.exec(query);
-  if (!result || result.length === 0) return [];
+  if (!result || result.length === 0) return { memos: [], resources: resourcesMap };
 
   const { columns, values } = result[0];
   const colIdx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -33,7 +68,7 @@ async function parseMemosFromSQLite(dbFile) {
     return new Date(ms).toISOString();
   };
 
-  return values.map((row) => {
+  const memos = values.map((row) => {
     const id = row[colIdx.id];
     const created_ts = row[colIdx.created_ts];
     const updated_ts = row[colIdx.updated_ts];
@@ -61,6 +96,9 @@ async function parseMemosFromSQLite(dbFile) {
     const createdAt = toISO(created_ts);
     const updatedAt = toISO(updated_ts ?? created_ts);
 
+    // 获取关联的资源
+    const resources = resourcesMap.get(id) || [];
+
     // 统一为本应用的数据结构
     const memoObj = {
       id: `memos-${id}`,
@@ -70,14 +108,139 @@ async function parseMemosFromSQLite(dbFile) {
       updatedAt,
       timestamp: createdAt,
       lastModified: updatedAt,
+      resources, // 添加资源信息
     };
 
     return { memoObj, pinned: !!pinned };
   });
+  
+  return { memos, resources: resourcesMap };
+}
+
+// 处理资源文件导入
+async function processResourceFiles(memos) {
+  const processedMemos = [];
+  
+  for (const { memoObj, pinned } of memos) {
+    if (memoObj.resources && memoObj.resources.length > 0) {
+      const processedResources = [];
+      let updatedContent = memoObj.content;
+      
+      // 创建一个映射来存储原始URL到本地引用的对应关系
+      const urlMappings = new Map();
+      
+      for (const resource of memoObj.resources) {
+        try {
+          if (resource.blob && resource.type && resource.type.startsWith('image/')) {
+            // 将 blob 数据转换为 File 对象
+            const blob = new Blob([resource.blob], { type: resource.type });
+            const file = new File([blob], resource.filename || 'image', { type: resource.type });
+            
+            // 使用文件存储服务处理文件，强制使用IndexedDB存储大图片
+            const fileInfo = await fileStorageService.uploadToIndexedDB(file, { type: 'image' });
+            
+            console.log('Processed file info:', fileInfo);
+            
+            // 确定文件引用ID
+            const fileRef = fileInfo.id || fileInfo.name || `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // 生成图片的markdown引用
+            const imageReference = `![${resource.filename || 'image'}](local:${fileRef})`;
+            
+            console.log('Generated image reference:', imageReference);
+            
+            // 查找并替换现有的图片引用
+            let foundExistingReference = false;
+            
+            // 1. 尝试通过resource.uid匹配
+            if (resource.uid) {
+              const uidRegex = new RegExp(`!\\[[^\\]]*\\]\\([^)]*${resource.uid}[^)]*\\)`, 'g');
+              if (uidRegex.test(updatedContent)) {
+                updatedContent = updatedContent.replace(uidRegex, imageReference);
+                foundExistingReference = true;
+                console.log(`Replaced image by UID: ${resource.uid}`);
+              }
+            }
+            
+            // 2. 如果还没找到，尝试通过文件名匹配
+            if (!foundExistingReference && resource.filename) {
+              const filenameRegex = new RegExp(`!\\[[^\\]]*\\]\\([^)]*${resource.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^)]*\\)`, 'g');
+              if (filenameRegex.test(updatedContent)) {
+                updatedContent = updatedContent.replace(filenameRegex, imageReference);
+                foundExistingReference = true;
+                console.log(`Replaced image by filename: ${resource.filename}`);
+              }
+            }
+            
+            // 3. 如果还没找到，尝试通过常见URL模式匹配
+            if (!foundExistingReference) {
+              const urlPatterns = [
+                `https://s3.bmp.ovh/imgs/`,
+                `/api/v1/resource/`,
+                `/o/r/`,
+                `assets/`,
+                `uploads/`
+              ];
+              
+              for (const pattern of urlPatterns) {
+                const patternRegex = new RegExp(`!\\[[^\\]]*\\]\\([^)]*${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^)]*\\)`, 'g');
+                if (patternRegex.test(updatedContent)) {
+                  updatedContent = updatedContent.replace(patternRegex, imageReference);
+                  foundExistingReference = true;
+                  console.log(`Replaced image by URL pattern: ${pattern}`);
+                  break;
+                }
+              }
+            }
+            
+            // 4. 如果没有找到现有引用，则添加到内容末尾
+            if (!foundExistingReference && !updatedContent.includes(imageReference)) {
+              updatedContent = updatedContent.trim() + '\n\n' + imageReference;
+              console.log(`Added new image reference: ${imageReference}`);
+            }
+            
+            // 只保留必要的引用信息，不存储大数据
+            processedResources.push({
+              uid: resource.uid,
+              filename: resource.filename,
+              type: resource.type,
+              size: resource.size,
+              fileRef,
+              storageType: 'indexeddb',
+              id: fileInfo.id,
+              reference: imageReference
+            });
+          }
+        } catch (error) {
+          console.error('Failed to process resource:', resource.filename, error);
+          // 继续处理其他资源，不要因为一个失败就停止整个导入
+        }
+      }
+      
+      // 更新memo对象
+      const updatedMemoObj = {
+        ...memoObj,
+        content: updatedContent,
+        processedResources,
+        // 清理原始resources数据以节省空间
+        resources: undefined
+      };
+      
+      processedMemos.push({ memoObj: updatedMemoObj, pinned });
+    } else {
+      // 没有资源的memo直接添加
+      processedMemos.push({ memoObj: { ...memoObj, resources: undefined }, pinned });
+    }
+  }
+  
+  return processedMemos;
 }
 
 // 将解析的 memos 合并到本地存储
-function mergeMemosIntoLocalStorage(parsed) {
+async function mergeMemosIntoLocalStorage(parseResult) {
+  // 首先处理资源文件
+  const processedMemos = await processResourceFiles(parseResult.memos);
+  
   const existingMemos = JSON.parse(localStorage.getItem('memos') || '[]');
   const existingPinned = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
 
@@ -93,7 +256,7 @@ function mergeMemosIntoLocalStorage(parsed) {
   const imported = [];
   const importedPinned = [];
 
-  for (const { memoObj, pinned } of parsed) {
+  for (const { memoObj, pinned } of processedMemos) {
     if (existingIds.has(String(memoObj.id))) {
       // 跳过重复（来自相同来源的再次导入）
       continue;
@@ -110,7 +273,7 @@ function mergeMemosIntoLocalStorage(parsed) {
 
   // 广播数据变更事件，便于 UI 与云同步感知
   try {
-    // 将最近云同步时间重置，避免下行合并把本地导入误判为“云端已删除”
+    // 将最近云同步时间重置，避免下行合并把本地导入误判为"云端已删除"
     localStorage.setItem('lastCloudSyncAt', '0');
     // 触发页面刷新本地状态（Index.jsx 监听包含 'restore.' 的事件）
     window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.import' } }));
@@ -175,12 +338,27 @@ export default function MemosImport() {
       setBusy(true);
       setDone(null);
 
+      toast.info('正在解析数据库...');
+      
       // 目前使用 sql.js 直接读取 .db；如果同时提供了 -wal/-shm，我们会接受但不保证未 checkpoint 的事务被包含
-      const parsed = await parseMemosFromSQLite(mainDbFile);
-  const { importedCount, pinnedCount } = mergeMemosIntoLocalStorage(parsed);
-  setDone({ importedCount, pinnedCount });
-  toast.success(`导入完成：新增 ${importedCount} 条，置顶 ${pinnedCount} 条。`);
-  // 无需强制刷新，通过事件驱动页面感知并刷新本地状态/触发云同步
+      const parseResult = await parseMemosFromSQLite(mainDbFile);
+      
+      const totalResources = Array.from(parseResult.resources.values())
+        .reduce((total, resources) => total + resources.length, 0);
+        
+      if (totalResources > 0) {
+        toast.info(`找到 ${parseResult.memos.length} 条记录和 ${totalResources} 个图片资源，正在处理...`);
+      }
+      
+      const { importedCount, pinnedCount } = await mergeMemosIntoLocalStorage(parseResult);
+      setDone({ importedCount, pinnedCount, resourceCount: totalResources });
+      
+      const message = totalResources > 0 
+        ? `导入完成：新增 ${importedCount} 条记录，置顶 ${pinnedCount} 条，处理 ${totalResources} 个图片。`
+        : `导入完成：新增 ${importedCount} 条记录，置顶 ${pinnedCount} 条。`;
+        
+      toast.success(message);
+      // 无需强制刷新，通过事件驱动页面感知并刷新本地状态/触发云同步
     } catch (err) {
       console.error(err);
       toast.error(`导入失败：${err.message || err}`);
@@ -260,6 +438,7 @@ export default function MemosImport() {
               <div className="flex items-center text-green-600 dark:text-green-400 text-xs">
                 <CheckCircle2 className="h-4 w-4 mr-1" />
                 新增 {done.importedCount} 条，置顶 {done.pinnedCount} 条
+                {done.resourceCount > 0 && `，图片 ${done.resourceCount} 张`}
               </div>
             )}
           </div>
@@ -267,8 +446,91 @@ export default function MemosImport() {
       )}
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        说明：目前前端解析将直接读取 .db 内容。若存在尚未 checkpoint 的 WAL 记录，可能无法完全包含。建议在来源应用中执行一次完全同步/备份后再导入，以确保完整性。
+        说明：现已支持图片导入！系统将自动提取数据库中的图片资源并存储到本地。若存在尚未 checkpoint 的 WAL 记录，可能无法完全包含。建议在来源应用中执行一次完全同步/备份后再导入，以确保完整性。
       </p>
+      
+      {/* 临时调试按钮 */}
+      <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+        <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">调试工具：</p>
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => {
+              const memos = JSON.parse(localStorage.getItem('memos') || '[]');
+              const pinnedMemos = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
+              console.log('Stored memos:', memos);
+              console.log('Pinned memos:', pinnedMemos);
+              // 找到带图片的memo
+              const memosWithImages = [...memos, ...pinnedMemos].filter(m => 
+                m.content.includes('local:') || 
+                m.content.includes('http') || 
+                (m.processedResources && m.processedResources.length > 0)
+              );
+              console.log('Memos with images:', memosWithImages);
+              
+              // 查找有外部链接的memo
+              const memosWithExternalImages = [...memos, ...pinnedMemos].filter(m => 
+                m.content.includes('https://') || m.content.includes('http://')
+              );
+              console.log('Memos with external images:', memosWithExternalImages);
+              
+              alert(`找到 ${memosWithImages.length} 个包含图片的memo，其中 ${memosWithExternalImages.length} 个包含外部图片链接。详情请查看控制台`);
+            }}
+          >
+            查看本地数据
+          </Button>
+          
+          <Button 
+            size="sm" 
+            variant="destructive"
+            onClick={async () => {
+              if (confirm('确认清空所有已导入的memo数据和图片？此操作不可恢复！')) {
+                try {
+                  // 清空localStorage
+                  localStorage.removeItem('memos');
+                  localStorage.removeItem('pinnedMemos');
+                  
+                  // 清空IndexedDB中的图片数据
+                  const stats = await fileStorageService.getStorageStats();
+                  console.log('Current storage stats:', stats);
+                  
+                  // 通知页面数据已清空
+                  window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.clear' } }));
+                  
+                  alert('已清空所有memo数据和图片，请重新导入');
+                } catch (error) {
+                  console.error('清空数据时出错:', error);
+                  alert('清空数据时出现错误，请检查控制台');
+                }
+              }
+            }}
+          >
+            清空数据
+          </Button>
+          
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={async () => {
+              try {
+                const stats = await fileStorageService.getStorageStats();
+                console.log('Storage stats:', stats);
+                
+                const totalSizeMB = stats?.indexeddb?.totalSizeMB || 0;
+                const totalFiles = stats?.indexeddb?.totalFiles || 0;
+                
+                alert(`IndexedDB存储状态：\n文件数: ${totalFiles}\n总大小: ${totalSizeMB}MB\n详情请查看控制台`);
+              } catch (error) {
+                console.error('获取存储统计失败:', error);
+                alert('获取存储统计失败，请检查控制台');
+              }
+            }}
+          >
+            存储统计
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

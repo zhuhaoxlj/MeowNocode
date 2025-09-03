@@ -1,8 +1,126 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/context/ThemeContext';
 import Spoiler from '@/components/Spoiler';
+import fileStorageService from '@/lib/fileStorageService';
+
+// LocalImage 组件处理 local: 引用的图片
+const LocalImage = ({ src, alt, ...props }) => {
+  const [imageSrc, setImageSrc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
+
+  useEffect(() => {
+    const loadLocalImage = async () => {
+      console.log('LocalImage loading:', src);
+      
+      if (!src || !src.startsWith('local:')) {
+        console.log('Not a local image, using direct src:', src);
+        setImageSrc(src);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(false);
+        
+        // 提取文件ID
+        const fileId = src.replace('local:', '');
+        console.log('Extracted file ID:', fileId);
+        setDebugInfo(`Loading ID: ${fileId}`);
+        
+        // 首先尝试从memo数据中查找完整的文件信息
+        console.log('Trying memo lookup first...');
+        try {
+          const memos = JSON.parse(localStorage.getItem('memos') || '[]');
+          const pinnedMemos = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
+          const allMemos = [...memos, ...pinnedMemos];
+          
+          for (const memo of allMemos) {
+            if (memo.processedResources) {
+              for (const res of memo.processedResources) {
+                if (res.fileRef === fileId && res.id) {
+                  console.log('Found resource metadata in memo:', res);
+                  // 使用完整的存储信息恢复文件
+                  const restoredFile = await fileStorageService.restoreFile({
+                    id: res.id,
+                    storageType: res.storageType || 'indexeddb',
+                    type: res.type,
+                    name: res.filename
+                  });
+                  if (restoredFile && restoredFile.data) {
+                    console.log('Successfully restored from IndexedDB via memo metadata');
+                    setImageSrc(restoredFile.data);
+                    setDebugInfo(`Found via memo metadata`);
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        } catch (memoErr) {
+          console.error('Error reading memo data:', memoErr);
+        }
+        
+        // 备用方案：尝试直接从 IndexedDB 恢复文件
+        console.log('Trying direct IndexedDB...');
+        let fileInfo = await fileStorageService.restoreFile({ 
+          id: fileId, 
+          storageType: 'indexeddb' 
+        });
+        
+        console.log('Direct IndexedDB result:', fileInfo);
+        
+        if (fileInfo && fileInfo.data) {
+          console.log('Found in IndexedDB directly');
+          setImageSrc(fileInfo.data);
+          setDebugInfo(`Found in IndexedDB`);
+          return;
+        }
+        
+        console.log('Image not found in any storage');
+        setError(true);
+        setDebugInfo(`Not found: ${fileId}`);
+      } catch (err) {
+        console.error('Failed to load local image:', err);
+        setError(true);
+        setDebugInfo(`Error: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLocalImage();
+  }, [src]);
+
+  if (loading) {
+    return (
+      <div className="inline-block w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex items-center justify-center">
+        <span className="text-xs text-gray-500 dark:text-gray-400">加载中...</span>
+      </div>
+    );
+  }
+
+  if (error || !imageSrc) {
+    return (
+      <div className="inline-block min-w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded flex items-center justify-center p-2">
+        <span className="text-xs text-red-500 dark:text-red-400">{debugInfo || '图片丢失'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={imageSrc} 
+      alt={alt || '图片'} 
+      className="max-w-full h-auto rounded-lg shadow-sm my-2"
+      {...props} 
+    />
+  );
+};
 
 const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) => {
   const { themeColor, currentFont } = useTheme();
@@ -285,6 +403,7 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                         },
                         strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                         em: ({node, ...props}) => <em className="italic" {...props} />,
+                        img: ({node, ...props}) => <LocalImage {...props} />,
                         br: () => <br />,
                       }}
                       remarkPlugins={[remarkGfm]}
@@ -359,6 +478,7 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                               },
                               strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                               em: ({node, ...props}) => <em className="italic" {...props} />,
+                              img: ({node, ...props}) => <LocalImage {...props} />,
                               br: () => <br />,
                             }}
                             remarkPlugins={[remarkGfm]}
