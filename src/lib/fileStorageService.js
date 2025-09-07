@@ -90,11 +90,20 @@ class FileStorageService {
   async uploadToIndexedDB(file, options = {}) {
     const { type = 'file', onProgress } = options;
     
+    console.log('🔍 DEBUG fileStorageService.uploadToIndexedDB: Starting upload', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
+    
     try {
       if (onProgress) onProgress('processing', 30);
       
       // 先转换为Base64
       const base64Data = await this.fileToBase64(file);
+      console.log('🔍 DEBUG fileStorageService.uploadToIndexedDB: Base64 conversion complete', {
+        base64Length: base64Data?.length
+      });
       
       if (onProgress) onProgress('storing', 60);
       
@@ -108,16 +117,29 @@ class FileStorageService {
         isLocal: true
       };
       
+      console.log('🔍 DEBUG fileStorageService.uploadToIndexedDB: Calling largeFileStorage.storeFile with:', {
+        name: fileInfo.name,
+        size: fileInfo.size,
+        type: fileInfo.type,
+        hasData: !!fileInfo.data
+      });
+      
       const result = await largeFileStorage.storeFile(fileInfo);
+      
+      console.log('🔍 DEBUG fileStorageService.uploadToIndexedDB: largeFileStorage.storeFile result:', result);
       
       if (onProgress) onProgress('complete', 100);
       
-      return {
+      const finalResult = {
         ...result,
         storageType: 'indexeddb',
         isLocal: true,
         processedAt: new Date().toISOString()
       };
+      
+      console.log('🔍 DEBUG fileStorageService.uploadToIndexedDB: Final result:', finalResult);
+      
+      return finalResult;
     } catch (error) {
       console.error('IndexedDB upload failed:', error);
       throw new Error(`本地存储失败: ${error.message}`);
@@ -163,11 +185,17 @@ class FileStorageService {
 
   // 从存储中恢复文件
   async restoreFile(fileInfo) {
-    if (!fileInfo) return null;
+    console.log('🔍 DEBUG fileStorageService.restoreFile: Input fileInfo:', fileInfo);
+    
+    if (!fileInfo) {
+      console.log('🔍 DEBUG fileStorageService.restoreFile: No fileInfo provided');
+      return null;
+    }
 
     try {
       switch (fileInfo.storageType) {
         case 's3':
+          console.log('🔍 DEBUG fileStorageService.restoreFile: Handling S3 file');
           // S3文件直接返回URL
           return {
             url: fileInfo.url,
@@ -176,9 +204,16 @@ class FileStorageService {
           };
         
         case 'indexeddb':
+          console.log('🔍 DEBUG fileStorageService.restoreFile: Handling IndexedDB file, ID:', fileInfo.id);
           // 从IndexedDB恢复
           if (fileInfo.id) {
             const storedFile = await largeFileStorage.getFile(fileInfo.id);
+            console.log('🔍 DEBUG fileStorageService.restoreFile: largeFileStorage.getFile result:', {
+              success: !!storedFile,
+              hasData: !!(storedFile && storedFile.data),
+              dataType: storedFile?.data ? typeof storedFile.data : 'none'
+            });
+            
             if (storedFile && storedFile.data) {
               return {
                 data: storedFile.data,
@@ -186,6 +221,8 @@ class FileStorageService {
                 name: fileInfo.name
               };
             }
+          } else {
+            console.log('🔍 DEBUG fileStorageService.restoreFile: No ID provided for IndexedDB file');
           }
           break;
         

@@ -14,9 +14,10 @@ const LocalImage = ({ src, alt, ...props }) => {
 
   useEffect(() => {
     const loadLocalImage = async () => {
-      console.log('LocalImage loading:', src);
+      console.log('🔍 DEBUG LocalImage: Starting with src:', src);
+      console.log('🔍 DEBUG LocalImage: src type:', typeof src);
       
-      if (!src || !src.startsWith('local:')) {
+      if (!src || !src.startsWith('./local/')) {
         console.log('Not a local image, using direct src:', src);
         setImageSrc(src);
         setLoading(false);
@@ -28,22 +29,36 @@ const LocalImage = ({ src, alt, ...props }) => {
         setError(false);
         
         // 提取文件ID
-        const fileId = src.replace('local:', '');
-        console.log('Extracted file ID:', fileId);
+        const fileId = src.replace('./local/', '');
+        console.log('🔍 DEBUG LocalImage: Extracted file ID:', fileId);
         setDebugInfo(`Loading ID: ${fileId}`);
         
         // 首先尝试从memo数据中查找完整的文件信息
-        console.log('Trying memo lookup first...');
+        console.log('🔍 DEBUG LocalImage: Trying memo lookup first...');
         try {
           const memos = JSON.parse(localStorage.getItem('memos') || '[]');
           const pinnedMemos = JSON.parse(localStorage.getItem('pinnedMemos') || '[]');
           const allMemos = [...memos, ...pinnedMemos];
           
+          console.log('🔍 DEBUG LocalImage: Total memos to search:', allMemos.length);
+          
           for (const memo of allMemos) {
             if (memo.processedResources) {
+              console.log('🔍 DEBUG LocalImage: Checking memo with processed resources:', {
+                memoId: memo.id,
+                resourceCount: memo.processedResources.length
+              });
+              
               for (const res of memo.processedResources) {
+                console.log('🔍 DEBUG LocalImage: Checking resource:', {
+                  fileRef: res.fileRef,
+                  id: res.id,
+                  filename: res.filename,
+                  storageType: res.storageType
+                });
+                
                 if (res.fileRef === fileId && res.id) {
-                  console.log('Found resource metadata in memo:', res);
+                  console.log('🔍 DEBUG LocalImage: Found resource metadata in memo:', res);
                   // 使用完整的存储信息恢复文件
                   const restoredFile = await fileStorageService.restoreFile({
                     id: res.id,
@@ -51,8 +66,13 @@ const LocalImage = ({ src, alt, ...props }) => {
                     type: res.type,
                     name: res.filename
                   });
+                  console.log('🔍 DEBUG LocalImage: Restore result:', {
+                    success: !!restoredFile,
+                    hasData: !!(restoredFile && restoredFile.data)
+                  });
+                  
                   if (restoredFile && restoredFile.data) {
-                    console.log('Successfully restored from IndexedDB via memo metadata');
+                    console.log('🔍 DEBUG LocalImage: Successfully restored from IndexedDB via memo metadata');
                     setImageSrc(restoredFile.data);
                     setDebugInfo(`Found via memo metadata`);
                     return;
@@ -124,6 +144,9 @@ const LocalImage = ({ src, alt, ...props }) => {
 
 const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) => {
   const { themeColor, currentFont } = useTheme();
+  
+  // 调试：检查传入的内容
+  console.log('🔍 DEBUG ContentRenderer: Received content:', content?.substring(0, 200));
   
   // 处理 checkbox 切换
   const handleCheckboxToggle = (taskIndex, isChecked) => {
@@ -403,7 +426,10 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                         },
                         strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                         em: ({node, ...props}) => <em className="italic" {...props} />,
-                        img: ({node, ...props}) => <LocalImage {...props} />,
+                        img: ({node, ...props}) => {
+                          console.log('🔍 DEBUG ReactMarkdown img mapping 1:', props);
+                          return <LocalImage {...props} />;
+                        },
                         br: () => <br />,
                       }}
                       remarkPlugins={[remarkGfm]}
@@ -478,7 +504,10 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                               },
                               strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                               em: ({node, ...props}) => <em className="italic" {...props} />,
-                              img: ({node, ...props}) => <LocalImage {...props} />,
+                              img: ({node, ...props}) => {
+                                console.log('🔍 DEBUG ReactMarkdown img mapping 2:', props);
+                                return <LocalImage {...props} />;
+                              },
                               br: () => <br />,
                             }}
                             remarkPlugins={[remarkGfm]}

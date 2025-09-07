@@ -139,15 +139,25 @@ async function processResourceFiles(memos) {
             // 使用文件存储服务处理文件，强制使用IndexedDB存储大图片
             const fileInfo = await fileStorageService.uploadToIndexedDB(file, { type: 'image' });
             
-            console.log('Processed file info:', fileInfo);
+            console.log('🔍 DEBUG: Original resource data:', {
+              uid: resource.uid,
+              filename: resource.filename,
+              type: resource.type,
+              size: resource.size,
+              blobSize: resource.blob?.length
+            });
+            console.log('🔍 DEBUG: Processed file info:', fileInfo);
             
-            // 确定文件引用ID
-            const fileRef = fileInfo.id || fileInfo.name || `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            // 确定文件引用ID - 使用从IndexedDB返回的实际ID
+            const fileRef = fileInfo.id; // 直接使用 largeFileStorage.storeFile 返回的 ID
             
-            // 生成图片的markdown引用
-            const imageReference = `![${resource.filename || 'image'}](local:${fileRef})`;
+            console.log('🔍 DEBUG: Generated fileRef:', fileRef);
+            console.log('🔍 DEBUG: fileInfo.id exists:', !!fileInfo.id);
             
-            console.log('Generated image reference:', imageReference);
+            // 生成图片的markdown引用 - 使用 ./local/ 路径格式让 ReactMarkdown 正确解析
+            const imageReference = `![${resource.filename || 'image'}](./local/${fileRef})`;
+            
+            console.log('🔍 DEBUG: Generated image reference:', imageReference);
             
             // 查找并替换现有的图片引用
             let foundExistingReference = false;
