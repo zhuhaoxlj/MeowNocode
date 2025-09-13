@@ -393,14 +393,14 @@ export function SettingsProvider({ children }) {
       if (savedS3Config) {
         const parsedConfig = JSON.parse(savedS3Config);
         setS3Config(parsedConfig);
-        // 若配置已启用，则初始化 S3 客户端
-        try {
-          if (parsedConfig && parsedConfig.enabled) {
-            const svc = require('@/lib/s3Storage').default;
+        // 若配置已启用，则初始化 S3 客户端 (可选功能，默认禁用)
+        if (parsedConfig && parsedConfig.enabled && typeof window !== 'undefined') {
+          // 异步初始化S3，不阻塞应用启动
+          import('@/lib/s3Storage').then(({ default: svc }) => {
             svc.init(parsedConfig);
-          }
-        } catch (e) {
-          console.warn('Init S3 on load failed:', e);
+          }).catch(e => {
+            console.warn('Init S3 on load failed:', e);
+          });
         }
       }
     } catch (error) {
@@ -492,15 +492,14 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('s3Config', JSON.stringify(s3Config));
     dispatchDataChanged({ part: 's3' });
-    // 若开启则保证运行期已初始化
-    try {
-      const svc = require('@/lib/s3Storage').default;
-      if (s3Config && s3Config.enabled) {
+    // 若开启则保证运行期已初始化 (可选功能，默认禁用)
+    if (typeof window !== 'undefined' && s3Config && s3Config.enabled) {
+      import('@/lib/s3Storage').then(({ default: svc }) => {
         svc.init(s3Config);
-      }
-    } catch (e) {
-      // 仅日志，不打断设置保存
-      console.warn('Init S3 on change failed:', e);
+      }).catch(e => {
+        // 仅日志，不打断设置保存
+        console.warn('Init S3 on change failed:', e);
+      });
     }
   }, [s3Config]);
 

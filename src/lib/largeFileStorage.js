@@ -5,12 +5,25 @@ class LargeFileStorage {
     this.dbVersion = 1;
     this.storeName = 'musicFiles';
     this.db = null;
-    this.initPromise = this.initDB();
+    
+    // 只在浏览器环境中初始化
+    if (typeof window !== 'undefined') {
+      this.initPromise = this.initDB();
+    } else {
+      this.initPromise = Promise.resolve(null);
+    }
   }
 
   // 初始化IndexedDB数据库
   async initDB() {
     return new Promise((resolve, reject) => {
+      // 检查是否在浏览器环境中
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        console.warn('IndexedDB not available (server-side or unsupported browser)');
+        resolve(null);
+        return;
+      }
+      
       const request = indexedDB.open(this.dbName, this.dbVersion);
       
       request.onerror = () => {

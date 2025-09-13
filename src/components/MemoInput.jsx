@@ -5,7 +5,7 @@ import MemoEditor from '@/components/MemoEditor';
 
 const MemoInput = ({ newMemo, setNewMemo, onAddMemo, onEditorFocus, onEditorBlur, allMemos = [], onAddBacklink, onPreviewMemo, pendingNewBacklinks = [], onRemoveBacklink }) => {
   return (
-    <div className="flex-shrink-0 p-3 sm:p-4 lg:p-6 pb-0">
+    <div className="flex-shrink-0 p-3 sm:p-4 sm:pb-2">
       <div className="relative">
         <MemoEditor
           value={newMemo}

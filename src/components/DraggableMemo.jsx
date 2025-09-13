@@ -385,8 +385,8 @@ const DraggableMemo = ({
                 {/* 信息 */}
                 <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1 px-3 py-2 sm:px-4 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                   <div className="truncate">字数: {memo.content.length}字</div>
-                  <div className="truncate">创建: {new Date(memo.createdAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                  <div className="truncate">修改: {new Date(memo.updatedAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                  <div className="truncate">创建: {new Date(memo.created_ts).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                              <div className="truncate">修改: {new Date(memo.updated_ts || memo.created_ts).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
               </div>
             )}

@@ -585,7 +585,7 @@ const MemoEditor = ({
                              
                         >
                           <div className="truncate">{m.content?.replace(/\n/g, ' ') || '（无内容）'}</div>
-                          <div className="text-[11px] text-gray-400 mt-0.5">{new Date(m.updatedAt || m.createdAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</div>
+                          <div className="text-[11px] text-gray-400 mt-0.5">{new Date(m.updated_ts || m.created_ts).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</div>
                         </button>
                       ))}
                       {(memosList || [])

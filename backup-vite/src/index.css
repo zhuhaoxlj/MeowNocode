@@ -1,0 +1,518 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 258 100% 50%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 258 100% 50%;
+    --radius: 0.75rem;
+    --theme-color: #818CF8;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 263 100% 70%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 263 100% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Roboto', 'Noto Sans SC', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* GitHub热力图样式 */
+  .level-0 { background-color: #ebedf0; } /* 无活动 */
+  .level-1 { background-color: #9be9a8; } /* 1-3条 */
+  .level-2 { background-color: #40c463; } /* 4-6条 */
+  .level-3 { background-color: #30a14e; } /* 7-9条 */
+  .level-4 { background-color: #216e39; } /* 10+条 */
+  
+  .dark .level-0 { background-color: #2d333b; } 
+  .dark .level-1 { background-color: #0e4429; } 
+  .dark .level-2 { background-color: #006d32; } 
+  .dark .level-3 { background-color: #26a641; } 
+  .dark .level-4 { background-color: #39d353; } 
+  
+  /* 卡片阴影 */
+  .shadow-material {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .dark .shadow-material {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* 按钮效果 */
+  .btn-material {
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-material:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .btn-material:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl shadow-material bg-white dark:bg-gray-800;
+  }
+
+  .btn-primary {
+    @apply btn-material text-white rounded-lg;
+    background-color: var(--theme-color);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(0.9);
+  }
+
+  /* 隐藏滚动条但保持滚动功能 */
+  .scrollbar-hidden {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* 颜色选择器样式 */
+  input[type="color"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  }
+
+  input[type="color"]::-moz-color-swatch {
+    border: none;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 深色模式下的颜色选择器样式 */
+  .dark input[type="color"]::-webkit-color-swatch-wrapper {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark input[type="color"]::-webkit-color-swatch {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .dark input[type="color"]::-moz-color-swatch {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  /* 主题色相关的聚焦和选择样式 */
+  .theme-focus:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--theme-color);
+    border-color: var(--theme-color);
+  }
+
+  /* 文本选择样式将通过JavaScript动态设置 */
+
+  /* 移动端优化 */
+  @media (max-width: 640px) {
+    /* 触摸设备上的菜单按钮始终可见 */
+    .touch\:opacity-100 {
+      opacity: 1 !important;
+    }
+
+    /* 移动端卡片间距优化 */
+    .mobile-card-spacing {
+      margin-bottom: 0.75rem;
+    }
+
+    /* 移动端文字大小优化 */
+    .mobile-text-adjust {
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
+  }
+
+  /* 触摸设备检测 */
+  @media (hover: none) and (pointer: coarse) {
+    .group:hover .opacity-0 {
+      opacity: 1;
+    }
+  }
+
+  /* 字体预览样式 */
+  .font-preview-jinghua {
+    font-family: 'Times New Roman', 'SimSun', serif;
+  }
+
+  .font-preview-lxgw {
+    font-family: 'Georgia', 'KaiTi', serif;
+  }
+
+  .font-preview-kongshan {
+    font-family: 'Palatino', 'FangSong', serif;
+  }
+
+  /* 侧栏动画优化 */
+  .sidebar-transition {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar-hidden-left {
+    transform: translateX(-100%);
+    opacity: 0;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden;
+  }
+
+  .sidebar-hidden-right {
+    transform: translateX(100%);
+    opacity: 0;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden;
+  }
+
+  .sidebar-visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  /* 显示按钮动画 */
+  .show-sidebar-btn {
+    animation: fadeInScale 0.3s ease-out;
+  }
+
+  @keyframes fadeInScale {
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* 左侧按钮滑入动画 */
+  @keyframes slideInFromLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* 右侧按钮滑入动画 */
+  @keyframes slideInFromRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* 内容区域平滑过渡 */
+  .content-transition {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 固定位置按钮样式 */
+  .fixed-sidebar-btn {
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .fixed-sidebar-btn {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 移动端滚动优化 */
+  @media (max-width: 1023px) {
+    body {
+      overflow-x: hidden; /* 只禁用水平滚动 */
+    }
+
+    /* 确保移动端可以正常滚动 */
+    .mobile-scroll {
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
+    }
+
+    /* 移动端memos列表滚动优化 */
+    .mobile-memos-container {
+      max-height: calc(100vh - 160px); /* 减去顶部栏和编辑器高度 */
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE and Edge */
+    }
+
+    .mobile-memos-container::-webkit-scrollbar {
+      display: none; /* Chrome, Safari and Opera */
+    }
+  }
+
+  /* 桌面端滚动优化 */
+  @media (min-width: 1024px) {
+    .mobile-memos-container-disabled {
+      max-height: none !important;
+      overflow-y: auto !important;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE and Edge */
+    }
+
+    .mobile-memos-container-disabled::-webkit-scrollbar {
+      display: none; /* Chrome, Safari and Opera */
+    }
+  }
+
+  /* 通用滚动条主题（浅色/深色自适应），用于滚动容器的观感统一 */
+  .scrollbar-theme {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #cbd5e1 transparent; /* thumb track */
+  }
+
+  .dark .scrollbar-theme {
+    scrollbar-color: #475569 transparent; /* thumb track */
+  }
+
+  .scrollbar-theme::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-theme::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 9999px;
+  }
+
+  .dark .scrollbar-theme::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .scrollbar-theme::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1; /* slate-300 */
+    border-radius: 9999px;
+    border: 2px solid transparent; /* 让 thumb 更细致 */
+    background-clip: content-box;
+  }
+
+  .scrollbar-theme::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8; /* slate-400 */
+  }
+
+  .dark .scrollbar-theme::-webkit-scrollbar-thumb {
+    background-color: #475569; /* slate-600 */
+  }
+
+  .dark .scrollbar-theme::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b; /* slate-500 */
+  }
+
+    /* 移动端侧栏动画 */
+    .mobile-sidebar-enter {
+      transform: translateX(-100%);
+    }
+
+    .mobile-sidebar-enter-active {
+      transform: translateX(0);
+      transition: transform 300ms ease-in-out;
+    }
+
+    .mobile-sidebar-exit {
+      transform: translateX(0);
+    }
+
+    .mobile-sidebar-exit-active {
+      transform: translateX(-100%);
+      transition: transform 300ms ease-in-out;
+    }
+
+    /* 移动端侧栏滚动条样式 */
+    .scrollbar-thin {
+      scrollbar-width: thin;
+    }
+
+    .scrollbar-thumb-gray-300::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .scrollbar-thumb-gray-300::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+      background-color: #d1d5db;
+      border-radius: 3px;
+    }
+
+    .dark .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+      background-color: #4b5563;
+    }
+  }
+
+  /* 回到顶部按钮动画 */
+  .scroll-to-top-enter {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+
+  .scroll-to-top-enter-active {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    transition: all 300ms ease-out;
+  }
+
+  .scroll-to-top-exit {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  .scroll-to-top-exit-active {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+    transition: all 300ms ease-in;
+  }
+
+  /* 透明滚动条样式 */
+  .scrollbar-transparent {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar {
+    width: 6px;
+    background-color: transparent;
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 3px;
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.5);
+  }
+
+  .dark .scrollbar-transparent::-webkit-scrollbar {
+    background-color: transparent;
+  }
+
+  .dark .scrollbar-transparent::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .dark .scrollbar-transparent::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+
+  .dark .scrollbar-transparent::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(75, 85, 99, 0.5);
+  }
+
+  /* 每日回顾弹窗隐藏右上角关闭按钮 */
+  .daily-review-content button[data-state][class*="absolute"][class*="right-4"][class*="top-4"],
+  .daily-review-content > button.absolute.right-4.top-4 {
+    display: none !important;
+  }
+
+  /* 每日回顾弹窗内去除焦点高亮线框（箭头按钮/容器等）*/
+  .daily-review-content :is(button, [role="button"], [tabindex], .embla) {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  .daily-review-content :is(button, [role="button"]) :focus,
+  .daily-review-content :is(button, [role="button"]) :focus-visible,
+  .daily-review-content :is(button, [role="button"]) :focus-within,
+  .daily-review-content :is([tabindex]) :focus,
+  .daily-review-content :is([tabindex]) :focus-visible,
+  .daily-review-content :is([tabindex]) :focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  .daily-review-content .embla,
+  .daily-review-content .embla__viewport,
+  .daily-review-content .embla__container {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+

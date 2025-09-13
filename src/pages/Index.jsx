@@ -16,6 +16,7 @@ import MiniMusicPlayer from '@/components/MiniMusicPlayer';
 import MusicSearchCard from '@/components/MusicSearchCard';
 import { useSettings } from '@/context/SettingsContext';
 import { addDeletedMemoTombstone } from '@/lib/utils';
+import { dataService } from '@/lib/dataService';
 import { toast } from 'sonner';
 
  const Index = () => {
@@ -1151,25 +1152,43 @@ import { toast } from 'sonner';
   addDeletedMemoTombstone(id);
   };
 
-  const handleCanvasTogglePin = (id) => {
-    const memoInMemos = memos.find(memo => memo.id === id);
-    const memoInPinned = pinnedMemos.find(memo => memo.id === id);
+  const handleCanvasTogglePin = async (id) => {
+    console.log('🔍 DEBUG handleCanvasTogglePin called with id:', id);
+    
+    try {
+      // 查找备忘录（可能在 memos 或 pinnedMemos 中）
+      const memoInMemos = memos.find(memo => memo.id === id);
+      const memoInPinned = pinnedMemos.find(memo => memo.id === id);
+      const targetMemo = memoInMemos || memoInPinned;
+      
+      if (!targetMemo) {
+        console.error('❌ DEBUG: Memo not found with id:', id);
+        toast.error('备忘录不存在');
+        return;
+      }
 
-    if (memoInMemos) {
-      // 从普通memos移动到pinnedMemos
-      const pinnedMemo = {
-        ...memoInMemos,
-        isPinned: true,
-        pinnedAt: new Date().toISOString()
-      };
-      setPinnedMemos([pinnedMemo, ...pinnedMemos]);
-      setMemos(memos.filter(memo => memo.id !== id));
-    } else if (memoInPinned) {
-      // 从pinnedMemos移动到普通memos
-      const unpinnedMemo = { ...memoInPinned, isPinned: false };
-      delete unpinnedMemo.pinnedAt;
-      setMemos([unpinnedMemo, ...memos]);
-      setPinnedMemos(pinnedMemos.filter(memo => memo.id !== id));
+      console.log('📝 DEBUG: Target memo before pin toggle:', JSON.stringify(targetMemo, null, 2));
+      
+      // 确定当前置顶状态
+      const currentPinnedState = memoInPinned ? true : false;
+      const newPinnedState = !currentPinnedState;
+      
+      console.log('🔄 DEBUG: Toggling pin state from', currentPinnedState, 'to', newPinnedState);
+
+      // 调用API更新置顶状态
+      const updated = await dataService.updateMemo(id, {
+        pinned: newPinnedState
+      });
+      
+      console.log('✅ DEBUG: API returned updated memo:', JSON.stringify(updated, null, 2));
+
+      // 重新加载数据以确保一致性
+      loadFromLocal();
+      
+      toast.success(newPinnedState ? '已置顶' : '已取消置顶');
+    } catch (error) {
+      console.error('❌ DEBUG: Pin toggle failed:', error);
+      toast.error('置顶操作失败');
     }
   };
 

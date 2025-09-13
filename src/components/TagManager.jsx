@@ -13,7 +13,16 @@ const TagManager = ({ memos, activeTag, setActiveTag, showTitle = true }) => {
     const hierarchy = {};
 
     memos.forEach(memo => {
-      memo.tags.forEach(tag => {
+      // 处理不同的标签格式：数组、字符串或undefined
+      let tags = [];
+      if (Array.isArray(memo.tags)) {
+        tags = memo.tags;
+      } else if (typeof memo.tags === 'string' && memo.tags.trim()) {
+        // 如果是字符串，按逗号分割
+        tags = memo.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      }
+      
+      tags.forEach(tag => {
         frequency[tag] = (frequency[tag] || 0) + 1;
 
         // 处理二级标签

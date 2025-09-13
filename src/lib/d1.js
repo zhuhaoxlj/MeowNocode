@@ -7,8 +7,8 @@ export class D1DatabaseService {
       return DB;
     }
     
-  // 在本地开发环境中，如需显式启用模拟DB，请设置 VITE_ALLOW_D1_MOCK=true
-  if (import.meta.env.DEV && import.meta.env.VITE_ALLOW_D1_MOCK === 'true') {
+        // 在本地开发环境中，如需显式启用模拟DB，请设置 NEXT_PUBLIC_ALLOW_D1_MOCK=true
+        if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_ALLOW_D1_MOCK === 'true') {
       return this.getMockDB();
     }
     

@@ -1,0 +1,62 @@
+{
+  "memos": [
+    {
+      "id": 1,
+      "content": "欢迎使用 MeowNocode Next.js 版本！🎉\n\n这是一个完全重新架构的版本，支持跨浏览器数据共享。",
+      "tags": "欢迎,Next.js",
+      "visibility": "private",
+      "pinned": true,
+      "created_ts": "2025-09-13T16:28:11.881Z",
+      "updated_ts": "2025-09-13T16:28:11.881Z"
+    },
+    {
+      "id": 2,
+      "content": "## 主要功能\n\n- ✅ 跨浏览器数据同步\n- ✅ RESTful API 后端\n- ✅ SQLite 数据库存储\n- 🔄 正在迁移更多功能...",
+      "tags": "功能,进度",
+      "visibility": "private",
+      "pinned": false,
+      "created_ts": "2025-09-13T16:27:11.881Z",
+      "updated_ts": "2025-09-13T16:38:41.822Z"
+    },
+    {
+      "id": 3,
+      "content": "### 迁移进度\n\n当前版本是基础功能演示，完整的 UI 和功能正在逐步迁移中：\n\n- [x] 基础备忘录功能\n- [ ] 画布编辑器\n- [ ] 音乐播放器\n- [ ] AI 对话\n- [ ] 主题系统\n- [ ] 文件上传",
+      "tags": "迁移,TODO",
+      "visibility": "private",
+      "pinned": true,
+      "created_ts": "2025-09-13T16:26:11.881Z",
+      "updated_ts": "2025-09-13T17:21:47.005Z"
+    },
+    {
+      "id": 5,
+      "content": "123123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "created_ts": "2025-09-13T16:51:23.141Z",
+      "updated_ts": "2025-09-13T16:51:23.141Z"
+    },
+    {
+      "id": 6,
+      "content": "123123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "created_ts": "2025-09-13T16:51:24.353Z",
+      "updated_ts": "2025-09-13T16:51:24.353Z"
+    },
+    {
+      "id": 7,
+      "content": "123123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "created_ts": "2025-09-13T16:51:25.420Z",
+      "updated_ts": "2025-09-13T16:51:25.420Z"
+    }
+  ],
+  "resources": [],
+  "settings": {},
+  "nextMemoId": 9,
+  "nextResourceId": 1
+}

@@ -81,61 +81,145 @@ const MemoList = ({
   }, [activeMenuId]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 标题区域 */}
-      <div className="p-3 sm:p-4 lg:p-6 pb-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center flex-shrink-0">
-            <Clock
-              className="h-4 w-4 sm:h-5 sm:w-5 mr-2 transition-colors duration-300"
-              style={{ color: themeColor }}
-            />
-            近期想法
-          </h2>
-          
-          {/* 筛选条件显示区域 */}
-          {(activeTag || activeDate) && (
-            <div className="flex items-center mb-3 sm:mb-4">
-              <div 
-                className="flex items-center px-3 py-1 rounded-full text-sm"
-                style={{ 
-                  backgroundColor: `${themeColor}20`,
-                  color: themeColor,
-                  border: `1px solid ${themeColor}`
-                }}
-              >
-                <span className="mr-2">
-                  {activeTag ? `#${activeTag}` : activeDate}
-                </span>
-                <button 
-                  onClick={clearFilters}
-                  className="flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
-                  style={{ color: themeColor }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 滚动容器 */}
-  <div
+    <div className="flex-1 overflow-hidden h-full">
+      {/* 统一的大滚动容器 - 包含所有内容 */}
+      <div
         ref={memosContainerRef}
-        className="flex-1 overflow-y-auto mobile-memos-container lg:mobile-memos-container-disabled px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6 min-h-[250px]"
+        className="h-full overflow-y-auto"
       >
-    {memos.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <p>还没有记录任何想法</p>
-              <p className="text-sm mt-2">在顶部输入框写下你的第一个想法吧</p>
+        {/* 置顶备忘录区域 */}
+        {pinnedMemos.length > 0 && (
+          <div className="px-4 pt-4 mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 flex items-center">
+              <span className="mr-2">📌</span>
+              置顶备忘录
+            </h2>
+            <div className="space-y-3 mb-4">
+              {pinnedMemos.map(memo => (
+                <Card key={memo.id} className={`group hover:shadow-lg transition-shadow duration-200 border-l-4`} 
+                      style={{ borderLeftColor: themeColor }}>
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 mr-3">
+                        {editingId === memo.id ? (
+                          <MemoEditor
+                            content={editContent}
+                            onChange={onEditContentChange}
+                            onSave={onSaveEdit}
+                            onCancel={onCancelEdit}
+                          />
+                        ) : (
+                          <ContentRenderer content={memo.content} />
+                        )}
+                        
+                        {/* 时间戳 */}
+                        <div className="text-xs text-gray-500 mt-2 flex items-center space-x-2">
+                          <span>{new Date(memo.created_ts || memo.timestamp).toLocaleDateString('zh-CN')}</span>
+                          {memo.updated_ts && memo.updated_ts !== memo.created_ts && (
+                            <span className="text-orange-500">已编辑</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* 菜单按钮 */}
+                      <div className="relative flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onMenuButtonClick(memo.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0"
+                          ref={el => {
+                            if (menuRefs.current) {
+                              menuRefs.current[memo.id] = el;
+                            }
+                          }}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* 菜单面板 - 置顶备忘录专用 */}
+                        {activeMenuId === memo.id && (
+                          <div className="fixed z-50 mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]">
+                            <button
+                              onClick={(e) => onMenuAction(e, memo.id, 'unpin')}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                            >
+                              <span>📌</span>
+                              <span className="truncate">取消置顶</span>
+                            </button>
+                            <button
+                              onClick={(e) => onMenuAction(e, memo.id, 'edit')}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                            >
+                              <span>✏️</span>
+                              <span className="truncate">编辑</span>
+                            </button>
+                            <button
+                              onClick={(e) => onMenuAction(e, memo.id, 'delete')}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 flex items-center space-x-2"
+                            >
+                              <span>🗑️</span>
+                              <span className="truncate">删除</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto scrollbar-hidden">
-            <div className="space-y-4 pb-4">
-      {memos.map(memo => (
+        )}
+
+        {/* 近期想法区域 */}
+        <div className={`px-4 pb-4 ${pinnedMemos.length === 0 ? 'pt-4' : ''}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg sm:text-xl font-semibold flex items-center">
+              <Clock
+                className="h-4 w-4 sm:h-5 sm:w-5 mr-2 transition-colors duration-300"
+                style={{ color: themeColor }}
+              />
+              近期想法 ({memos.length})
+            </h2>
+            
+            {/* 筛选条件显示区域 */}
+            {(activeTag || activeDate) && (
+              <div className="flex items-center">
+                <div 
+                  className="flex items-center px-3 py-1 rounded-full text-sm"
+                  style={{ 
+                    backgroundColor: `${themeColor}20`,
+                    color: themeColor,
+                    border: `1px solid ${themeColor}`
+                  }}
+                >
+                  <span className="mr-2">
+                    {activeTag ? `#${activeTag}` : activeDate}
+                  </span>
+                  <button 
+                    onClick={clearFilters}
+                    className="flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                    style={{ color: themeColor }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 普通备忘录列表 */}
+          {memos.length === 0 ? (
+            <div className="flex items-center justify-center text-gray-500 py-8">
+              <div className="text-center">
+                <p>还没有记录任何想法</p>
+                <p className="text-sm mt-2">在顶部输入框写下你的第一个想法吧</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {memos.map(memo => (
                 <Card
                   key={memo.id}
                   className={`group hover:shadow-md transition-shadow rounded-xl shadow-sm relative bg-white dark:bg-gray-800 ${
@@ -143,10 +227,10 @@ const MemoList = ({
                   }`}
                   style={pinnedMemos.some(p => p.id === memo.id) ? { borderLeftColor: themeColor } : {}}
                 >
-                  <CardContent className="p-3 sm:p-4">
+                  <CardContent className="p-3">
                     {/* 菜单按钮 */}
                     <div
-                      className="absolute top-3 right-3 sm:top-4 sm:right-4"
+                      className="absolute top-3 right-3"
                       ref={(el) => menuRefs.current[memo.id] = el}
                       onMouseEnter={() => onMenuContainerEnter(memo.id)}
                       onMouseLeave={onMenuContainerLeave}
@@ -223,13 +307,13 @@ const MemoList = ({
                           {/* memo信息 */}
                           <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1 px-3 py-2 sm:px-4 text-xs text-gray-500 dark:text-gray-400">
                             <div className="truncate">字数: {memo.content.length}字</div>
-                            <div className="truncate">创建: {new Date(memo.createdAt).toLocaleString('zh-CN', {
+                            <div className="truncate">创建: {new Date(memo.created_ts || memo.createdAt || Date.now()).toLocaleString('zh-CN', {
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit'
                             })}</div>
-                            <div className="truncate">修改: {new Date(memo.updatedAt).toLocaleString('zh-CN', {
+                            <div className="truncate">修改: {new Date(memo.updated_ts || memo.created_ts).toLocaleString('zh-CN', {
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',
@@ -323,7 +407,7 @@ const MemoList = ({
 
                     <div className="mt-3 flex justify-end">
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(memo.updatedAt).toLocaleString('zh-CN', {
+                        {new Date(memo.updated_ts || memo.created_ts).toLocaleString('zh-CN', {
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
@@ -335,8 +419,8 @@ const MemoList = ({
                 </Card>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* 回到顶部按钮 */}
         {showScrollToTop && (

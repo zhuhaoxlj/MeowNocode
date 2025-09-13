@@ -11,7 +11,7 @@ const MemoPreviewDialog = ({ open, onClose, memo }) => {
             <div className="max-h-[60vh] overflow-y-auto pr-2 scrollbar-transparent">
               <ContentRenderer content={memo.content} activeTag={null} onTagClick={() => {}} />
             </div>
-            <div className="text-xs text-gray-500">更新于 {new Date(memo.updatedAt || memo.createdAt).toLocaleString('zh-CN')}</div>
+            <div className="text-xs text-gray-500">更新于 {new Date(memo.updated_ts || memo.created_ts).toLocaleString('zh-CN')}</div>
           </div>
         ) : (
           <div className="text-sm text-gray-500">未找到内容</div>

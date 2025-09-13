@@ -11,9 +11,12 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }
   // 处理事件数据
   useEffect(() => {
     const formattedEvents = {};
-    data.forEach(item => {
-      formattedEvents[item.date] = Array(item.count).fill('想法记录');
-    });
+    // 确保 data 是数组格式
+    if (Array.isArray(data)) {
+      data.forEach(item => {
+        formattedEvents[item.date] = Array(item.count).fill('想法记录');
+      });
+    }
     setEvents(formattedEvents);
   }, [data]);
 

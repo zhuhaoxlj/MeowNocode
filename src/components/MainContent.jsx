@@ -62,7 +62,7 @@ const MainContent = ({
   const { themeColor } = useTheme();
 
   return (
-    <div className={`flex-1 flex flex-col w-full relative h-full lg:h-full ${
+    <div className={`flex-1 flex flex-col w-full relative h-full overflow-hidden ${
       isLeftSidebarPinned && isRightSidebarPinned
         ? 'lg:max-w-2xl lg:mx-auto'
         : isLeftSidebarPinned || isRightSidebarPinned
@@ -71,31 +71,34 @@ const MainContent = ({
     }`}>
 
 
-      {/* 顶部栏 */}
-      <Header
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        searchInputRef={searchInputRef}
-  onMobileMenuOpen={onMobileMenuOpen}
-  onOpenMusicSearch={onOpenMusicSearch}
-      />
+      {/* 固定顶部区域 */}
+      <div className="flex-shrink-0">
+        {/* 顶部栏 */}
+        <Header
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchInputRef={searchInputRef}
+          onMobileMenuOpen={onMobileMenuOpen}
+          onOpenMusicSearch={onOpenMusicSearch}
+        />
 
-      {/* 编辑区域 */}
-      <MemoInput
-        newMemo={newMemo}
-        setNewMemo={setNewMemo}
-        onAddMemo={onAddMemo}
-        onEditorFocus={onEditorFocus}
-        onEditorBlur={onEditorBlur}
-  // backlinks for input editor (new memo has no id; only provide memos list)
-  allMemos={allMemos}
-  onAddBacklink={onAddBacklink}
-  onPreviewMemo={onPreviewMemo}
-  pendingNewBacklinks={pendingNewBacklinks}
-  onRemoveBacklink={onRemoveBacklink}
-      />
+        {/* 编辑区域 */}
+        <MemoInput
+          newMemo={newMemo}
+          setNewMemo={setNewMemo}
+          onAddMemo={onAddMemo}
+          onEditorFocus={onEditorFocus}
+          onEditorBlur={onEditorBlur}
+          // backlinks for input editor (new memo has no id; only provide memos list)
+          allMemos={allMemos}
+          onAddBacklink={onAddBacklink}
+          onPreviewMemo={onPreviewMemo}
+          pendingNewBacklinks={pendingNewBacklinks}
+          onRemoveBacklink={onRemoveBacklink}
+        />
+      </div>
 
-      {/* Memos列表 */}
+      {/* 可滚动内容区域 - 占据剩余所有空间 */}
       <MemoList
         memos={filteredMemos}
         pinnedMemos={pinnedMemos}

@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase配置
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
+// Supabase配置 - Next.js 环境变量语法
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
 
 // 创建Supabase客户端
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -22,8 +22,12 @@ export const TABLES = {
 
 // 检查当前环境
 const isDevelopment = () => {
-  return import.meta.env.DEV || 
-         import.meta.env.VITE_ENVIRONMENT === 'development' ||
+  if (typeof window === 'undefined') {
+    // 服务器端检查
+    return process.env.NODE_ENV === 'development'
+  }
+  // 客户端检查
+  return process.env.NODE_ENV === 'development' ||
          window.location.origin.includes('localhost') ||
          window.location.origin.includes('127.0.0.1')
 }
