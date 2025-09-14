@@ -17,6 +17,9 @@ import MiniMusicPlayer from '../../src/components/MiniMusicPlayer';
 // 导入移动端组件
 import MobileSidebar from '../../src/components/MobileSidebar';
 
+// 导入对话框组件
+import ShareDialog from '../../src/components/ShareDialog';
+
 // 导入数据服务
 import { dataService } from '../../lib/client/dataService.js';
 
@@ -56,6 +59,10 @@ export default function CompleteMemoApp() {
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  
+  // 分享状态
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [selectedMemoForShare, setSelectedMemoForShare] = useState(null);
   
   // 引用
   const searchInputRef = useRef(null);
@@ -229,7 +236,8 @@ export default function CompleteMemoApp() {
           setEditContent(memo.content);
           break;
         case 'share':
-          toast.info('分享功能开发中');
+          setSelectedMemoForShare(memo);
+          setIsShareDialogOpen(true);
           break;
         default:
           console.log('未知操作:', action);
@@ -490,6 +498,16 @@ export default function CompleteMemoApp() {
           </div>
         </div>
       </div>
+      
+      {/* 分享对话框 */}
+      <ShareDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => {
+          setIsShareDialogOpen(false);
+          setSelectedMemoForShare(null);
+        }}
+        memo={selectedMemoForShare}
+      />
     </div>
   );
 }

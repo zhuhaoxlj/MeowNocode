@@ -27,7 +27,7 @@ const ShareDialog = ({ isOpen, onClose, memo }) => {
 
   // 下载分享图
   const downloadShareImage = async () => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || !memo) return;
     
     try {
       // 使用html2canvas将预览区域转换为图片
@@ -78,18 +78,27 @@ const ShareDialog = ({ isOpen, onClose, memo }) => {
           
           {/* 预览区域 - 可滚动 */}
           <CardContent className="flex-1 overflow-y-auto scrollbar-hidden px-4">
-            <div className="flex justify-center">
-              <div
-                ref={previewRef}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"
-                style={{
-                  width: '100%',
-                  maxWidth: '720px',
-                }}
-              >
-                <CurrentTemplate memo={memo} themeColor={themeColor} />
+            {memo ? (
+              <div className="flex justify-center">
+                <div
+                  ref={previewRef}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"
+                  style={{
+                    width: '100%',
+                    maxWidth: '720px',
+                  }}
+                >
+                  <CurrentTemplate memo={memo} themeColor={themeColor} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500 text-center">
+                  <div className="text-lg mb-2">📝</div>
+                  <div>请选择一个备忘录</div>
+                </div>
+              </div>
+            )}
           </CardContent>
           
           {/* 模板选择区域 - 固定不滚动 */}
@@ -126,7 +135,12 @@ const ShareDialog = ({ isOpen, onClose, memo }) => {
           {/* 操作按钮 */}
           <div className="p-4 pt-0 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
             <Button onClick={onClose} variant="outline" className="w-full sm:w-auto">取消</Button>
-            <Button onClick={downloadShareImage} className="flex items-center w-full sm:w-auto" style={{ backgroundColor: themeColor }}>
+            <Button 
+              onClick={downloadShareImage} 
+              disabled={!memo}
+              className="flex items-center w-full sm:w-auto" 
+              style={{ backgroundColor: themeColor }}
+            >
               <Download className="h-4 w-4 mr-2" />
               下载分享图
             </Button>

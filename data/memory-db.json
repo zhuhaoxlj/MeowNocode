@@ -23,9 +23,9 @@
       "content": "### 迁移进度\n\n当前版本是基础功能演示，完整的 UI 和功能正在逐步迁移中：\n\n- [x] 基础备忘录功能\n- [ ] 画布编辑器\n- [ ] 音乐播放器\n- [ ] AI 对话\n- [ ] 主题系统\n- [ ] 文件上传",
       "tags": "迁移,TODO",
       "visibility": "private",
-      "pinned": true,
+      "pinned": false,
       "created_ts": "2025-09-13T16:26:11.881Z",
-      "updated_ts": "2025-09-13T17:21:47.005Z"
+      "updated_ts": "2025-09-13T17:48:26.346Z"
     },
     {
       "id": 5,
@@ -57,6 +57,6 @@
   ],
   "resources": [],
   "settings": {},
-  "nextMemoId": 9,
+  "nextMemoId": 10,
   "nextResourceId": 1
 }
