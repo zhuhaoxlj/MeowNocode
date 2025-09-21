@@ -41,6 +41,7 @@ const MemoList = ({
   const [menuPosition, setMenuPosition] = useState({});
   const [hoverMenuId, setHoverMenuId] = useState(null);
   const hoverTimerRef = useRef(null);
+  const lastMousePositionRef = useRef({ x: 0, y: 0 });
 
   // 计算菜单位置的函数
   const calculateMenuPosition = (buttonElement, menuId) => {
@@ -93,7 +94,12 @@ const MemoList = ({
     onMenuButtonClick(memoId);
   };
 
-  const handleMenuLeave = () => {
+  const handleMenuLeave = (event) => {
+    // 记录鼠标位置
+    if (event) {
+      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+    }
+    
     // 设置延迟关闭菜单
     hoverTimerRef.current = setTimeout(() => {
       setHoverMenuId(null);
@@ -102,7 +108,7 @@ const MemoList = ({
       if (activeMenuId) {
         onMenuButtonClick(activeMenuId);
       }
-    }, 150); // 150ms 延迟
+    }, 300); // 增加到300ms延迟，提供更好的容错
   };
 
   const handleMenuEnter = () => {
@@ -187,16 +193,33 @@ const MemoList = ({
                           
                           {/* 归档备忘录菜单面板 */}
                           {activeMenuId === memo.id && (
-                            <div 
-                              className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
-                              style={{
-                                top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
-                                left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                                transform: 'none' // 取消默认的transform
-                              }}
-                              onMouseEnter={handleMenuEnter}
-                              onMouseLeave={handleMenuLeave}
-                            >
+                            <>
+                              {/* 不可见桥接区域 - 归档菜单 */}
+                              <div
+                                className="fixed"
+                                style={{
+                                  top: menuPosition.top ? `${menuPosition.top - 20}px` : 'auto',
+                                  left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                                  width: '120px', // 与归档菜单宽度一致
+                                  height: menuPosition.top ? '20px' : '0px', // 桥接区域高度
+                                  zIndex: 49, // 比菜单稍低
+                                  backgroundColor: 'transparent'
+                                }}
+                                onMouseEnter={handleMenuEnter}
+                                onMouseLeave={handleMenuLeave}
+                              />
+                              
+                              {/* 菜单面板 */}
+                              <div 
+                                className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+                                style={{
+                                  top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                                  left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                                  transform: 'none' // 取消默认的transform
+                                }}
+                                onMouseEnter={handleMenuEnter}
+                                onMouseLeave={handleMenuLeave}
+                              >
                               <button
                                 onClick={(e) => onMenuAction(e, memo.id, 'unarchive')}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
@@ -211,7 +234,8 @@ const MemoList = ({
                                 <span>🗑️</span>
                                 <span className="truncate">删除</span>
                               </button>
-                            </div>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>
@@ -276,16 +300,33 @@ const MemoList = ({
                         
                         {/* 菜单面板 - 置顶备忘录专用 */}
                         {activeMenuId === memo.id && (
-                          <div 
-                            className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
-                            style={{
-                              top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
-                              left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                              transform: 'none' // 取消默认的transform
-                            }}
-                            onMouseEnter={handleMenuEnter}
-                            onMouseLeave={handleMenuLeave}
-                          >
+                          <>
+                            {/* 不可见桥接区域 - 置顶菜单 */}
+                            <div
+                              className="fixed"
+                              style={{
+                                top: menuPosition.top ? `${menuPosition.top - 20}px` : 'auto',
+                                left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                                width: '120px', // 与置顶菜单宽度一致
+                                height: menuPosition.top ? '20px' : '0px', // 桥接区域高度
+                                zIndex: 49, // 比菜单稍低
+                                backgroundColor: 'transparent'
+                              }}
+                              onMouseEnter={handleMenuEnter}
+                              onMouseLeave={handleMenuLeave}
+                            />
+                            
+                            {/* 菜单面板 */}
+                            <div 
+                              className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+                              style={{
+                                top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                                left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                                transform: 'none' // 取消默认的transform
+                              }}
+                              onMouseEnter={handleMenuEnter}
+                              onMouseLeave={handleMenuLeave}
+                            >
                             <button
                               onClick={(e) => onMenuAction(e, memo.id, 'unpin')}
                               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
@@ -314,7 +355,8 @@ const MemoList = ({
                               <span>🗑️</span>
                               <span className="truncate">删除</span>
                             </button>
-                          </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -395,19 +437,36 @@ const MemoList = ({
                         <MoreVertical className="h-4 w-4 text-gray-500" />
                       </div>
 
-                      {/* 菜单面板 */}
+                      {/* 菜单面板容器 - 包含桥接区域 */}
                       {activeMenuId === memo.id && (
-                        <div
-                          className="fixed w-40 sm:w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
-                          style={{
-                            top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
-                            left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                            transform: 'none' // 取消默认的transform
-                          }}
-                          onMouseEnter={handleMenuEnter}
-                          onMouseLeave={handleMenuLeave}
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <>
+                          {/* 不可见桥接区域 */}
+                          <div
+                            className="fixed"
+                            style={{
+                              top: menuPosition.top ? `${Math.min(menuPosition.top - 10, menuPosition.top)}px` : 'auto',
+                              left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                              width: '192px', // 与菜单宽度一致
+                              height: menuPosition.top ? '20px' : '0px', // 桥接区域高度
+                              zIndex: 49, // 比菜单稍低
+                              backgroundColor: 'transparent'
+                            }}
+                            onMouseEnter={handleMenuEnter}
+                            onMouseLeave={handleMenuLeave}
+                          />
+                          
+                          {/* 菜单面板 */}
+                          <div
+                            className="fixed w-40 sm:w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
+                            style={{
+                              top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                              left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                              transform: 'none' // 取消默认的transform
+                            }}
+                            onMouseEnter={handleMenuEnter}
+                            onMouseLeave={handleMenuLeave}
+                            onClick={(e) => e.stopPropagation()}
+                          >
                           {/* 置顶/取消置顶按钮 */}
                           {pinnedMemos.some(p => p.id === memo.id) ? (
                             <button
@@ -492,7 +551,8 @@ const MemoList = ({
                               minute: '2-digit'
                             })}</div>
                           </div>
-                        </div>
+                          </div>
+                        </>
                       )}
                     </div>
                     
