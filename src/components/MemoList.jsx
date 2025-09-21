@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, MoreVertical, ArrowUp, Send, X, Share2, Image } from 'lucide-react';
@@ -38,47 +38,46 @@ const MemoList = ({
 }) => {
   const { themeColor } = useTheme();
   const memosForBacklinks = (allMemos && allMemos.length) ? allMemos : [...pinnedMemos, ...memos];
+  const [menuPosition, setMenuPosition] = useState({});
+
+  // 计算菜单位置的函数
+  const calculateMenuPosition = (buttonElement, menuId) => {
+    if (!buttonElement) return {};
+
+    const buttonRect = buttonElement.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const menuHeight = 200; // 估算菜单高度
+    const menuWidth = 192; // 估算菜单宽度 (w-48)
+
+    // 默认位置：按钮右下角
+    let top = buttonRect.bottom + 4;
+    let left = buttonRect.right - menuWidth;
+
+    // 检查是否超出底部
+    if (top + menuHeight > viewportHeight) {
+      // 向上显示
+      top = buttonRect.top - menuHeight - 4;
+    }
+
+    // 检查是否超出左边
+    if (left < 8) {
+      left = 8;
+    }
+
+    // 检查是否超出右边
+    if (left + menuWidth > window.innerWidth - 8) {
+      left = window.innerWidth - menuWidth - 8;
+    }
+
+    return { top, left };
+  };
 
   // 处理菜单定位
   useEffect(() => {
     if (activeMenuId && menuRefs.current[activeMenuId]) {
-      const menuElement = menuRefs.current[activeMenuId];
-      const buttonRect = menuElement.getBoundingClientRect();
-      
-      // 更新菜单位置
-      const updateMenuPosition = () => {
-        const menuPanel = menuElement.querySelector('[class*="fixed"]');
-        if (menuPanel) {
-          menuPanel.style.top = `${buttonRect.bottom + 5}px`;
-          
-          // 确保菜单不会超出视窗右侧
-          const viewportWidth = window.innerWidth;
-          const menuWidth = menuPanel.offsetWidth;
-          const rightSpace = viewportWidth - buttonRect.right;
-          
-          if (rightSpace < menuWidth) {
-            // 如果右侧空间不足，将菜单对齐到按钮左侧
-            menuPanel.style.right = 'auto';
-            menuPanel.style.left = `${buttonRect.left - menuWidth + buttonRect.width}px`;
-          } else {
-            // 否则保持对齐到按钮右侧
-            menuPanel.style.right = `${viewportWidth - buttonRect.right}px`;
-            menuPanel.style.left = 'auto';
-          }
-        }
-      };
-      
-      // 初始更新位置
-      updateMenuPosition();
-      
-      // 监听窗口大小变化和滚动，重新计算位置
-      window.addEventListener('resize', updateMenuPosition);
-      window.addEventListener('scroll', updateMenuPosition);
-      
-      return () => {
-        window.removeEventListener('resize', updateMenuPosition);
-        window.removeEventListener('scroll', updateMenuPosition);
-      };
+      const buttonElement = menuRefs.current[activeMenuId];
+      const position = calculateMenuPosition(buttonElement, activeMenuId);
+      setMenuPosition(position);
     }
   }, [activeMenuId]);
 
@@ -141,7 +140,14 @@ const MemoList = ({
                           
                           {/* 归档备忘录菜单面板 */}
                           {activeMenuId === memo.id && (
-                            <div className="fixed z-50 mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]">
+                            <div 
+                              className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+                              style={{
+                                top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                                left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                                transform: 'none' // 取消默认的transform
+                              }}
+                            >
                               <button
                                 onClick={(e) => onMenuAction(e, memo.id, 'unarchive')}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
@@ -220,7 +226,14 @@ const MemoList = ({
                         
                         {/* 菜单面板 - 置顶备忘录专用 */}
                         {activeMenuId === memo.id && (
-                          <div className="fixed z-50 mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]">
+                          <div 
+                            className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+                            style={{
+                              top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                              left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                              transform: 'none' // 取消默认的transform
+                            }}
+                          >
                             <button
                               onClick={(e) => onMenuAction(e, memo.id, 'unpin')}
                               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
@@ -335,6 +348,11 @@ const MemoList = ({
                       {activeMenuId === memo.id && (
                         <div
                           className="fixed w-40 sm:w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
+                          style={{
+                            top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                            left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                            transform: 'none' // 取消默认的transform
+                          }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           {/* 置顶/取消置顶按钮 */}
