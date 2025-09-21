@@ -165,9 +165,23 @@ const MemoList = ({
                         <div className="flex-1 mr-3">
                           <div 
                             onDoubleClick={(e) => {
+                              // 检查点击目标是否是复选框或其相关元素
+                              const target = e.target;
+                              if (target.type === 'checkbox' || 
+                                  target.closest('input[type="checkbox"]') ||
+                                  target.closest('label')) {
+                                return; // 如果是复选框相关元素，不触发编辑
+                              }
                               e.preventDefault();
                               e.stopPropagation();
                               onMenuAction(e, memo.id, 'edit');
+                            }}
+                            onClick={(e) => {
+                              // 确保复选框点击事件能正常传播
+                              const target = e.target;
+                              if (target.type === 'checkbox') {
+                                e.stopPropagation(); // 阻止事件继续冒泡，但不阻止默认行为
+                              }
                             }}
                             className="cursor-text"
                             title="双击编辑"
@@ -176,6 +190,7 @@ const MemoList = ({
                               content={memo.content} 
                               activeTag={activeTag}
                               onTagClick={onTagClick}
+                              onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
                             />
                           </div>
                           
@@ -281,14 +296,33 @@ const MemoList = ({
                         ) : (
                           <div 
                             onDoubleClick={(e) => {
+                              // 检查点击目标是否是复选框或其相关元素
+                              const target = e.target;
+                              if (target.type === 'checkbox' || 
+                                  target.closest('input[type="checkbox"]') ||
+                                  target.closest('label')) {
+                                return; // 如果是复选框相关元素，不触发编辑
+                              }
                               e.preventDefault();
                               e.stopPropagation();
                               onMenuAction(e, memo.id, 'edit');
                             }}
+                            onClick={(e) => {
+                              // 确保复选框点击事件能正常传播
+                              const target = e.target;
+                              if (target.type === 'checkbox') {
+                                e.stopPropagation(); // 阻止事件继续冒泡，但不阻止默认行为
+                              }
+                            }}
                             className="cursor-text"
                             title="双击编辑"
                           >
-                            <ContentRenderer content={memo.content} />
+                            <ContentRenderer 
+                              content={memo.content}
+                              activeTag={activeTag}
+                              onTagClick={onTagClick}
+                              onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
+                            />
                           </div>
                         )}
                         
@@ -616,9 +650,23 @@ const MemoList = ({
                     ) : (
                       <div 
                         onDoubleClick={(e) => {
+                          // 检查点击目标是否是复选框或其相关元素
+                          const target = e.target;
+                          if (target.type === 'checkbox' || 
+                              target.closest('input[type="checkbox"]') ||
+                              target.closest('label')) {
+                            return; // 如果是复选框相关元素，不触发编辑
+                          }
                           e.preventDefault();
                           e.stopPropagation();
                           onMenuAction(e, memo.id, 'edit');
+                        }}
+                        onClick={(e) => {
+                          // 确保复选框点击事件能正常传播
+                          const target = e.target;
+                          if (target.type === 'checkbox') {
+                            e.stopPropagation(); // 阻止事件继续冒泡，但不阻止默认行为
+                          }
                         }}
                         className="cursor-text"
                         title="双击编辑"
