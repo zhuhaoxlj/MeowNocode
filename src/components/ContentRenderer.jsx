@@ -427,7 +427,17 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                         strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                         em: ({node, ...props}) => <em className="italic" {...props} />,
                         img: ({node, ...props}) => {
-                          console.log('🔍 DEBUG ReactMarkdown img mapping 1:', props);
+                          // 如果 src 为空但有 alt，可能是 data URI 被 ReactMarkdown 过滤了
+                          // 尝试从原始 markdown 中恢复 data URI
+                          if (!props.src && props.alt) {
+                            // 从当前处理的内容中查找对应的图片引用
+                            const imgRegex = new RegExp(`!\\[${props.alt}\\]\\((data:image[^)]+)\\)`, 'i');
+                            const match = part.content.match(imgRegex);
+                            if (match) {
+                              return <img src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                            }
+                          }
+                          
                           return <LocalImage {...props} />;
                         },
                         br: () => <br />,
@@ -505,7 +515,17 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                               strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                               em: ({node, ...props}) => <em className="italic" {...props} />,
                               img: ({node, ...props}) => {
-                                console.log('🔍 DEBUG ReactMarkdown img mapping 2:', props);
+                                // 如果 src 为空但有 alt，可能是 data URI 被 ReactMarkdown 过滤了
+                                // 尝试从原始 markdown 中恢复 data URI
+                                if (!props.src && props.alt) {
+                                  // 从当前处理的内容中查找对应的图片引用
+                                  const imgRegex = new RegExp(`!\\[${props.alt}\\]\\((data:image[^)]+)\\)`, 'i');
+                                  const match = inner.match(imgRegex);
+                                  if (match) {
+                                    return <img src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                                  }
+                                }
+                                
                                 return <LocalImage {...props} />;
                               },
                               br: () => <br />,

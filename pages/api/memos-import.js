@@ -468,12 +468,13 @@ export default async function handler(req, res) {
         memoObj: {
           ...memoObj,
           content: updatedContent,
-          // 清理原始资源数据以节省空间
+          // 保留 dataUrl 用于图片显示，但清理其他较大的原始数据
           processedResources: memoObj.processedResources?.map(r => ({
             uid: r.uid,
             filename: r.filename,
             type: r.type,
-            size: r.size
+            size: r.size,
+            dataUrl: r.dataUrl  // 保留 dataUrl，这是图片显示必需的
           }))
         },
         pinned
