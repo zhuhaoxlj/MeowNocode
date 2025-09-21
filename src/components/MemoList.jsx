@@ -39,6 +39,8 @@ const MemoList = ({
   const { themeColor } = useTheme();
   const memosForBacklinks = (allMemos && allMemos.length) ? allMemos : [...pinnedMemos, ...memos];
   const [menuPosition, setMenuPosition] = useState({});
+  const [hoverMenuId, setHoverMenuId] = useState(null);
+  const hoverTimerRef = useRef(null);
 
   // 计算菜单位置的函数
   const calculateMenuPosition = (buttonElement, menuId) => {
@@ -72,14 +74,61 @@ const MemoList = ({
     return { top, left };
   };
 
-  // 处理菜单定位
+  // 悬停处理函数
+  const handleMenuHover = (memoId) => {
+    // 清除之前的定时器
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+    }
+    
+    // 立即计算菜单位置并设置
+    if (menuRefs.current[memoId]) {
+      const buttonElement = menuRefs.current[memoId];
+      const position = calculateMenuPosition(buttonElement, memoId);
+      setMenuPosition(position);
+    }
+    
+    // 立即显示菜单
+    setHoverMenuId(memoId);
+    onMenuButtonClick(memoId);
+  };
+
+  const handleMenuLeave = () => {
+    // 设置延迟关闭菜单
+    hoverTimerRef.current = setTimeout(() => {
+      setHoverMenuId(null);
+      setMenuPosition({}); // 清空菜单位置
+      // 检查 activeMenuId 是否存在，如果存在则关闭菜单
+      if (activeMenuId) {
+        onMenuButtonClick(activeMenuId);
+      }
+    }, 150); // 150ms 延迟
+  };
+
+  const handleMenuEnter = () => {
+    // 鼠标进入菜单时取消关闭定时器
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+    }
+  };
+
+  // 处理菜单定位（作为备用，防止其他地方直接设置activeMenuId）
   useEffect(() => {
-    if (activeMenuId && menuRefs.current[activeMenuId]) {
+    if (activeMenuId && menuRefs.current[activeMenuId] && Object.keys(menuPosition).length === 0) {
       const buttonElement = menuRefs.current[activeMenuId];
       const position = calculateMenuPosition(buttonElement, activeMenuId);
       setMenuPosition(position);
     }
-  }, [activeMenuId]);
+  }, [activeMenuId, menuPosition]);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex-1 overflow-hidden h-full">
@@ -122,21 +171,19 @@ const MemoList = ({
                         </div>
                         
                         {/* 归档备忘录菜单按钮 */}
-                        <div className="relative flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMenuButtonClick(memo.id);
-                            }}
+                        <div 
+                          className="relative flex-shrink-0"
+                          onMouseEnter={() => handleMenuHover(memo.id)}
+                          onMouseLeave={handleMenuLeave}
+                        >
+                          <div
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 cursor-pointer flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                             ref={(el) => {
                               if (el) menuRefs.current[memo.id] = el;
                             }}
                           >
                             <MoreVertical className="h-4 w-4" />
-                          </Button>
+                          </div>
                           
                           {/* 归档备忘录菜单面板 */}
                           {activeMenuId === memo.id && (
@@ -147,6 +194,8 @@ const MemoList = ({
                                 left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
                                 transform: 'none' // 取消默认的transform
                               }}
+                              onMouseEnter={handleMenuEnter}
+                              onMouseLeave={handleMenuLeave}
                             >
                               <button
                                 onClick={(e) => onMenuAction(e, memo.id, 'unarchive')}
@@ -209,12 +258,13 @@ const MemoList = ({
                       </div>
                       
                       {/* 菜单按钮 */}
-                      <div className="relative flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onMenuButtonClick(memo.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0"
+                      <div 
+                        className="relative flex-shrink-0"
+                        onMouseEnter={() => handleMenuHover(memo.id)}
+                        onMouseLeave={handleMenuLeave}
+                      >
+                        <div
+                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0 cursor-pointer flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                           ref={el => {
                             if (menuRefs.current) {
                               menuRefs.current[memo.id] = el;
@@ -222,7 +272,7 @@ const MemoList = ({
                           }}
                         >
                           <MoreVertical className="h-4 w-4" />
-                        </Button>
+                        </div>
                         
                         {/* 菜单面板 - 置顶备忘录专用 */}
                         {activeMenuId === memo.id && (
@@ -233,6 +283,8 @@ const MemoList = ({
                               left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
                               transform: 'none' // 取消默认的transform
                             }}
+                            onMouseEnter={handleMenuEnter}
+                            onMouseLeave={handleMenuLeave}
                           >
                             <button
                               onClick={(e) => onMenuAction(e, memo.id, 'unpin')}
@@ -333,16 +385,15 @@ const MemoList = ({
                     <div
                       className="absolute top-3 right-3"
                       ref={(el) => menuRefs.current[memo.id] = el}
-                      onMouseEnter={() => onMenuContainerEnter(memo.id)}
-                      onMouseLeave={onMenuContainerLeave}
+                      onMouseEnter={() => handleMenuHover(memo.id)}
+                      onMouseLeave={handleMenuLeave}
                     >
-                      <button
-                        onClick={() => onMenuButtonClick(memo.id)}
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 touch:opacity-100"
+                      <div
+                        className="p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 touch:opacity-100 cursor-pointer"
                         aria-label="操作菜单"
                       >
                         <MoreVertical className="h-4 w-4 text-gray-500" />
-                      </button>
+                      </div>
 
                       {/* 菜单面板 */}
                       {activeMenuId === memo.id && (
@@ -353,6 +404,8 @@ const MemoList = ({
                             left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
                             transform: 'none' // 取消默认的transform
                           }}
+                          onMouseEnter={handleMenuEnter}
+                          onMouseLeave={handleMenuLeave}
                           onClick={(e) => e.stopPropagation()}
                         >
                           {/* 置顶/取消置顶按钮 */}
