@@ -159,8 +159,8 @@ const MemoList = ({
             ) : (
               <div className="space-y-3">
                 {archivedMemos.map(memo => (
-                  <Card key={memo.id} className="group hover:shadow-lg transition-shadow duration-200 border-l-4 border-orange-400">
-                    <CardContent className="p-3">
+                  <Card key={memo.id} className="group hover:shadow-lg transition-shadow duration-200 border-l-4 border-orange-400 overflow-hidden">
+                    <CardContent className="p-3 overflow-hidden">
                       <div className="flex justify-between items-start">
                         <div className="flex-1 mr-3">
                           <div 
@@ -281,9 +281,9 @@ const MemoList = ({
             </h2>
             <div className="space-y-3 mb-4">
               {pinnedMemos.map(memo => (
-                <Card key={memo.id} className={`group hover:shadow-lg transition-shadow duration-200 border-l-4`} 
+                <Card key={memo.id} className={`group hover:shadow-lg transition-shadow duration-200 border-l-4 overflow-hidden`} 
                       style={{ borderLeftColor: themeColor }}>
-                  <CardContent className="p-3">
+                  <CardContent className="p-3 overflow-hidden">
                     <div className="flex justify-between items-start">
                       <div className="flex-1 mr-3">
                         {editingId === memo.id ? (
@@ -471,12 +471,12 @@ const MemoList = ({
               {memos.map(memo => (
                 <Card
                   key={memo.id}
-                  className={`group hover:shadow-md transition-shadow rounded-xl shadow-sm relative bg-white dark:bg-gray-800 ${
+                  className={`group hover:shadow-md transition-shadow rounded-xl shadow-sm relative bg-white dark:bg-gray-800 overflow-hidden ${
                     pinnedMemos.some(p => p.id === memo.id) ? 'border-l-4' : ''
                   }`}
                   style={pinnedMemos.some(p => p.id === memo.id) ? { borderLeftColor: themeColor } : {}}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-3 overflow-hidden">
                     {/* 菜单按钮 */}
                     <div
                       className="absolute top-3 right-3"

@@ -355,7 +355,7 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
   };
 
   return (
-    <div className={`prose prose-sm max-w-none dark:prose-invert ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
+    <div className={`prose prose-sm max-w-none dark:prose-invert break-words overflow-hidden ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
       {parts.map((part, index) => {
         if (part.type === 'tag') {
           const isSecondLevel = part.tagName.includes('/');
@@ -413,7 +413,8 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                         h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
                         h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
                         h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
-                        p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
+                        p: ({node, ...props}) => <span className="whitespace-pre-wrap break-words" {...props} />,
+                        a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 break-all" {...props} />,
                         ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
                         ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
                         li: createLiComponent(),
@@ -501,7 +502,8 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                               h1: ({node, ...props}) => <h1 className="text-xl font-bold my-2" {...props} />,
                               h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
                               h3: ({node, ...props}) => <h3 className="text-md font-bold my-2" {...props} />,
-                              p: ({node, ...props}) => <span className="whitespace-pre-wrap" {...props} />,
+                              p: ({node, ...props}) => <span className="whitespace-pre-wrap break-words" {...props} />,
+                              a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 break-all" {...props} />,
                               ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
                               ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
                               li: createLiComponent(),
