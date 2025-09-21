@@ -9,6 +9,8 @@ import { useTheme } from '@/context/ThemeContext';
 const MemoList = ({ 
   memos, 
   pinnedMemos, 
+  archivedMemos = [],
+  showArchived = false,
   activeMenuId, 
   editingId, 
   editContent, 
@@ -87,8 +89,49 @@ const MemoList = ({
         ref={memosContainerRef}
         className="h-full overflow-y-auto"
       >
-        {/* 置顶备忘录区域 */}
-        {pinnedMemos.length > 0 && (
+        {/* 归档视图 */}
+        {showArchived ? (
+          <div className="px-4 pt-4">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 flex items-center">
+              <span className="mr-2">📁</span>
+              归档备忘录
+              <span className="ml-2 text-sm text-gray-500">({archivedMemos.length})</span>
+            </h2>
+            {archivedMemos.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <span className="text-4xl mb-4 block">📁</span>
+                <p>暂无归档备忘录</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {archivedMemos.map(memo => (
+                  <Card key={memo.id} className="group hover:shadow-lg transition-shadow duration-200 border-l-4 border-orange-400">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 mr-3">
+                          <ContentRenderer 
+                            content={memo.content} 
+                            activeTag={activeTag}
+                            onTagClick={onTagClick}
+                          />
+                          
+                          {/* 时间戳 */}
+                          <div className="text-xs text-gray-500 mt-2 flex items-center space-x-2">
+                            <span>{new Date(memo.created_ts || memo.timestamp).toLocaleDateString('zh-CN')}</span>
+                            <span className="text-orange-500">归档</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* 置顶备忘录区域 */}
+            {pinnedMemos.length > 0 && (
           <div className="px-4 pt-4 mb-4">
             <h2 className="text-lg sm:text-xl font-semibold mb-3 flex items-center">
               <span className="mr-2">📌</span>
@@ -421,6 +464,9 @@ const MemoList = ({
             </div>
           )}
         </div>
+
+          </>
+        )}
 
         {/* 回到顶部按钮 */}
         {showScrollToTop && (

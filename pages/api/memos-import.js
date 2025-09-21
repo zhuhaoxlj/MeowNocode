@@ -511,10 +511,12 @@ export default async function handler(req, res) {
           }
 
           // 直接调用数据库方法插入
+          const isArchived = memoObj._original.row_status === 'ARCHIVED';
           const insertedMemo = database.createMemo({
             content: memoObj.content,
             tags: memoObj.tags.join(','),
             pinned: pinned,
+            archived: isArchived,  // 处理归档状态
             createdAt: memoObj.createdAt,
             updatedAt: memoObj.updatedAt
           });

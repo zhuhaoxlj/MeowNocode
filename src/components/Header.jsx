@@ -1,5 +1,5 @@
-import React from 'react';
-import { Menu, Search, Headphones } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Menu, Search, Headphones, Archive, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -11,11 +11,22 @@ const Header = ({
   onOpenMusic,
   onOpenMusicSearch, // 新增：触发音乐搜索卡片
   musicEnabled = true,
+  // 归档相关
+  showArchived = false,
+  setShowArchived,
+  archivedCount = 0,
 }) => {
   const { themeColor } = useTheme();
+  
+  // 使用 props 传递的状态和方法，添加安全检查
+  const effectiveShowArchived = showArchived;
+  const effectiveSetShowArchived = setShowArchived || (() => {
+    console.warn('⚠️ setShowArchived 函数未提供');
+  });
+
 
   return (
-    <div className="flex items-center justify-between p-4 bg-transparent">
+    <div className="flex items-center justify-between p-4">
       {/* 左侧：汉堡菜单按钮（移动端）+ Logo */}
       <div className="flex items-center">
         {/* 汉堡菜单按钮 - 仅在移动端显示 */}
@@ -42,8 +53,30 @@ const Header = ({
         </span>
       </div>
 
-      {/* 右侧：搜索框（恢复到右侧位置） */}
+      {/* 右侧：归档切换按钮 + 搜索框 */}
       <div className="flex items-center gap-2">
+        {/* 归档视图切换按钮 */}
+        {true && (
+          <button
+            onClick={() => {
+              effectiveSetShowArchived(!effectiveShowArchived);
+            }}
+            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:scale-110 ${
+              effectiveShowArchived
+                ? 'text-gray-900 dark:text-gray-100'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+            }`}
+            aria-label={effectiveShowArchived ? "返回主页" : "查看归档"}
+            title={`${effectiveShowArchived ? "返回主页" : "查看归档"} (${archivedCount || 0})`}
+          >
+            {effectiveShowArchived ? (
+              <Home className="h-5 w-5" />
+            ) : (
+              <Archive className="h-5 w-5" />
+            )}
+          </button>
+        )}
+
         <div className="relative w-48 sm:w-64 md:w-80">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />

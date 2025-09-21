@@ -19,8 +19,9 @@ import { addDeletedMemoTombstone } from '@/lib/utils';
 import { dataService } from '@/lib/dataService';
 import { toast } from 'sonner';
 
- const Index = () => {
-  // State management
+const Index = () => {
+ console.log('🚀🚀🚀 INDEX COMPONENT FORCE RENDERING at:', new Date().toLocaleTimeString());
+ // State management
   const [memos, setMemos] = useState([]);
   const [newMemo, setNewMemo] = useState('');
   const [filteredMemos, setFilteredMemos] = useState([]);
@@ -32,6 +33,30 @@ import { toast } from 'sonner';
   const [editContent, setEditContent] = useState('');
   const [pinnedMemos, setPinnedMemos] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showArchived, setShowArchived] = useState(false); // 新增：是否显示归档视图
+  const [archivedMemos, setArchivedMemos] = useState([]); // 新增：归档的 memos
+  
+  // 调试：检查 state 是否正确初始化 
+  console.log('🐛 Index useState Debug:', { 
+    showArchived, 
+    setShowArchived: typeof setShowArchived,
+    setShowArchivedExists: !!setShowArchived 
+  });
+  
+  // 创建稳定的 setShowArchived 函数引用
+  const handleSetShowArchived = useCallback((value) => {
+    console.log('🐛 handleSetShowArchived called with:', value);
+    if (typeof value === 'function') {
+      setShowArchived(prevState => {
+        const newState = value(prevState);
+        console.log('🐛 State change:', { prevState, newState });
+        return newState;
+      });
+    } else {
+      console.log('🐛 Direct state change:', value);
+      setShowArchived(value);
+    }
+  }, []);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLeftSidebarHidden, setIsLeftSidebarHidden] = useState(false);
   const [isRightSidebarHidden, setIsRightSidebarHidden] = useState(false);
@@ -229,6 +254,38 @@ import { toast } from 'sonner';
     }
   };
 
+  // 获取归档的 memos
+  const loadArchivedMemos = async () => {
+    try {
+      console.log('🐛 Index Debug - 开始加载归档 memos...');
+      const response = await fetch('/api/memos/archived');
+      const result = await response.json();
+      console.log('🐛 Index Debug - API 返回结果:', result);
+      
+      if (result.success) {
+        const normalizedArchivedMemos = result.data.map(memo => ({
+          id: memo.id,
+          content: memo.content || '',
+          tags: memo.tags ? memo.tags.split(',').filter(Boolean) : [],
+          timestamp: memo.created_ts || new Date().toISOString(),
+          lastModified: memo.updated_ts || new Date().toISOString(),
+          createdAt: memo.created_ts || new Date().toISOString(),
+          updatedAt: memo.updated_ts || new Date().toISOString(),
+          backlinks: [],
+          archived: true
+        }));
+        setArchivedMemos(normalizedArchivedMemos);
+        console.log(`🐛 Index Debug - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
+        console.log('🐛 Index Debug - 归档状态:', { showArchived, setShowArchived: typeof setShowArchived });
+      } else {
+        console.log('🐛 Index Debug - API 返回失败:', result.error);
+      }
+    } catch (error) {
+      console.error('🐛 Index Debug - 获取归档备忘录失败:', error);
+      toast.error('获取归档备忘录失败');
+    }
+  };
+
   // 从localStorage加载数据
   useEffect(() => {
     const savedMemos = localStorage.getItem('memos');
@@ -317,7 +374,16 @@ import { toast } from 'sonner';
       setIsAppLoaded(true);
       setIsInitialLoad(false);
     }, 100);
+
+    // 加载归档的 memos
+    loadArchivedMemos();
   }, []);
+
+  // 也在数据变化时重新加载归档数据
+  useEffect(() => {
+    console.log('🐛 Memos data changed, reloading archived memos...');
+    loadArchivedMemos();
+  }, [memos.length, pinnedMemos.length]);
 
   // 监听全局数据变更与 storage 事件，感知 SettingsContext 的恢复/合并结果并刷新本地状态
   useEffect(() => {
@@ -1326,6 +1392,10 @@ import { toast } from 'sonner';
             activeTag={activeTag}
             activeDate={activeDate} // 传递日期筛选状态
             showScrollToTop={showScrollToTop}
+            // 归档相关
+            showArchived={showArchived}
+            setShowArchived={handleSetShowArchived}
+            archivedMemos={archivedMemos}
             
             // Refs
             searchInputRef={searchInputRef}

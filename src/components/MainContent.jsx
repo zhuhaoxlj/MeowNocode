@@ -27,6 +27,10 @@ const MainContent = ({
   activeTag,
   activeDate, // 新增日期筛选状态
   showScrollToTop,
+  // 归档相关
+  showArchived,
+  setShowArchived,
+  archivedMemos,
   
   // Refs
   searchInputRef,
@@ -56,10 +60,19 @@ const MainContent = ({
   allMemos,
   onAddBacklink,
   onPreviewMemo,
-  pendingNewBacklinks
-  , onRemoveBacklink
+  pendingNewBacklinks,
+  onRemoveBacklink
 }) => {
   const { themeColor } = useTheme();
+
+  // 调试信息 - 检查 MainContent 收到的 props 
+  console.log('🐛 MainContent Debug - Archive Props:', { 
+    showArchived, 
+    setShowArchived: typeof setShowArchived, 
+    archivedMemosLength: archivedMemos?.length,
+    hasSetShowArchived: !!setShowArchived,
+    timestamp: new Date().toLocaleTimeString()
+  });
 
   return (
     <div className={`flex-1 flex flex-col w-full relative h-full overflow-hidden ${
@@ -80,6 +93,10 @@ const MainContent = ({
           searchInputRef={searchInputRef}
           onMobileMenuOpen={onMobileMenuOpen}
           onOpenMusicSearch={onOpenMusicSearch}
+          // 归档相关
+          showArchived={showArchived}
+          setShowArchived={setShowArchived}
+          archivedCount={archivedMemos?.length || 0}
         />
 
         {/* 编辑区域 */}
@@ -100,8 +117,10 @@ const MainContent = ({
 
       {/* 可滚动内容区域 - 占据剩余所有空间 */}
       <MemoList
-        memos={filteredMemos}
-        pinnedMemos={pinnedMemos}
+        memos={showArchived ? [] : filteredMemos}
+        pinnedMemos={showArchived ? [] : pinnedMemos}
+        archivedMemos={showArchived ? archivedMemos : []}
+        showArchived={showArchived}
         activeMenuId={activeMenuId}
         editingId={editingId}
         editContent={editContent}

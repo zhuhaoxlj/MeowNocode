@@ -48,6 +48,7 @@ export default function CompleteMemoApp() {
   // 数据状态
   const [memos, setMemos] = useState([]);
   const [pinnedMemos, setPinnedMemos] = useState([]);
+  const [archivedMemos, setArchivedMemos] = useState([]);
   const [allMemos, setAllMemos] = useState([]);
   const [heatmapData, setHeatmapData] = useState({});
   
@@ -60,6 +61,9 @@ export default function CompleteMemoApp() {
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  
+  // 归档状态
+  const [showArchived, setShowArchived] = useState(false);
   
   // 分享状态
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -75,6 +79,21 @@ export default function CompleteMemoApp() {
   
   // 回链状态
   const [pendingNewBacklinks, setPendingNewBacklinks] = useState([]);
+
+  // 创建稳定的 setShowArchived 函数引用
+  const handleSetShowArchived = useCallback((value) => {
+    console.log('🐛 CompleteMemoApp handleSetShowArchived called with:', value);
+    if (typeof value === 'function') {
+      setShowArchived(prevState => {
+        const newState = value(prevState);
+        console.log('🐛 CompleteMemoApp State change:', { prevState, newState });
+        return newState;
+      });
+    } else {
+      console.log('🐛 CompleteMemoApp Direct state change:', value);
+      setShowArchived(value);
+    }
+  }, []);
 
   // 检测移动端
   useEffect(() => {
@@ -92,6 +111,7 @@ export default function CompleteMemoApp() {
     const initApp = async () => {
       try {
         await loadMemos();
+        await loadArchivedMemos();
         setIsAppLoaded(true);
         setTimeout(() => setIsInitialLoad(false), 100);
       } catch (error) {
@@ -104,6 +124,14 @@ export default function CompleteMemoApp() {
       initApp();
     }
   }, [isAuthenticated]);
+
+  // 当 memos 数据变化时重新加载归档数据
+  useEffect(() => {
+    if (memos.length > 0) {
+      console.log('🐛 CompleteMemoApp Memos data changed, reloading archived memos...');
+      loadArchivedMemos();
+    }
+  }, [memos.length]);
 
   // 加载数据
   const loadMemos = async () => {
@@ -125,6 +153,35 @@ export default function CompleteMemoApp() {
     } catch (error) {
       console.error('加载备忘录失败:', error);
       toast.error('加载备忘录失败');
+    }
+  };
+
+  // 加载归档的 memos
+  const loadArchivedMemos = async () => {
+    try {
+      console.log('🐛 CompleteMemoApp - 开始加载归档 memos...');
+      const response = await fetch('/api/memos/archived');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      
+      const normalizedArchivedMemos = result.data.map(memo => ({
+        id: memo.id,
+        content: memo.content,
+        tags: memo.tags,
+        visibility: memo.visibility,
+        pinned: memo.pinned,
+        created_ts: memo.created_ts,
+        updated_ts: memo.updated_ts,
+        timestamp: memo.created_ts || memo.timestamp,
+        archived: true
+      }));
+      setArchivedMemos(normalizedArchivedMemos);
+      console.log(`🐛 CompleteMemoApp - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
+    } catch (error) {
+      console.error('🐛 CompleteMemoApp - 获取归档备忘录失败:', error);
+      toast.error('获取归档备忘录失败');
     }
   };
 
@@ -440,6 +497,11 @@ export default function CompleteMemoApp() {
                 activeTag={activeTag}
                 activeDate={activeDate}
                 showScrollToTop={showScrollToTop}
+                
+                // 归档相关
+                showArchived={showArchived}
+                setShowArchived={handleSetShowArchived}
+                archivedMemos={archivedMemos}
                 
                 // Refs
                 searchInputRef={searchInputRef}
