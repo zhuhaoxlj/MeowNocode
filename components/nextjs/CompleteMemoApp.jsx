@@ -137,12 +137,14 @@ export default function CompleteMemoApp() {
   const loadMemos = async () => {
     try {
       const memosData = await dataService.getAllMemos();
-      const regular = memosData.filter(m => !m.pinned);
-      const pinned = memosData.filter(m => m.pinned);
+      // 过滤掉已归档的备忘录
+      const regular = memosData.filter(m => !m.pinned && !m.archived);
+      const pinned = memosData.filter(m => m.pinned && !m.archived);
       
       console.log('🔍 DEBUG: 原始数据 memosData:', memosData.length, memosData);
       console.log('🔍 DEBUG: 分离后的regular备忘录:', regular.length, regular);
       console.log('🔍 DEBUG: 分离后的pinned备忘录:', pinned.length, pinned);
+      console.log('🔍 DEBUG: 过滤掉的归档备忘录:', memosData.filter(m => m.archived).length, memosData.filter(m => m.archived));
       
       setMemos(regular);
       setPinnedMemos(pinned);
@@ -263,6 +265,13 @@ export default function CompleteMemoApp() {
       await loadMemos();
       console.log('✅ DEBUG: loadMemos completed');
       
+      // 如果更新涉及归档状态，也重新加载归档列表
+      if (updates.hasOwnProperty('archived')) {
+        console.log('🔄 DEBUG: Archive status changed, reloading archived memos...');
+        await loadArchivedMemos();
+        console.log('✅ DEBUG: loadArchivedMemos completed');
+      }
+      
       toast.success('备忘录已更新');
     } catch (error) {
       console.error('❌ DEBUG: 更新备忘录失败:', error);
@@ -299,6 +308,18 @@ export default function CompleteMemoApp() {
         case 'share':
           setSelectedMemoForShare(memo);
           setIsShareDialogOpen(true);
+          break;
+        case 'archive':
+          console.log('📂 DEBUG: Archive action triggered for memo:', memoId);
+          // 调用API将备忘录标记为归档
+          await onUpdateMemo(memoId, { archived: true });
+          toast.success('备忘录已归档');
+          break;
+        case 'unarchive':
+          console.log('📤 DEBUG: Unarchive action triggered for memo:', memoId);
+          // 调用API取消备忘录的归档状态
+          await onUpdateMemo(memoId, { archived: false });
+          toast.success('已取消归档');
           break;
         default:
           console.log('未知操作:', action);

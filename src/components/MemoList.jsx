@@ -121,6 +121,44 @@ const MemoList = ({
                             <span className="text-orange-500">归档</span>
                           </div>
                         </div>
+                        
+                        {/* 归档备忘录菜单按钮 */}
+                        <div className="relative flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMenuButtonClick(memo.id);
+                            }}
+                            ref={(el) => {
+                              if (el) menuRefs.current[memo.id] = el;
+                            }}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                          
+                          {/* 归档备忘录菜单面板 */}
+                          {activeMenuId === memo.id && (
+                            <div className="fixed z-50 mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]">
+                              <button
+                                onClick={(e) => onMenuAction(e, memo.id, 'unarchive')}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                              >
+                                <span>📤</span>
+                                <span className="truncate">取消归档</span>
+                              </button>
+                              <button
+                                onClick={(e) => onMenuAction(e, memo.id, 'delete')}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 flex items-center space-x-2"
+                              >
+                                <span>🗑️</span>
+                                <span className="truncate">删除</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -196,6 +234,13 @@ const MemoList = ({
                             >
                               <span>✏️</span>
                               <span className="truncate">编辑</span>
+                            </button>
+                            <button
+                              onClick={(e) => onMenuAction(e, memo.id, 'archive')}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                            >
+                              <span>📂</span>
+                              <span className="truncate">归档</span>
                             </button>
                             <button
                               onClick={(e) => onMenuAction(e, memo.id, 'delete')}
@@ -334,6 +379,19 @@ const MemoList = ({
                           >
                             <Image className="h-4 w-4 mr-2 flex-shrink-0" />
                             <span className="truncate">分享图</span>
+                          </button>
+
+                          {/* 归档按钮 */}
+                          <button
+                            onClick={(e) => onMenuAction(e, memo.id, 'archive')}
+                            className="block w-full text-left px-3 py-2 sm:px-4 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="2" y="3" width="20" height="5" rx="1" ry="1"/>
+                              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/>
+                              <path d="M10 12h4"/>
+                            </svg>
+                            <span className="truncate">归档</span>
                           </button>
 
                           {/* 删除按钮 */}

@@ -6,9 +6,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-09-21T14:34:12.000Z",
-      "updated_ts": "2025-09-21T14:34:12.000Z"
+      "updated_ts": "2025-09-21T18:38:19.057Z"
     },
     {
       "id": 2,
@@ -72,13 +72,13 @@
     },
     {
       "id": 8,
-      "content": "抢国庆回家的票\n",
+      "content": "抢国庆回来的票",
       "tags": "",
       "visibility": "private",
-      "pinned": false,
+      "pinned": true,
       "archived": false,
       "created_ts": "2025-09-18T11:14:32.000Z",
-      "updated_ts": "2025-09-18T11:14:32.000Z"
+      "updated_ts": "2025-09-21T18:38:58.410Z"
     },
     {
       "id": 9,
@@ -506,9 +506,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": true,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-25T13:10:18.000Z",
-      "updated_ts": "2025-08-25T13:10:18.000Z"
+      "updated_ts": "2025-09-21T18:38:36.612Z"
     },
     {
       "id": 52,
