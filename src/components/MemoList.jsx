@@ -163,11 +163,21 @@ const MemoList = ({
                     <CardContent className="p-3">
                       <div className="flex justify-between items-start">
                         <div className="flex-1 mr-3">
-                          <ContentRenderer 
-                            content={memo.content} 
-                            activeTag={activeTag}
-                            onTagClick={onTagClick}
-                          />
+                          <div 
+                            onDoubleClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onMenuAction(e, memo.id, 'edit');
+                            }}
+                            className="cursor-text"
+                            title="双击编辑"
+                          >
+                            <ContentRenderer 
+                              content={memo.content} 
+                              activeTag={activeTag}
+                              onTagClick={onTagClick}
+                            />
+                          </div>
                           
                           {/* 时间戳 */}
                           <div className="text-xs text-gray-500 mt-2 flex items-center space-x-2">
@@ -269,7 +279,17 @@ const MemoList = ({
                             onCancel={onCancelEdit}
                           />
                         ) : (
-                          <ContentRenderer content={memo.content} />
+                          <div 
+                            onDoubleClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onMenuAction(e, memo.id, 'edit');
+                            }}
+                            className="cursor-text"
+                            title="双击编辑"
+                          >
+                            <ContentRenderer content={memo.content} />
+                          </div>
                         )}
                         
                         {/* 时间戳 */}
@@ -594,12 +614,22 @@ const MemoList = ({
                         </div>
                       </div>
                     ) : (
-                      <ContentRenderer
-                        content={memo.content}
-                        activeTag={activeTag}
-                        onTagClick={onTagClick}
-                        onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
-                      />
+                      <div 
+                        onDoubleClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onMenuAction(e, memo.id, 'edit');
+                        }}
+                        className="cursor-text"
+                        title="双击编辑"
+                      >
+                        <ContentRenderer
+                          content={memo.content}
+                          activeTag={activeTag}
+                          onTagClick={onTagClick}
+                          onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
+                        />
+                      </div>
                     )}
 
                     {/* 反链 chips（展示在每条 memo 下面） */}
