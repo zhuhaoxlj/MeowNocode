@@ -10,3 +10,5 @@ bun.lock
 .DS_Store
 /memos
 .next
+/data
+/memos_db

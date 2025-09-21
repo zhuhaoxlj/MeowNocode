@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { D1ApiClient } from '@/lib/d1-api';
 import ImageUpload from './ImageUpload';
 import { toast } from 'sonner';
-import MemosImport from './MemosImport';
+import WorkingMemosImport from '../../components/nextjs/WorkingMemosImport';
 import MusicListManager from './MusicListManager';
 import S3ConfigPanel from './S3ConfigPanel';
 
@@ -1521,7 +1521,7 @@ const SettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
 
                 {/* 从 Memos 导入 */}
                 <div className="mt-6">
-                  <MemosImport />
+                      <WorkingMemosImport />
                 </div>
               </div>
             </div>

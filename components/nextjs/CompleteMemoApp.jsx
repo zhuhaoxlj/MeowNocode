@@ -19,6 +19,7 @@ import MobileSidebar from '../../src/components/MobileSidebar';
 
 // 导入对话框组件
 import ShareDialog from '../../src/components/ShareDialog';
+import NextJsSettingsCard from './SettingsCard';
 
 // 导入数据服务
 import { dataService } from '../../lib/client/dataService.js';
@@ -63,6 +64,9 @@ export default function CompleteMemoApp() {
   // 分享状态
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedMemoForShare, setSelectedMemoForShare] = useState(null);
+  
+  // 设置状态
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // 引用
   const searchInputRef = useRef(null);
@@ -289,8 +293,7 @@ export default function CompleteMemoApp() {
 
   // 设置处理器
   const onSettingsOpen = () => {
-    // TODO: 实现设置对话框
-    toast.info('设置功能开发中');
+    setIsSettingsOpen(true);
   };
 
   const onOpenDailyReview = () => {
@@ -507,6 +510,16 @@ export default function CompleteMemoApp() {
           setSelectedMemoForShare(null);
         }}
         memo={selectedMemoForShare}
+      />
+
+      {/* 设置卡片 */}
+      <NextJsSettingsCard
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onOpenTutorial={() => {
+          // TODO: 实现教程功能
+          toast.info('教程功能开发中');
+        }}
       />
     </div>
   );

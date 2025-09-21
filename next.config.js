@@ -35,8 +35,15 @@ const nextConfig = {
     
     // 外部化服务器端的数据库驱动
     if (isServer) {
-      config.externals.push('sqlite3', 'better-sqlite3');
+      config.externals.push('sqlite3', 'better-sqlite3', 'sql.js');
     }
+    
+    // 特殊处理 sql.js WASM 文件路径
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
     
     return config;
   },
@@ -51,6 +58,17 @@ const nextConfig = {
   images: {
     domains: [],
     formats: ['image/webp', 'image/avif'],
+  },
+  
+  // API 路由配置
+  serverRuntimeConfig: {
+    apiTimeout: 300000, // 5分钟
+    maxRequestSize: '100mb'
+  },
+  
+  // 开发服务器配置
+  devServer: {
+    clientLogLevel: 'warning',
   },
 };
 
