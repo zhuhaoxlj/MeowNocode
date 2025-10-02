@@ -359,10 +359,10 @@ const MemoList = ({
                             <div
                               className="fixed"
                               style={{
-                                top: menuPosition.top ? `${menuPosition.top - 20}px` : 'auto',
+                                top: menuPosition.top ? `${menuPosition.top - 30}px` : 'auto',
                                 left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                                width: '120px', // 与置顶菜单宽度一致
-                                height: menuPosition.top ? '20px' : '0px', // 桥接区域高度
+                                width: '160px', // 增加宽度以匹配菜单
+                                height: menuPosition.top ? '30px' : '0px', // 增加桥接区域高度
                                 zIndex: 49, // 比菜单稍低
                                 backgroundColor: 'transparent'
                               }}
@@ -372,7 +372,7 @@ const MemoList = ({
                             
                             {/* 菜单面板 */}
                             <div 
-                              className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+                              className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 w-40"
                               style={{
                                 top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
                                 left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
@@ -498,10 +498,10 @@ const MemoList = ({
                           <div
                             className="fixed"
                             style={{
-                              top: menuPosition.top ? `${Math.min(menuPosition.top - 10, menuPosition.top)}px` : 'auto',
+                              top: menuPosition.top ? `${menuPosition.top - 30}px` : 'auto',
                               left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
                               width: '192px', // 与菜单宽度一致
-                              height: menuPosition.top ? '20px' : '0px', // 桥接区域高度
+                              height: menuPosition.top ? '30px' : '0px', // 增加桥接区域高度
                               zIndex: 49, // 比菜单稍低
                               backgroundColor: 'transparent'
                             }}
