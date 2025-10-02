@@ -5,7 +5,8 @@ import MemoInput from '@/components/MemoInput';
 import MemoList from '@/components/MemoList';
 import { useTheme } from '@/context/ThemeContext';
 
-const MainContent = ({
+// 🚀 使用 React.memo 优化，避免不必要的重渲染
+const MainContent = React.memo(({
   // Layout state
   isLeftSidebarHidden,
   isRightSidebarHidden,
@@ -66,13 +67,13 @@ const MainContent = ({
   const { themeColor } = useTheme();
 
   // 调试信息 - 检查 MainContent 收到的 props 
-  console.log('🐛 MainContent Debug - Archive Props:', { 
-    showArchived, 
-    setShowArchived: typeof setShowArchived, 
-    archivedMemosLength: archivedMemos?.length,
-    hasSetShowArchived: !!setShowArchived,
-    timestamp: new Date().toLocaleTimeString()
-  });
+  // console.log('🐛 MainContent Debug - Archive Props:', { 
+  //   showArchived, 
+  //   setShowArchived: typeof setShowArchived, 
+  //   archivedMemosLength: archivedMemos?.length,
+  //   hasSetShowArchived: !!setShowArchived,
+  //   timestamp: new Date().toLocaleTimeString()
+  // });  
 
   return (
     <div className={`flex-1 flex flex-col w-full relative h-full overflow-hidden ${
@@ -148,6 +149,8 @@ const MainContent = ({
       />
     </div>
   );
-};
+});
+
+MainContent.displayName = 'MainContent';
 
 export default MainContent;

@@ -66,9 +66,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-09-18T11:16:41.000Z",
-      "updated_ts": "2025-09-18T11:16:41.000Z"
+      "updated_ts": "2025-09-21T19:12:19.839Z"
     },
     {
       "id": 8,
@@ -385,10 +385,10 @@
       "content": "飞哥生日",
       "tags": "",
       "visibility": "private",
-      "pinned": false,
+      "pinned": true,
       "archived": false,
       "created_ts": "2025-08-28T08:37:43.000Z",
-      "updated_ts": "2025-08-28T08:37:43.000Z"
+      "updated_ts": "2025-09-21T19:08:25.573Z"
     },
     {
       "id": 40,
@@ -426,9 +426,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-25T14:13:40.000Z",
-      "updated_ts": "2025-08-25T14:13:40.000Z"
+      "updated_ts": "2025-09-21T19:08:31.321Z"
     },
     {
       "id": 44,
@@ -436,9 +436,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-25T13:42:28.000Z",
-      "updated_ts": "2025-08-25T13:42:28.000Z"
+      "updated_ts": "2025-09-21T18:51:32.993Z"
     },
     {
       "id": 45,
@@ -456,9 +456,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-25T13:37:50.000Z",
-      "updated_ts": "2025-08-25T13:37:50.000Z"
+      "updated_ts": "2025-09-21T18:51:16.090Z"
     },
     {
       "id": 47,
@@ -486,9 +486,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-25T13:20:40.000Z",
-      "updated_ts": "2025-08-25T13:20:40.000Z"
+      "updated_ts": "2025-09-21T18:51:10.527Z"
     },
     {
       "id": 50,
@@ -516,9 +516,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-24T07:58:20.000Z",
-      "updated_ts": "2025-08-24T07:58:20.000Z"
+      "updated_ts": "2025-09-21T19:01:48.732Z"
     },
     {
       "id": 53,
@@ -536,19 +536,19 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-24T02:12:15.000Z",
-      "updated_ts": "2025-08-26T16:33:11.000Z"
+      "updated_ts": "2025-09-21T19:02:40.065Z"
     },
     {
       "id": 55,
-      "content": "- [ ] 到底用 fish 还是改造 bash\n- [ ] fish 怎么支持bash环境变量\n- [ ] ",
+      "content": "- [ ] 到底用 fish 还是改造 bash\n- [ ] fish 怎么支持bash环境变量",
       "tags": "",
       "visibility": "private",
       "pinned": false,
       "archived": false,
       "created_ts": "2025-08-24T00:21:46.000Z",
-      "updated_ts": "2025-08-24T00:21:46.000Z"
+      "updated_ts": "2025-09-21T19:02:47.991Z"
     },
     {
       "id": 56,
@@ -556,19 +556,19 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-24T00:20:40.000Z",
-      "updated_ts": "2025-08-24T00:20:40.000Z"
+      "updated_ts": "2025-09-21T19:02:56.418Z"
     },
     {
       "id": 57,
-      "content": "- [x] 传感器只有ACC有实时上报数据\n- [x] 其他的传感器只能先写好数据格式和流程\n- [x] 调试csv写入，保证能长时间运行写入大文件\n- [ ] 调试运动的实时输出数据\n- [ ] 测试多个传感器同时开启，多个csv同时写入\n- [ ] 测试传感器和算法同时开启同时写入\n- [x] 测试结束之后传文件给手机\n- [ ] 用户数据保存到本机\n- [x] 解决按钮无法点击的问题\n- [x] 改 mvp 架构\n- [x] 现在有两个方向，一个是压缩打包所有文件，另一个是跑通所有已经好的传感器写入本地完整的csv（确保csv完好无损）",
+      "content": "- [x] 传感器只有ACC有实时上报数据\n- [x] 其他的传感器只能先写好数据格式和流程\n- [x] 调试csv写入，保证能长时间运行写入大文件\n- [x] 调试运动的实时输出数据\n- [x] 测试多个传感器同时开启，多个csv同时写入\n- [x] 测试传感器和算法同时开启同时写入\n- [x] 测试结束之后传文件给手机\n- [x] 用户数据保存到本机\n- [x] 解决按钮无法点击的问题\n- [x] 改 mvp 架构\n- [x] 现在有两个方向，一个是压缩打包所有文件，另一个是跑通所有已经好的传感器写入本地完整的csv（确保csv完好无损）",
       "tags": "",
       "visibility": "private",
       "pinned": true,
       "archived": false,
       "created_ts": "2025-08-24T00:18:20.000Z",
-      "updated_ts": "2025-08-30T15:52:24.000Z"
+      "updated_ts": "2025-10-02T10:32:20.486Z"
     },
     {
       "id": 58,
@@ -812,13 +812,13 @@
     },
     {
       "id": 82,
-      "content": "自己的小站点算是搭建好了\n- [ ] 如果双击自己之前创建的笔记就能编辑就好了",
+      "content": "自己的小站点算是搭建好了\n- [x] 如果双击自己之前创建的笔记就能编辑就好了",
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-22T17:00:32.000Z",
-      "updated_ts": "2025-08-22T17:48:45.000Z"
+      "updated_ts": "2025-09-21T19:01:30.210Z"
     },
     {
       "id": 83,
@@ -826,13 +826,63 @@
       "tags": "",
       "visibility": "private",
       "pinned": false,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-22T16:59:42.000Z",
-      "updated_ts": "2025-08-22T16:59:42.000Z"
+      "updated_ts": "2025-09-21T18:43:02.623Z"
+    },
+    {
+      "id": 84,
+      "content": "- [x] 123123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": true,
+      "created_ts": "2025-09-21T19:05:58.353Z",
+      "updated_ts": "2025-09-21T19:08:14.287Z"
+    },
+    {
+      "id": 85,
+      "content": "- [ ] memos 增加附件导入功能\n- [ ] 双击置顶内容为空",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-09-21T19:13:14.519Z",
+      "updated_ts": "2025-09-21T19:14:23.491Z"
+    },
+    {
+      "id": 86,
+      "content": "今天去姐姐家玩了",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-01T11:21:44.861Z",
+      "updated_ts": "2025-10-01T11:21:44.861Z"
+    },
+    {
+      "id": 87,
+      "content": "日鑫超市拿转接头快递",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:42:55.121Z",
+      "updated_ts": "2025-10-02T10:42:55.121Z"
+    },
+    {
+      "id": 90,
+      "content": "测试一下",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:43:30.411Z",
+      "updated_ts": "2025-10-02T10:43:30.411Z"
     }
   ],
   "resources": [],
   "settings": {},
-  "nextMemoId": 84,
+  "nextMemoId": 91,
   "nextResourceId": 1
 }

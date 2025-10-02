@@ -2,7 +2,7 @@
  * 完整的 Next.js 版本 MeowNocode 应用
  * 包含所有原始功能：热力图、音乐播放器、AI对话、画布编辑等
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePasswordAuth } from '../../src/context/PasswordAuthContext';
 import { useSettings } from '../../src/context/SettingsContext';
 import { toast } from 'sonner';
@@ -54,6 +54,18 @@ export default function CompleteMemoApp() {
   
   // 编辑状态
   const [newMemo, setNewMemo] = useState('');
+  
+  // 创建防抖的 setNewMemo 函数 - 真正的防抖
+  const debouncedSetNewMemo = useMemo(() => {
+    let timeoutId;
+    const debouncedFn = (value) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setNewMemo(value);
+      }, 50); // 50ms 防抖，平衡响应性和性能
+    };
+    return debouncedFn;
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState('');
   const [activeDate, setActiveDate] = useState('');
@@ -82,17 +94,46 @@ export default function CompleteMemoApp() {
 
   // 创建稳定的 setShowArchived 函数引用
   const handleSetShowArchived = useCallback((value) => {
-    console.log('🐛 CompleteMemoApp handleSetShowArchived called with:', value);
     if (typeof value === 'function') {
       setShowArchived(prevState => {
         const newState = value(prevState);
-        console.log('🐛 CompleteMemoApp State change:', { prevState, newState });
         return newState;
       });
     } else {
-      console.log('🐛 CompleteMemoApp Direct state change:', value);
       setShowArchived(value);
     }
+  }, []);
+
+  // 创建数据刷新触发器
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // 使用 useCallback 优化事件处理函数
+  const handleAddMemo = useCallback(async () => {
+    if (!newMemo.trim()) return;
+    
+    try {
+      const memoData = {
+        content: newMemo.trim(),
+        pinned: false
+      };
+      
+      const created = await dataService.createMemo(memoData);
+      setNewMemo('');
+      // 触发数据重新加载
+      setRefreshTrigger(prev => prev + 1);
+      toast.success('备忘录创建成功');
+    } catch (error) {
+      console.error('创建备忘录失败:', error);
+      toast.error('创建备忘录失败');
+    }
+  }, [newMemo]);
+
+  const handleEditorFocus = useCallback(() => {
+    // 编辑器聚焦处理
+  }, []);
+
+  const handleEditorBlur = useCallback(() => {
+    // 编辑器失焦处理
   }, []);
 
   // 检测移动端
@@ -125,10 +166,17 @@ export default function CompleteMemoApp() {
     }
   }, [isAuthenticated]);
 
+  // 当 refreshTrigger 变化时重新加载数据
+  useEffect(() => {
+    if (refreshTrigger > 0 && isAuthenticated) {
+      loadMemos();
+    }
+  }, [refreshTrigger, isAuthenticated]);
+
   // 当 memos 数据变化时重新加载归档数据
   useEffect(() => {
     if (memos.length > 0) {
-      console.log('🐛 CompleteMemoApp Memos data changed, reloading archived memos...');
+      // console.log('🐛 CompleteMemoApp Memos data changed, reloading archived memos...');
       loadArchivedMemos();
     }
   }, [memos.length]);
@@ -141,10 +189,10 @@ export default function CompleteMemoApp() {
       const regular = memosData.filter(m => !m.pinned && !m.archived);
       const pinned = memosData.filter(m => m.pinned && !m.archived);
       
-      console.log('🔍 DEBUG: 原始数据 memosData:', memosData.length, memosData);
-      console.log('🔍 DEBUG: 分离后的regular备忘录:', regular.length, regular);
-      console.log('🔍 DEBUG: 分离后的pinned备忘录:', pinned.length, pinned);
-      console.log('🔍 DEBUG: 过滤掉的归档备忘录:', memosData.filter(m => m.archived).length, memosData.filter(m => m.archived));
+    // console.log('🔍 DEBUG: 原始数据 memosData:', memosData.length, memosData);
+    // console.log('🔍 DEBUG: 分离后的regular备忘录:', regular.length, regular);
+    // console.log('🔍 DEBUG: 分离后的pinned备忘录:', pinned.length, pinned);
+    // console.log('🔍 DEBUG: 过滤掉的归档备忘录:', memosData.filter(m => m.archived).length, memosData.filter(m => m.archived));
       
       setMemos(regular);
       setPinnedMemos(pinned);
@@ -161,7 +209,7 @@ export default function CompleteMemoApp() {
   // 加载归档的 memos
   const loadArchivedMemos = async () => {
     try {
-      console.log('🐛 CompleteMemoApp - 开始加载归档 memos...');
+      // console.log('🐛 CompleteMemoApp - 开始加载归档 memos...');
       const response = await fetch('/api/memos/archived');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -180,9 +228,9 @@ export default function CompleteMemoApp() {
         archived: true
       }));
       setArchivedMemos(normalizedArchivedMemos);
-      console.log(`🐛 CompleteMemoApp - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
+        // console.log(`🐛 CompleteMemoApp - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
     } catch (error) {
-      console.error('🐛 CompleteMemoApp - 获取归档备忘录失败:', error);
+        // console.error('🐛 CompleteMemoApp - 获取归档备忘录失败:', error);
       toast.error('获取归档备忘录失败');
     }
   };
@@ -255,21 +303,21 @@ export default function CompleteMemoApp() {
 
   // 更新备忘录
   const onUpdateMemo = async (id, updates) => {
-    console.log('🔍 DEBUG CompleteMemoApp onUpdateMemo called:', { id, updates });
+    // console.log('🔍 DEBUG CompleteMemoApp onUpdateMemo called:', { id, updates });
     try {
-      console.log('📡 DEBUG: Calling dataService.updateMemo...');
+      // console.log('📡 DEBUG: Calling dataService.updateMemo...');
       const result = await dataService.updateMemo(id, updates);
-      console.log('✅ DEBUG: dataService.updateMemo returned:', result);
+      // console.log('✅ DEBUG: dataService.updateMemo returned:', result);
       
-      console.log('🔄 DEBUG: Calling loadMemos...');
+      // console.log('🔄 DEBUG: Calling loadMemos...');
       await loadMemos();
-      console.log('✅ DEBUG: loadMemos completed');
+      // console.log('✅ DEBUG: loadMemos completed');
       
       // 如果更新涉及归档状态，也重新加载归档列表
       if (updates.hasOwnProperty('archived')) {
-        console.log('🔄 DEBUG: Archive status changed, reloading archived memos...');
+        // console.log('🔄 DEBUG: Archive status changed, reloading archived memos...');
         await loadArchivedMemos();
-        console.log('✅ DEBUG: loadArchivedMemos completed');
+        // console.log('✅ DEBUG: loadArchivedMemos completed');
       }
       
       toast.success('备忘录已更新');
@@ -295,9 +343,9 @@ export default function CompleteMemoApp() {
           break;
         case 'pin':
         case 'unpin':
-          console.log('📌 DEBUG: Pin/Unpin action triggered for memo:', memoId);
-          console.log('📌 DEBUG: Current memo:', JSON.stringify(memo, null, 2));
-          console.log('📌 DEBUG: Will set pinned to:', !memo.pinned);
+      // console.log('📌 DEBUG: Pin/Unpin action triggered for memo:', memoId);
+      // console.log('📌 DEBUG: Current memo:', JSON.stringify(memo, null, 2));
+      // console.log('📌 DEBUG: Will set pinned to:', !memo.pinned);
           // 只传递需要更新的字段，避免数据覆盖问题
           await onUpdateMemo(memoId, { pinned: !memo.pinned });
           break;
@@ -310,13 +358,13 @@ export default function CompleteMemoApp() {
           setIsShareDialogOpen(true);
           break;
         case 'archive':
-          console.log('📂 DEBUG: Archive action triggered for memo:', memoId);
+          // console.log('📂 DEBUG: Archive action triggered for memo:', memoId);
           // 调用API将备忘录标记为归档
           await onUpdateMemo(memoId, { archived: true });
           toast.success('备忘录已归档');
           break;
         case 'unarchive':
-          console.log('📤 DEBUG: Unarchive action triggered for memo:', memoId);
+          // console.log('📤 DEBUG: Unarchive action triggered for memo:', memoId);
           // 调用API取消备忘录的归档状态
           await onUpdateMemo(memoId, { archived: false });
           toast.success('已取消归档');
@@ -398,17 +446,17 @@ export default function CompleteMemoApp() {
   // 回链相关
   const onAddBacklink = (fromMemoId, toMemoId) => {
     // TODO: 实现回链功能
-    console.log('添加回链:', fromMemoId, '->', toMemoId);
+    // console.log('添加回链:', fromMemoId, '->', toMemoId);
   };
 
   const onPreviewMemo = (memoId) => {
     // TODO: 实现预览功能
-    console.log('预览备忘录:', memoId);
+    // console.log('预览备忘录:', memoId);
   };
 
   const onRemoveBacklink = (fromMemoId, toMemoId) => {
     // TODO: 移除回链
-    console.log('移除回链:', fromMemoId, '->', toMemoId);
+    // console.log('移除回链:', fromMemoId, '->', toMemoId);
   };
 
   // 滚动相关
@@ -509,7 +557,7 @@ export default function CompleteMemoApp() {
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 newMemo={newMemo}
-                setNewMemo={setNewMemo}
+                setNewMemo={debouncedSetNewMemo}
                 filteredMemos={filteredMemos}
                 pinnedMemos={pinnedMemos}
                 activeMenuId={activeMenuId}
@@ -531,7 +579,7 @@ export default function CompleteMemoApp() {
                 
                 // Callbacks
                 onMobileMenuOpen={() => setShowMobileSidebar(true)}
-                onAddMemo={onAddMemo}
+                onAddMemo={handleAddMemo}
                 onMenuAction={onMenuAction}
                 onMenuContainerEnter={onMenuContainerEnter}
                 onMenuContainerLeave={onMenuContainerLeave}

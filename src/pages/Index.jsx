@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import LeftSidebar from '@/components/LeftSidebar';
 import RightSidebar from '@/components/RightSidebar';
 import MainContent from '@/components/MainContent';
@@ -20,11 +20,28 @@ import { dataService } from '@/lib/dataService';
 import { toast } from 'sonner';
 
 const Index = () => {
- console.log('🚀🚀🚀 INDEX COMPONENT FORCE RENDERING at:', new Date().toLocaleTimeString());
- // State management
+ // console.log('🚀🚀🚀 INDEX COMPONENT FORCE RENDERING at:', new Date().toLocaleTimeString());
+  // State management
   const [memos, setMemos] = useState([]);
   const [newMemo, setNewMemo] = useState('');
   const [filteredMemos, setFilteredMemos] = useState([]);
+  
+  // 🔍 性能排查：监控 setNewMemo 的耗时
+  const handleSetNewMemo = useCallback((value) => {
+    const start = performance.now();
+    console.log('🔍🔍🔍 [Index] handleSetNewMemo 开始, 值长度:', value.length);
+    
+    setNewMemo(value);
+    
+    const elapsed = performance.now() - start;
+    console.log(`🔍🔍🔍 [Index] setNewMemo 耗时: ${elapsed.toFixed(2)}ms`);
+    
+    if (elapsed > 5) {
+      console.warn('⚠️ [Index] setNewMemo 耗时超过 5ms，可能有性能问题！');
+    }
+  }, []);
+  
+  // console.log('🔍 INPUT DEBUG: Index.jsx passing to MainContent:', debouncedSetNewMemo.toString().substring(0, 100));
   const [activeTag, setActiveTag] = useState(null);
   const [activeDate, setActiveDate] = useState(null); // 新增日期筛选状态
   const [heatmapData, setHeatmapData] = useState([]);
@@ -37,23 +54,23 @@ const Index = () => {
   const [archivedMemos, setArchivedMemos] = useState([]); // 新增：归档的 memos
   
   // 调试：检查 state 是否正确初始化 
-  console.log('🐛 Index useState Debug:', { 
-    showArchived, 
-    setShowArchived: typeof setShowArchived,
-    setShowArchivedExists: !!setShowArchived 
-  });
+  // console.log('🐛 Index useState Debug:', { 
+  //   showArchived, 
+  //   setShowArchived: typeof setShowArchived,
+  //   setShowArchivedExists: !!setShowArchived 
+  // });
   
   // 创建稳定的 setShowArchived 函数引用
   const handleSetShowArchived = useCallback((value) => {
-    console.log('🐛 handleSetShowArchived called with:', value);
+    // console.log('🐛 handleSetShowArchived called with:', value);
     if (typeof value === 'function') {
       setShowArchived(prevState => {
         const newState = value(prevState);
-        console.log('🐛 State change:', { prevState, newState });
+        // console.log('🐛 State change:', { prevState, newState });
         return newState;
       });
     } else {
-      console.log('🐛 Direct state change:', value);
+      // console.log('🐛 Direct state change:', value);
       setShowArchived(value);
     }
   }, []);
@@ -257,10 +274,10 @@ const Index = () => {
   // 获取归档的 memos
   const loadArchivedMemos = async () => {
     try {
-      console.log('🐛 Index Debug - 开始加载归档 memos...');
+      // console.log('🐛 Index Debug - 开始加载归档 memos...');
       const response = await fetch('/api/memos/archived');
       const result = await response.json();
-      console.log('🐛 Index Debug - API 返回结果:', result);
+      // console.log('🐛 Index Debug - API 返回结果:', result);
       
       if (result.success) {
         const normalizedArchivedMemos = result.data.map(memo => ({
@@ -275,10 +292,10 @@ const Index = () => {
           archived: true
         }));
         setArchivedMemos(normalizedArchivedMemos);
-        console.log(`🐛 Index Debug - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
-        console.log('🐛 Index Debug - 归档状态:', { showArchived, setShowArchived: typeof setShowArchived });
+        // console.log(`🐛 Index Debug - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
+        // console.log('🐛 Index Debug - 归档状态:', { showArchived, setShowArchived: typeof setShowArchived });
       } else {
-        console.log('🐛 Index Debug - API 返回失败:', result.error);
+        // console.log('🐛 Index Debug - API 返回失败:', result.error);
       }
     } catch (error) {
       console.error('🐛 Index Debug - 获取归档备忘录失败:', error);
@@ -379,11 +396,11 @@ const Index = () => {
     loadArchivedMemos();
   }, []);
 
-  // 也在数据变化时重新加载归档数据
-  useEffect(() => {
-    console.log('🐛 Memos data changed, reloading archived memos...');
-    loadArchivedMemos();
-  }, [memos.length, pinnedMemos.length]);
+  // 🔥 临时注释：可能导致无限重渲染的useEffect
+  // useEffect(() => {
+  //   // console.log('🐛 Memos data changed, reloading archived memos...');
+  //   loadArchivedMemos();
+  // }, [memos.length, pinnedMemos.length]);
 
   // 监听全局数据变更与 storage 事件，感知 SettingsContext 的恢复/合并结果并刷新本地状态
   useEffect(() => {
@@ -444,37 +461,37 @@ const Index = () => {
       window.removeEventListener('app:dataChanged', onDataChanged);
       window.removeEventListener('storage', onStorage);
     };
-  }, [memos, pinnedMemos]);
+  }, []); // 🔥 临时移除依赖，避免无限循环
 
-  // 将 memo 的位置信息写回到 canvasState.memoPositions（与 CanvasMode 的 shapes/viewport 持久化并存）
-  useEffect(() => {
-    try {
-      const positions = {};
-      [...memos, ...pinnedMemos].forEach(m => {
-        if (m && typeof m.id !== 'undefined') {
-          const x = typeof m.canvasX === 'number' ? m.canvasX : undefined;
-          const y = typeof m.canvasY === 'number' ? m.canvasY : undefined;
-          if (typeof x === 'number' && typeof y === 'number') {
-            positions[m.id] = { x, y };
-          }
-        }
-      });
-      const raw = localStorage.getItem('canvasState');
-      const prev = raw ? JSON.parse(raw) : {};
-      const next = { ...prev, memoPositions: positions };
-      localStorage.setItem('canvasState', JSON.stringify(next));
-  // 通知全局数据变更（仅位置变化也会触发同步）
-  try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'canvas.memoPositions' } })); } catch {}
-    } catch {}
-  }, [memos, pinnedMemos]);
+  // 🔥 临时注释：可能导致无限重渲染的useEffect
+  // useEffect(() => {
+  //   try {
+  //     const positions = {};
+  //     [...memos, ...pinnedMemos].forEach(m => {
+  //       if (m && typeof m.id !== 'undefined') {
+  //         const x = typeof m.canvasX === 'number' ? m.canvasX : undefined;
+  //         const y = typeof m.canvasY === 'number' ? m.canvasY : undefined;
+  //         if (typeof x === 'number' && typeof y === 'number') {
+  //           positions[m.id] = { x, y };
+  //         }
+  //       }
+  //     });
+  //     const raw = localStorage.getItem('canvasState');
+  //     const prev = raw ? JSON.parse(raw) : {};
+  //     const next = { ...prev, memoPositions: positions };
+  //     localStorage.setItem('canvasState', JSON.stringify(next));
+  // // 通知全局数据变更（仅位置变化也会触发同步）
+  // try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'canvas.memoPositions' } })); } catch {}
+  //   } catch {}
+  // }, [memos, pinnedMemos]);
 
-  // 保存数据到localStorage
-  useEffect(() => {
-    localStorage.setItem('memos', JSON.stringify(memos));
-    localStorage.setItem('pinnedMemos', JSON.stringify(pinnedMemos));
-  // 通知全局数据变更
-  try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'memos' } })); } catch {}
-  }, [memos, pinnedMemos]);
+  // 🔥 临时注释：保存数据到localStorage的useEffect（可能导致无限循环）
+  // useEffect(() => {
+  //   localStorage.setItem('memos', JSON.stringify(memos));
+  //   localStorage.setItem('pinnedMemos', JSON.stringify(pinnedMemos));
+  // // 通知全局数据变更
+  // try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'memos' } })); } catch {}
+  // }, [memos, pinnedMemos]);
 
   // 保存侧栏固定状态到localStorage - 画布模式下不保存
   useEffect(() => {
@@ -518,10 +535,13 @@ const Index = () => {
   const addMemo = () => {
     if (newMemo.trim() === '') return;
 
-    const extractedTags = [...newMemo.matchAll(/(?:^|\s)#([^\s#][\u4e00-\u9fa5a-zA-Z0-9_\/]*)/g)]
-      .map(match => match[1])
-      .filter((tag, index, self) => self.indexOf(tag) === index)
-      .filter(tag => tag.length > 0);
+    // 🚀 简化标签提取：移除复杂正则表达式，改用简单字符串处理
+    const extractedTags = newMemo
+      .split(/\s+/)
+      .filter(word => word.startsWith('#') && word.length > 1)
+      .map(tag => tag.substring(1).replace(/[^\u4e00-\u9fa5a-zA-Z0-9_\/]/g, ''))
+      .filter(tag => tag.length > 0)
+      .filter((tag, index, self) => self.indexOf(tag) === index);
 
     const newId = Date.now();
     const nowIso = new Date().toISOString();
@@ -579,7 +599,7 @@ const Index = () => {
     };
     
     setHeatmapData(generateHeatmapData());
-  }, [memos, pinnedMemos]);
+  }, []); // 🔥 临时移除依赖，避免无限循环
 
   // 统一筛选：标签 / 日期 / 搜索
   useEffect(() => {
@@ -1219,7 +1239,7 @@ const Index = () => {
   };
 
   const handleCanvasTogglePin = async (id) => {
-    console.log('🔍 DEBUG handleCanvasTogglePin called with id:', id);
+    // console.log('🔍 DEBUG handleCanvasTogglePin called with id:', id);
     
     try {
       // 查找备忘录（可能在 memos 或 pinnedMemos 中）
@@ -1233,20 +1253,20 @@ const Index = () => {
         return;
       }
 
-      console.log('📝 DEBUG: Target memo before pin toggle:', JSON.stringify(targetMemo, null, 2));
+      // console.log('📝 DEBUG: Target memo before pin toggle:', JSON.stringify(targetMemo, null, 2));
       
       // 确定当前置顶状态
       const currentPinnedState = memoInPinned ? true : false;
       const newPinnedState = !currentPinnedState;
       
-      console.log('🔄 DEBUG: Toggling pin state from', currentPinnedState, 'to', newPinnedState);
+      // console.log('🔄 DEBUG: Toggling pin state from', currentPinnedState, 'to', newPinnedState);
 
       // 调用API更新置顶状态
       const updated = await dataService.updateMemo(id, {
         pinned: newPinnedState
       });
       
-      console.log('✅ DEBUG: API returned updated memo:', JSON.stringify(updated, null, 2));
+      // console.log('✅ DEBUG: API returned updated memo:', JSON.stringify(updated, null, 2));
 
       // 重新加载数据以确保一致性
       loadFromLocal();
@@ -1383,7 +1403,7 @@ const Index = () => {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             newMemo={newMemo}
-            setNewMemo={setNewMemo}
+            setNewMemo={handleSetNewMemo}
             filteredMemos={filteredMemos}
             pinnedMemos={pinnedMemos}
             activeMenuId={activeMenuId}

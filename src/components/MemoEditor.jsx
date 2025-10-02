@@ -1,12 +1,13 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/context/ThemeContext';
 import { useSettings } from '@/context/SettingsContext';
 import { toast } from 'sonner';
 
-const MemoEditor = ({
+// 🚀 使用 React.memo 优化，只在 props 真正变化时才重渲染
+const MemoEditor = React.memo(({
   value = '',
   onChange,
   placeholder = '现在的想法是……',
@@ -117,44 +118,91 @@ const MemoEditor = ({
     }
   };
 
-  // 自动调整高度
-  const adjustHeight = () => {
+  // 🚀 性能优化：移除性能监控代码
+  const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
       textarea.style.height = 'auto';
       const newHeight = Math.max(120, Math.min(400, textarea.scrollHeight));
       textarea.style.height = newHeight + 'px';
     }
+  }, []);
+
+  // 🚀 极致优化：使用 requestAnimationFrame + 防抖，减少高度调整的性能开销
+  const debouncedAdjustHeight = useCallback(
+    (() => {
+      let rafId = null;
+      let timeoutId = null;
+      return () => {
+        // 取消之前的调度
+        if (rafId) cancelAnimationFrame(rafId);
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // 使用 rAF + 防抖组合：快速响应但避免过度调用
+        rafId = requestAnimationFrame(() => {
+          timeoutId = setTimeout(adjustHeight, 100); // 100ms 防抖，减少频繁调整
+        });
+      };
+    })(),
+    [adjustHeight]
+  );
+
+  // 🔍 性能排查模式：逐个测试每个函数的性能影响
+  const PERF_DEBUG = {
+    enabled: true,  // 启用性能调试
+    logTiming: true,  // 记录每个步骤的耗时
+    disableOnChange: false,  // 禁用 onChange 回调
+    disableHeightAdjust: false,  // 禁用高度调整
+    disableCharCount: false,  // 禁用字符计数
+    disableBacklinks: false,  // 禁用反链计算
   };
 
-  // 处理输入变化
-  const handleChange = (e) => {
-    const newValue = e.target.value;
-    onChange?.(newValue);
-    // 延迟调整高度
-    setTimeout(adjustHeight, 0);
-  };
+  const handleChange = useCallback((e) => {
+    if (PERF_DEBUG.enabled && PERF_DEBUG.logTiming) {
+      const start = performance.now();
+      console.log('🔍 [1] handleChange 开始');
+      
+      const newValue = e.target.value;
+      const step1 = performance.now();
+      console.log(`🔍 [2] 获取 value 耗时: ${(step1 - start).toFixed(2)}ms`);
+      
+      if (!PERF_DEBUG.disableOnChange) {
+        onChange?.(newValue);
+        const step2 = performance.now();
+        console.log(`🔍 [3] onChange 回调耗时: ${(step2 - step1).toFixed(2)}ms`);
+      } else {
+        console.log('🔍 [3] onChange 回调已禁用 ✅');
+      }
+      
+      console.log(`🔍 [总计] handleChange 总耗时: ${(performance.now() - start).toFixed(2)}ms\n`);
+    } else {
+      const newValue = e.target.value;
+      onChange?.(newValue);
+    }
+  }, [onChange]);
 
   // 处理输入法合成开始
-  const handleCompositionStart = (e) => {
+  const handleCompositionStart = useCallback((e) => {
     setIsComposing(true);
     setCompositionValue(e.target.value);
-  };
+  }, []);
 
   // 处理输入法合成更新
-  const handleCompositionUpdate = (e) => {
+  const handleCompositionUpdate = useCallback((e) => {
     if (isComposing) {
       setCompositionValue(e.target.value);
     }
-  };
+  }, [isComposing]);
 
   // 处理输入法合成结束
-  const handleCompositionEnd = (e) => {
+  const handleCompositionEnd = useCallback((e) => {
     setIsComposing(false);
     setCompositionValue('');
     const newValue = e.target.value;
     onChange?.(newValue);
-  };
+    // 🚀 高度调整由 useEffect 统一处理
+    // debouncedAdjustHeight();
+  }, [onChange]);
 
   // 复制每日一句到剪贴板
   const copyHitokotoToClipboard = async () => {
@@ -180,8 +228,38 @@ const MemoEditor = ({
     }
   };
 
-  // 处理键盘事件
-  const handleKeyDown = (e) => {
+  // 在光标处插入 markdown todo 格式 - 优化
+  const insertTodoAtCursor = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    
+    // 检查是否在行首，如果不是则先添加换行
+    const isAtLineStart = start === 0 || before.endsWith('\n');
+    const prefix = isAtLineStart ? '' : '\n';
+    const snippet = '- [ ] ';
+    const insertText = prefix + snippet;
+    
+    const newValue = before + insertText + after;
+    onChange?.(newValue);
+    
+      // 聚焦并设置光标位置到 todo 内容开始位置
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const pos = start + insertText.length;
+          try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
+        }
+        // 调整高度
+        debouncedAdjustHeight();
+      }, 0);
+    }, [value, onChange, debouncedAdjustHeight]);
+
+  // 处理键盘事件 - 使用 useCallback 优化
+  const handleKeyDown = useCallback((e) => {
     // Ctrl+Enter 或 Cmd+Enter 提交
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -284,10 +362,10 @@ const MemoEditor = ({
         return;
       }
     }
-  };
+  }, [onSubmit, insertTodoAtCursor, onChange]);
 
-  // 在光标处插入 spoiler 语法，并将光标定位到 spoiler 内容处
-  const insertSpoilerAtCursor = () => {
+  // 在光标处插入 spoiler 语法，并将光标定位到 spoiler 内容处 - 优化
+  const insertSpoilerAtCursor = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     const start = el.selectionStart ?? value.length;
@@ -300,68 +378,48 @@ const MemoEditor = ({
     const caretOffsetInSnippet = '{% spoiler '.length; // 包含末尾空格，落在内容位置
     const newValue = before + snippet + after;
     onChange?.(newValue);
-    // 聚焦并设置选择区域到内容位置
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const pos = start + caretOffsetInSnippet;
-        try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
-      }
-      // 调整高度
-      adjustHeight();
-    }, 0);
-  };
+      // 聚焦并设置选择区域到内容位置
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const pos = start + caretOffsetInSnippet;
+          try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
+        }
+        // 调整高度
+        debouncedAdjustHeight();
+      }, 0);
+    }, [value, onChange, debouncedAdjustHeight]);
 
-  // 在光标处插入 markdown todo 格式
-  const insertTodoAtCursor = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart ?? value.length;
-    const end = el.selectionEnd ?? value.length;
-    const before = value.slice(0, start);
-    const after = value.slice(end);
-    
-    // 检查是否在行首，如果不是则先添加换行
-    const isAtLineStart = start === 0 || before.endsWith('\n');
-    const prefix = isAtLineStart ? '' : '\n';
-    const snippet = '- [ ] ';
-    const insertText = prefix + snippet;
-    
-    const newValue = before + insertText + after;
-    onChange?.(newValue);
-    
-    // 聚焦并设置光标位置到 todo 内容开始位置
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const pos = start + insertText.length;
-        try { textareaRef.current.setSelectionRange(pos, pos); } catch {}
-      }
-      // 调整高度
-      adjustHeight();
-    }, 0);
-  };
 
-  // 选择一个目标 memo 建立双链
-  const handlePickBacklink = (targetId) => {
+  // 选择一个目标 memo 建立双链 - 优化
+  const handlePickBacklink = useCallback((targetId) => {
     if (!onAddBacklink) return;
     if (currentMemoId && targetId === currentMemoId) return;
     onAddBacklink(currentMemoId || null, targetId);
     setShowBacklinkPicker(false);
-  };
+  }, [onAddBacklink, currentMemoId]);
 
-  // 计算选择卡片的屏幕定位，避免被滚动容器裁剪
-  const updatePickerPosition = useCallback(() => {
-    const btn = backlinkBtnRef.current;
-    if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    const width = 320;
-    const margin = 8;
-    let left = Math.min(rect.left, window.innerWidth - width - margin);
-    if (left < margin) left = margin;
-    const top = Math.min(rect.bottom + 6, window.innerHeight - margin);
-    setPickerPos({ left, top, width });
-  }, []);
+  // 计算选择卡片的屏幕定位，避免被滚动容器裁剪 - 防抖优化
+  const updatePickerPosition = useCallback(
+    (() => {
+      let timeoutId;
+      return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          const btn = backlinkBtnRef.current;
+          if (!btn) return;
+          const rect = btn.getBoundingClientRect();
+          const width = 320;
+          const margin = 8;
+          let left = Math.min(rect.left, window.innerWidth - width - margin);
+          if (left < margin) left = margin;
+          const top = Math.min(rect.bottom + 6, window.innerHeight - margin);
+          setPickerPos({ left, top, width });
+        }, 50); // 增加防抖延迟，减少频繁更新
+      };
+    })(),
+    []
+  );
 
   useEffect(() => {
     if (!showBacklinkPicker) return;
@@ -377,24 +435,61 @@ const MemoEditor = ({
     };
   }, [showBacklinkPicker, updatePickerPosition]);
 
-  const findMemoById = (id) => memosList.find(m => m.id === id);
-  const backlinkMemos = (backlinks || []).map(findMemoById).filter(Boolean);
+  // 缓存反链 memo 列表
+  const backlinkMemos = useMemo(() => {
+    if (PERF_DEBUG.disableBacklinks) {
+      return [];
+    }
+    
+    const start = performance.now();
+    const findMemoById = (id) => memosList.find(m => m.id === id);
+    const result = (backlinks || []).map(findMemoById).filter(Boolean);
+    
+    if (PERF_DEBUG.enabled && PERF_DEBUG.logTiming) {
+      console.log(`🔍 [useMemo] backlinkMemos 计算耗时: ${(performance.now() - start).toFixed(2)}ms, 数量: ${result.length}`);
+    }
+    
+    return result;
+  }, [backlinks, memosList]);
 
-  // 焦点事件
-  const handleFocus = () => {
+  // 焦点事件 - 使用 useCallback 优化
+  const handleFocus = useCallback(() => {
     setIsFocused(true);
     onFocus?.();
-  };
+  }, [onFocus]);
 
-  const handleBlur = () => {
+  const handleBlur = useCallback(() => {
     setIsFocused(false);
     onBlur?.();
-  };
+  }, [onBlur]);
 
-  // 当value变化时调整高度
+  // 🚀 性能优化：只在值变化且需要时调整高度
+  // 使用 useRef 追踪上次的长度，避免每次都调用
+  const lastLengthRef = useRef(0);
   useEffect(() => {
-    adjustHeight();
-  }, [value]);
+    if (PERF_DEBUG.disableHeightAdjust) {
+      console.log('🔍 [useEffect] 高度调整已禁用 ✅');
+      return;
+    }
+    
+    const start = performance.now();
+    const currentLength = value?.length || 0;
+    const lengthDiff = Math.abs(currentLength - lastLengthRef.current);
+    
+    if (PERF_DEBUG.enabled && PERF_DEBUG.logTiming) {
+      console.log(`🔍 [useEffect] 长度变化: ${lengthDiff}, 是否触发调整: ${lengthDiff > 10}`);
+    }
+    
+    // 只在长度变化较大时才调整高度（优化性能）
+    if (lengthDiff > 10) {
+      debouncedAdjustHeight();
+      lastLengthRef.current = currentLength;
+      
+      if (PERF_DEBUG.enabled && PERF_DEBUG.logTiming) {
+        console.log(`🔍 [useEffect] 高度调整触发耗时: ${(performance.now() - start).toFixed(2)}ms`);
+      }
+    }
+  }, [value, debouncedAdjustHeight]);
 
   // 自动聚焦
   useEffect(() => {
@@ -408,18 +503,44 @@ const MemoEditor = ({
     fetchHitokoto();
   }, [hitokotoConfig]);
 
-  // 计算字符数 - 在输入法合成期间使用合成前的值
-  const getDisplayCharCount = () => {
+  // 计算字符数 - 使用 useMemo 缓存计算结果
+  const charCount = useMemo(() => {
+    if (PERF_DEBUG.disableCharCount) {
+      return 0;
+    }
+    
+    const start = performance.now();
+    let result;
+    
     if (isComposing && compositionValue) {
       // 输入法合成期间，使用合成开始前的字符数
-      return compositionValue.length;
+      result = compositionValue.length;
+    } else {
+      result = value.length;
     }
-    return value.length;
-  };
+    
+    if (PERF_DEBUG.enabled && PERF_DEBUG.logTiming) {
+      console.log(`🔍 [useMemo] charCount 计算耗时: ${(performance.now() - start).toFixed(2)}ms`);
+    }
+    
+    return result;
+  }, [value, isComposing, compositionValue]);
 
-  const charCount = getDisplayCharCount();
-  const isNearLimit = maxLength && charCount > maxLength * 0.8;
-  const isOverLimit = maxLength && charCount > maxLength;
+  const { isNearLimit, isOverLimit } = useMemo(() => {
+    if (PERF_DEBUG.disableCharCount) {
+      return { isNearLimit: false, isOverLimit: false };
+    }
+    
+    const start = performance.now();
+    const isNearLimit = maxLength && charCount > maxLength * 0.8;
+    const isOverLimit = maxLength && charCount > maxLength;
+    
+    if (PERF_DEBUG.enabled && PERF_DEBUG.logTiming) {
+      console.log(`🔍 [useMemo] limit 检查耗时: ${(performance.now() - start).toFixed(2)}ms`);
+    }
+    
+    return { isNearLimit, isOverLimit };
+  }, [maxLength, charCount]);
 
   return (
     <div
@@ -614,7 +735,21 @@ const MemoEditor = ({
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // 🚀 自定义比较函数：只在关键 props 变化时才重渲染
+  return (
+    prevProps.value === nextProps.value &&
+    prevProps.disabled === nextProps.disabled &&
+    prevProps.placeholder === nextProps.placeholder &&
+    prevProps.maxLength === nextProps.maxLength &&
+    prevProps.showCharCount === nextProps.showCharCount &&
+    prevProps.autoFocus === nextProps.autoFocus &&
+    prevProps.backlinks?.length === nextProps.backlinks?.length &&
+    prevProps.memosList?.length === nextProps.memosList?.length
+  );
+});
+
+MemoEditor.displayName = 'MemoEditor';
 
 export default MemoEditor;
 
