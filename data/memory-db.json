@@ -565,10 +565,10 @@
       "content": "- [x] 传感器只有ACC有实时上报数据\n- [x] 其他的传感器只能先写好数据格式和流程\n- [x] 调试csv写入，保证能长时间运行写入大文件\n- [x] 调试运动的实时输出数据\n- [x] 测试多个传感器同时开启，多个csv同时写入\n- [x] 测试传感器和算法同时开启同时写入\n- [x] 测试结束之后传文件给手机\n- [x] 用户数据保存到本机\n- [x] 解决按钮无法点击的问题\n- [x] 改 mvp 架构\n- [x] 现在有两个方向，一个是压缩打包所有文件，另一个是跑通所有已经好的传感器写入本地完整的csv（确保csv完好无损）",
       "tags": "",
       "visibility": "private",
-      "pinned": true,
+      "pinned": false,
       "archived": false,
       "created_ts": "2025-08-24T00:18:20.000Z",
-      "updated_ts": "2025-10-02T10:32:20.486Z"
+      "updated_ts": "2025-10-02T10:50:42.246Z"
     },
     {
       "id": 58,
@@ -871,18 +871,368 @@
       "updated_ts": "2025-10-02T10:42:55.121Z"
     },
     {
-      "id": 90,
+      "id": 97,
       "content": "测试一下",
       "tags": "",
       "visibility": "private",
       "pinned": false,
       "archived": false,
-      "created_ts": "2025-10-02T10:43:30.411Z",
-      "updated_ts": "2025-10-02T10:43:30.411Z"
+      "created_ts": "2025-10-02T10:51:40.417Z",
+      "updated_ts": "2025-10-02T10:51:40.417Z"
+    },
+    {
+      "id": 98,
+      "content": "123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:55:46.036Z",
+      "updated_ts": "2025-10-02T10:55:46.036Z"
+    },
+    {
+      "id": 100,
+      "content": "222",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:58:29.159Z",
+      "updated_ts": "2025-10-02T10:58:29.159Z"
+    },
+    {
+      "id": 101,
+      "content": "22",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:58:34.970Z",
+      "updated_ts": "2025-10-02T10:58:34.970Z"
+    },
+    {
+      "id": 102,
+      "content": "测试",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:58:37.488Z",
+      "updated_ts": "2025-10-02T10:58:37.488Z"
+    },
+    {
+      "id": 103,
+      "content": "测试",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:58:43.526Z",
+      "updated_ts": "2025-10-02T10:58:43.526Z"
+    },
+    {
+      "id": 104,
+      "content": "阿斯蒂芬",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:58:46.760Z",
+      "updated_ts": "2025-10-02T10:58:46.760Z"
+    },
+    {
+      "id": 105,
+      "content": "阿迪发的",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T10:59:00.437Z",
+      "updated_ts": "2025-10-02T10:59:00.437Z"
+    },
+    {
+      "id": 106,
+      "content": "1231",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:01:51.899Z",
+      "updated_ts": "2025-10-02T11:01:51.899Z"
+    },
+    {
+      "id": 107,
+      "content": "111",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:01:55.317Z",
+      "updated_ts": "2025-10-02T11:01:55.317Z"
+    },
+    {
+      "id": 108,
+      "content": "123123123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:01:59.731Z",
+      "updated_ts": "2025-10-02T11:01:59.731Z"
+    },
+    {
+      "id": 109,
+      "content": "adf",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:02:10.315Z",
+      "updated_ts": "2025-10-02T11:02:10.315Z"
+    },
+    {
+      "id": 110,
+      "content": "afdsfasdf",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:02:14.906Z",
+      "updated_ts": "2025-10-02T11:02:14.906Z"
+    },
+    {
+      "id": 111,
+      "content": "测试",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:05:17.765Z",
+      "updated_ts": "2025-10-02T11:05:17.765Z"
+    },
+    {
+      "id": 112,
+      "content": "fadsfasdfasdfadf",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:05:33.762Z",
+      "updated_ts": "2025-10-02T11:05:33.762Z"
+    },
+    {
+      "id": 113,
+      "content": "aaaaa",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:07:59.177Z",
+      "updated_ts": "2025-10-02T11:07:59.177Z"
+    },
+    {
+      "id": 114,
+      "content": "asdf",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:08:11.055Z",
+      "updated_ts": "2025-10-02T11:08:11.055Z"
+    },
+    {
+      "id": 116,
+      "content": "测试 1",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:12:50.983Z",
+      "updated_ts": "2025-10-02T11:12:50.983Z"
+    },
+    {
+      "id": 117,
+      "content": "测试 2",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:14:29.141Z",
+      "updated_ts": "2025-10-02T11:14:29.141Z"
+    },
+    {
+      "id": 118,
+      "content": "测试 3",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:15:33.869Z",
+      "updated_ts": "2025-10-02T11:15:33.869Z"
+    },
+    {
+      "id": 119,
+      "content": "123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:15:36.729Z",
+      "updated_ts": "2025-10-02T11:15:36.729Z"
+    },
+    {
+      "id": 120,
+      "content": "123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:24:46.245Z",
+      "updated_ts": "2025-10-02T11:24:46.245Z"
+    },
+    {
+      "id": 121,
+      "content": "测试 1",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:54:00.739Z",
+      "updated_ts": "2025-10-02T11:54:00.739Z"
+    },
+    {
+      "id": 122,
+      "content": "测试 1",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T11:56:01.535Z",
+      "updated_ts": "2025-10-02T11:56:01.535Z"
+    },
+    {
+      "id": 123,
+      "content": "测试 1",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:00:57.964Z",
+      "updated_ts": "2025-10-02T12:00:57.964Z"
+    },
+    {
+      "id": 124,
+      "content": "测试 2",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:01:01.948Z",
+      "updated_ts": "2025-10-02T12:01:01.948Z"
+    },
+    {
+      "id": 125,
+      "content": "哈哈哈哈",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:01:05.347Z",
+      "updated_ts": "2025-10-02T12:01:05.347Z"
+    },
+    {
+      "id": 126,
+      "content": "可以用了呢",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:01:09.679Z",
+      "updated_ts": "2025-10-02T12:01:09.679Z"
+    },
+    {
+      "id": 129,
+      "content": "感觉不错呢",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:15:40.156Z",
+      "updated_ts": "2025-10-02T12:15:40.156Z"
+    },
+    {
+      "id": 130,
+      "content": "123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:15:44.648Z",
+      "updated_ts": "2025-10-02T12:15:44.648Z"
+    },
+    {
+      "id": 131,
+      "content": "123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:15:49.469Z",
+      "updated_ts": "2025-10-02T12:15:49.469Z"
+    },
+    {
+      "id": 132,
+      "content": "123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:16:31.446Z",
+      "updated_ts": "2025-10-02T12:16:31.446Z"
+    },
+    {
+      "id": 133,
+      "content": "123{% spoiler 123123 %}",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:17:28.063Z",
+      "updated_ts": "2025-10-02T12:17:28.063Z"
+    },
+    {
+      "id": 134,
+      "content": "ceshi",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:17:53.238Z",
+      "updated_ts": "2025-10-02T12:17:53.238Z"
+    },
+    {
+      "id": 135,
+      "content": "哈哈哈哈",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:17:57.909Z",
+      "updated_ts": "2025-10-02T12:17:57.909Z"
+    },
+    {
+      "id": 136,
+      "content": "好用了呢",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-02T12:18:02.798Z",
+      "updated_ts": "2025-10-02T12:18:02.798Z"
     }
   ],
   "resources": [],
   "settings": {},
-  "nextMemoId": 91,
+  "nextMemoId": 137,
   "nextResourceId": 1
 }

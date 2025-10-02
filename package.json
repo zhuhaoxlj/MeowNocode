@@ -14,11 +14,7 @@
     "db:backup": "node scripts/backup-db.js",
     "db:reset": "node scripts/reset-db.js",
     "migrate:data": "node scripts/migrate-browser-data.js",
-    "full-migration": "node scripts/full-nextjs-migration.js",
-    "dev:both": "concurrently \"npm run dev:vite\" \"npm run dev\"",
-    "dev:vite": "vite --port 8080",
-    "build:vite": "vite build",
-    "preview:vite": "vite preview"
+    "full-migration": "node scripts/full-nextjs-migration.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.872.0",
@@ -75,7 +71,6 @@
     "react-hook-form": "^7.52.0",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.0.19",
-    "react-router-dom": "^6.23.1",
     "recharts": "^2.12.7",
     "remark-gfm": "^4.0.1",
     "sonner": "^1.5.0",
@@ -87,22 +82,16 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@meituan-nocode/vite-plugin-dev-logger": "^0.1.0",
-    "@meituan-nocode/vite-plugin-nocode-html-transformer": "^0.2.5",
     "@types/node": "^20",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
-    "@vitejs/plugin-react": "4.3.4",
     "autoprefixer": "^10.4.19",
-    "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.2.32",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.5",
     "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "vite": "5.4.11"
+    "tailwindcss": "^3.4.4"
   },
   "description": "MeowNocode - 完整的 Next.js 版本，支持跨浏览器数据共享"
 }

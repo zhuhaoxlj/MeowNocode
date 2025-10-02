@@ -108,22 +108,37 @@ export default function CompleteMemoApp() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // 使用 useCallback 优化事件处理函数
-  const handleAddMemo = useCallback(async () => {
-    if (!newMemo.trim()) return;
+  // 🚀 优化：接受内容参数，避免依赖异步状态更新
+  const handleAddMemo = useCallback(async (content) => {
+    console.log('💥 [handleAddMemo] 被调用，参数:', content);
+    console.log('💥 [handleAddMemo] 当前 newMemo 状态:', newMemo);
+    
+    // 如果传入 content，使用它；否则使用 newMemo 状态
+    const memoContent = content !== undefined ? content : newMemo;
+    
+    console.log('💥 [handleAddMemo] 最终使用内容:', memoContent);
+    
+    if (!memoContent.trim()) {
+      console.warn('⚠️ [handleAddMemo] 内容为空');
+      return;
+    }
     
     try {
       const memoData = {
-        content: newMemo.trim(),
+        content: memoContent.trim(),
         pinned: false
       };
       
+      console.log('💥 [handleAddMemo] 准备调用 API，内容:', memoData.content);
       const created = await dataService.createMemo(memoData);
+      console.log('✅ [handleAddMemo] API 调用成功，创建的 memo:', created);
+      
       setNewMemo('');
       // 触发数据重新加载
       setRefreshTrigger(prev => prev + 1);
       toast.success('备忘录创建成功');
     } catch (error) {
-      console.error('创建备忘录失败:', error);
+      console.error('❌ [handleAddMemo] 创建备忘录失败:', error);
       toast.error('创建备忘录失败');
     }
   }, [newMemo]);

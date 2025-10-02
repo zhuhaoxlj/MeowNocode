@@ -31,7 +31,7 @@ export default function App({ Component, pageProps }) {
               <MusicProvider>
                 <TooltipProvider>
                   <Component {...pageProps} />
-                  <Toaster />
+                  <Toaster duration={2000} />
                 </TooltipProvider>
               </MusicProvider>
             </SettingsProvider>
