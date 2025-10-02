@@ -4,8 +4,8 @@
  */
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { Upload, Database as DatabaseIcon, AlertCircle, CheckCircle2, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Button } from '../../src/components/ui/button';
+import { Label } from '../../src/components/ui/label';
 import { toast } from 'sonner';
 
 // 处理导入结果，触发页面刷新

@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Trash2, AlertTriangle, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '../../src/components/ui/button';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '../../src/components/ui/alert-dialog';
 
 export default function ClearAllDataButton() {
   const [isClearing, setIsClearing] = useState(false);

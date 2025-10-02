@@ -42,44 +42,165 @@ const MemoList = ({
   const [hoverMenuId, setHoverMenuId] = useState(null);
   const hoverTimerRef = useRef(null);
   const lastMousePositionRef = useRef({ x: 0, y: 0 });
+  const currentMousePositionRef = useRef({ x: 0, y: 0 });
+  const safeZoneCheckIntervalRef = useRef(null);
+  
+  // 🐛 调试模式：设置为 true 可以看到桥接区域（红色半透明）
+  const DEBUG_BRIDGE = false;
 
-  // 计算菜单位置的函数
+  // ✨ Amazon 风格的三角形安全区域检测
+  // 判断点是否在三角形内（使用叉积算法）
+  const isPointInTriangle = (point, triangle) => {
+    const [p1, p2, p3] = triangle;
+    
+    const sign = (p1, p2, p3) => {
+      return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+    };
+    
+    const d1 = sign(point, p1, p2);
+    const d2 = sign(point, p2, p3);
+    const d3 = sign(point, p3, p1);
+    
+    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    
+    return !(hasNeg && hasPos);
+  };
+
+  // 检查鼠标是否在朝菜单方向移动（使用矩形安全区域 + 扩展区域）
+  const isMouseMovingTowardsMenu = (currentMouse, menuPos) => {
+    if (!menuPos.top || !menuPos.left) return false;
+    
+    const menuWidth = 140;
+    const menuHeight = 100;
+    const padding = 30; // 增加更大的容错空间，避免误判
+    
+    // 1. 首先检查鼠标是否已经在菜单区域内或非常接近
+    const inMenuArea = 
+      currentMouse.x >= menuPos.left - padding && 
+      currentMouse.x <= menuPos.left + menuWidth + padding &&
+      currentMouse.y >= menuPos.top - padding && 
+      currentMouse.y <= menuPos.top + menuHeight + padding;
+    
+    if (inMenuArea) return true;
+    
+    // 2. 检查鼠标是否在按钮区域内或附近
+    const inButtonArea = 
+      menuPos.buttonLeft && menuPos.buttonTop &&
+      currentMouse.x >= menuPos.buttonLeft - padding &&
+      currentMouse.x <= menuPos.buttonRight + padding &&
+      currentMouse.y >= menuPos.buttonTop - padding &&
+      currentMouse.y <= menuPos.buttonBottom + padding;
+    
+    if (inButtonArea) return true;
+    
+    // 3. 检查鼠标是否在按钮和菜单之间的矩形安全区域内
+    if (menuPos.showAbove) {
+      // 菜单在按钮上方
+      const minX = Math.min(menuPos.buttonLeft || 0, menuPos.left) - padding;
+      const maxX = Math.max(menuPos.buttonRight || 0, menuPos.left + menuWidth) + padding;
+      const minY = menuPos.top - padding;
+      const maxY = (menuPos.buttonBottom || 0) + padding;
+      
+      const inSafeZone = 
+        currentMouse.x >= minX && 
+        currentMouse.x <= maxX &&
+        currentMouse.y >= minY && 
+        currentMouse.y <= maxY;
+      
+      return inSafeZone;
+    } else {
+      // 菜单在按钮下方
+      const minX = Math.min(menuPos.buttonLeft || 0, menuPos.left) - padding;
+      const maxX = Math.max(menuPos.buttonRight || 0, menuPos.left + menuWidth) + padding;
+      const minY = (menuPos.buttonTop || 0) - padding;
+      const maxY = menuPos.top + menuHeight + padding;
+      
+      const inSafeZone = 
+        currentMouse.x >= minX && 
+        currentMouse.x <= maxX &&
+        currentMouse.y >= minY && 
+        currentMouse.y <= maxY;
+      
+      return inSafeZone;
+    }
+  };
+
+  // 🚀 彻底修复：菜单紧贴按钮，桥接区域无缝连接
   const calculateMenuPosition = (buttonElement, menuId) => {
     if (!buttonElement) return {};
 
     const buttonRect = buttonElement.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const menuHeight = 200; // 估算菜单高度
-    const menuWidth = 192; // 估算菜单宽度 (w-48)
+    const viewportWidth = window.innerWidth;
+    const menuHeight = 100; // 归档菜单只有2个选项，高度更小
+    const menuWidth = 140; // 菜单实际宽度
 
-    // 默认位置：按钮右下角
-    let top = buttonRect.bottom + 4;
+    let position = {
+      buttonTop: buttonRect.top,
+      buttonBottom: buttonRect.bottom,
+      buttonLeft: buttonRect.left,
+      buttonRight: buttonRect.right,
+      buttonWidth: buttonRect.width,
+      buttonHeight: buttonRect.height,
+    };
+
+    // 🎯 让菜单紧贴按钮，稍微重叠2px以确保无缝连接
+    let top = buttonRect.bottom + 2;  // 紧贴按钮底部，稍微偏移2px
     let left = buttonRect.right - menuWidth;
+    let showAbove = false;
 
     // 检查是否超出底部
-    if (top + menuHeight > viewportHeight) {
-      // 向上显示
-      top = buttonRect.top - menuHeight - 4;
+    if (top + menuHeight > viewportHeight - 8) {
+      // 向上显示，紧贴按钮顶部
+      top = buttonRect.top - menuHeight - 2;
+      showAbove = true;
     }
 
-    // 检查是否超出左边
+    // 确保不超出左边
     if (left < 8) {
       left = 8;
     }
 
-    // 检查是否超出右边
-    if (left + menuWidth > window.innerWidth - 8) {
-      left = window.innerWidth - menuWidth - 8;
+    // 确保不超出右边
+    if (left + menuWidth > viewportWidth - 8) {
+      left = viewportWidth - menuWidth - 8;
     }
 
-    return { top, left };
+    const result = { 
+      top, 
+      left, 
+      showAbove,
+      ...position 
+    };
+
+    console.log('🔍 菜单位置计算:', {
+      memoId: menuId,
+      按钮位置: { top: buttonRect.top, bottom: buttonRect.bottom, left: buttonRect.left, right: buttonRect.right },
+      菜单位置: { top, left },
+      桥接区域高度: showAbove ? buttonRect.top - (top + menuHeight) : top - buttonRect.bottom,
+      showAbove
+    });
+
+    return result;
   };
 
   // 悬停处理函数
-  const handleMenuHover = (memoId) => {
-    // 清除之前的定时器
+  const handleMenuHover = (memoId, event) => {
+    console.log('🎯 鼠标进入按钮区域，显示菜单');
+    
+    // 立即更新鼠标位置
+    if (event) {
+      currentMousePositionRef.current = { x: event.clientX, y: event.clientY };
+      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+    }
+    
+    // 清除之前的定时器和检查interval
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
+    }
+    if (safeZoneCheckIntervalRef.current) {
+      clearInterval(safeZoneCheckIntervalRef.current);
     }
     
     // 立即计算菜单位置并设置
@@ -98,23 +219,80 @@ const MemoList = ({
     // 记录鼠标位置
     if (event) {
       lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+      currentMousePositionRef.current = { x: event.clientX, y: event.clientY };
     }
     
-    // 设置延迟关闭菜单
+    // 清除之前的定时器和检查
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+    }
+    if (safeZoneCheckIntervalRef.current) {
+      clearInterval(safeZoneCheckIntervalRef.current);
+    }
+    
+    // ⚡ 关键优化：先等待 150ms，让鼠标位置稳定下来
+    // 避免鼠标在按钮上小幅移动时误触发关闭
     hoverTimerRef.current = setTimeout(() => {
-      setHoverMenuId(null);
-      setMenuPosition({}); // 清空菜单位置
-      // 检查 activeMenuId 是否存在，如果存在则关闭菜单
-      if (activeMenuId) {
-        onMenuButtonClick(activeMenuId);
+      // 延迟后再检查鼠标是否真的离开了安全区域
+      const currentPos = currentMousePositionRef.current;
+      const stillInSafeZone = isMouseMovingTowardsMenu(currentPos, menuPosition);
+      
+      if (stillInSafeZone) {
+        // 鼠标还在安全区域内，不做任何处理
+        console.log('🔍 鼠标还在安全区域内，保持菜单打开');
+        return;
       }
-    }, 300); // 增加到300ms延迟，提供更好的容错
+      
+      // 🚀 鼠标已离开安全区域，启动持续检查
+      let checkCount = 0;
+      const maxChecks = 4; // 最多检查 4 次（400ms）
+      
+      safeZoneCheckIntervalRef.current = setInterval(() => {
+        checkCount++;
+        
+        const isInSafeZone = isMouseMovingTowardsMenu(
+          currentMousePositionRef.current, 
+          menuPosition
+        );
+        
+        console.log(`🔍 安全区域检查 ${checkCount}/${maxChecks}:`, isInSafeZone);
+        
+        // 如果鼠标回到安全区域，停止检查
+        if (isInSafeZone) {
+          console.log('✅ 鼠标回到安全区域');
+          if (safeZoneCheckIntervalRef.current) {
+            clearInterval(safeZoneCheckIntervalRef.current);
+          }
+          return;
+        }
+        
+        // 如果鼠标持续不在安全区域，或者已经检查了足够次数，关闭菜单
+        if (!isInSafeZone && checkCount >= maxChecks) {
+          console.log('❌ 鼠标离开，关闭菜单');
+          if (safeZoneCheckIntervalRef.current) {
+            clearInterval(safeZoneCheckIntervalRef.current);
+          }
+          
+          setHoverMenuId(null);
+          setMenuPosition({});
+          if (activeMenuId) {
+            onMenuButtonClick(activeMenuId);
+          }
+        }
+        
+        // 更新上一次鼠标位置
+        lastMousePositionRef.current = { ...currentMousePositionRef.current };
+      }, 100);
+    }, 150); // 初始延迟 150ms
   };
 
   const handleMenuEnter = () => {
-    // 鼠标进入菜单时取消关闭定时器
+    // 鼠标进入菜单时取消关闭定时器和检查interval
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
+    }
+    if (safeZoneCheckIntervalRef.current) {
+      clearInterval(safeZoneCheckIntervalRef.current);
     }
   };
 
@@ -127,11 +305,29 @@ const MemoList = ({
     }
   }, [activeMenuId, menuPosition]);
 
-  // 清理定时器
+  // 🎯 全局鼠标移动监听器 - 实时跟踪鼠标位置
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      currentMousePositionRef.current = { x: e.clientX, y: e.clientY };
+    };
+    
+    // 只在菜单打开时添加监听器，优化性能
+    if (activeMenuId) {
+      document.addEventListener('mousemove', handleMouseMove);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+      };
+    }
+  }, [activeMenuId]);
+
+  // 清理定时器和interval
   useEffect(() => {
     return () => {
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
+      }
+      if (safeZoneCheckIntervalRef.current) {
+        clearInterval(safeZoneCheckIntervalRef.current);
       }
     };
   }, []);
@@ -204,7 +400,7 @@ const MemoList = ({
                         {/* 归档备忘录菜单按钮 */}
                         <div 
                           className="relative flex-shrink-0"
-                          onMouseEnter={() => handleMenuHover(memo.id)}
+                          onMouseEnter={(e) => handleMenuHover(memo.id, e)}
                           onMouseLeave={handleMenuLeave}
                         >
                           <div
@@ -219,19 +415,29 @@ const MemoList = ({
                           {/* 归档备忘录菜单面板 */}
                           {activeMenuId === memo.id && (
                             <>
-                              {/* 不可见桥接区域 - 归档菜单 */}
+                              {/* 🚀 彻底修复：无缝桥接区域，从按钮到菜单 */}
                               <div
                                 className="fixed"
                                 style={{
-                                  top: menuPosition.top ? `${menuPosition.top - 20}px` : 'auto',
-                                  left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                                  width: '120px', // 与归档菜单宽度一致
-                                  height: menuPosition.top ? '20px' : '0px', // 桥接区域高度
-                                  zIndex: 49, // 比菜单稍低
-                                  backgroundColor: 'transparent'
+                                  top: menuPosition.showAbove 
+                                    ? `${menuPosition.top + 100}px`  // 向上显示时，桥接区域从菜单底部到按钮顶部
+                                    : `${menuPosition.buttonBottom}px`,  // 向下显示时，桥接区域从按钮底部到菜单顶部
+                                  left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                                  width: Math.max(
+                                    (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                                    140
+                                  ),
+                                  height: menuPosition.showAbove
+                                    ? `${(menuPosition.buttonTop || 0) - (menuPosition.top || 0) - 100 + 4}px`  // 向上显示的桥接高度
+                                    : `${Math.max(0, (menuPosition.top || 0) - (menuPosition.buttonBottom || 0))}px`,  // 向下显示的桥接高度
+                                  zIndex: 49,
+                                  backgroundColor: DEBUG_BRIDGE ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
+                                  border: DEBUG_BRIDGE ? '1px solid red' : 'none',
+                                  pointerEvents: 'auto'
                                 }}
                                 onMouseEnter={handleMenuEnter}
                                 onMouseLeave={handleMenuLeave}
+                                title={DEBUG_BRIDGE ? '桥接区域（调试可见）' : undefined}
                               />
                               
                               {/* 菜单面板 */}
@@ -338,7 +544,7 @@ const MemoList = ({
                       {/* 菜单按钮 */}
                       <div 
                         className="relative flex-shrink-0"
-                        onMouseEnter={() => handleMenuHover(memo.id)}
+                        onMouseEnter={(e) => handleMenuHover(memo.id, e)}
                         onMouseLeave={handleMenuLeave}
                       >
                         <div
@@ -355,19 +561,25 @@ const MemoList = ({
                         {/* 菜单面板 - 置顶备忘录专用 */}
                         {activeMenuId === memo.id && (
                           <>
-                            {/* 不可见桥接区域 - 置顶菜单 */}
+                            {/* 🚀 彻底修复：无缝桥接区域，从按钮到菜单 - 置顶菜单 */}
                             <div
                               className="fixed"
                               style={{
-                                top: menuPosition.top ? `${menuPosition.top - 30}px` : 'auto',
-                                left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                                width: '160px', // 增加宽度以匹配菜单
-                                height: menuPosition.top ? '30px' : '0px', // 增加桥接区域高度
-                                zIndex: 49, // 比菜单稍低
-                                backgroundColor: 'transparent'
+                                top: menuPosition.buttonBottom ? `${menuPosition.buttonBottom}px` : 'auto',
+                                left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                                width: Math.max(
+                                  (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                                  160
+                                ),
+                                height: menuPosition.top ? `${menuPosition.top - (menuPosition.buttonBottom || 0)}px` : '0px',
+                                zIndex: 49,
+                                backgroundColor: DEBUG_BRIDGE ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
+                                border: DEBUG_BRIDGE ? '1px solid red' : 'none',
+                                pointerEvents: 'auto'
                               }}
                               onMouseEnter={handleMenuEnter}
                               onMouseLeave={handleMenuLeave}
+                              title={DEBUG_BRIDGE ? '桥接区域（调试可见）' : undefined}
                             />
                             
                             {/* 菜单面板 */}
@@ -481,7 +693,7 @@ const MemoList = ({
                     <div
                       className="absolute top-3 right-3"
                       ref={(el) => menuRefs.current[memo.id] = el}
-                      onMouseEnter={() => handleMenuHover(memo.id)}
+                      onMouseEnter={(e) => handleMenuHover(memo.id, e)}
                       onMouseLeave={handleMenuLeave}
                     >
                       <div
@@ -494,19 +706,25 @@ const MemoList = ({
                       {/* 菜单面板容器 - 包含桥接区域 */}
                       {activeMenuId === memo.id && (
                         <>
-                          {/* 不可见桥接区域 */}
+                          {/* 🚀 彻底修复：无缝桥接区域，从按钮到菜单 - 普通菜单 */}
                           <div
                             className="fixed"
                             style={{
-                              top: menuPosition.top ? `${menuPosition.top - 30}px` : 'auto',
-                              left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                              width: '192px', // 与菜单宽度一致
-                              height: menuPosition.top ? '30px' : '0px', // 增加桥接区域高度
-                              zIndex: 49, // 比菜单稍低
-                              backgroundColor: 'transparent'
+                              top: menuPosition.buttonBottom ? `${menuPosition.buttonBottom}px` : 'auto',
+                              left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                              width: Math.max(
+                                (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                                192
+                              ),
+                              height: menuPosition.top ? `${menuPosition.top - (menuPosition.buttonBottom || 0)}px` : '0px',
+                              zIndex: 49,
+                              backgroundColor: DEBUG_BRIDGE ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
+                              border: DEBUG_BRIDGE ? '1px solid red' : 'none',
+                              pointerEvents: 'auto'
                             }}
                             onMouseEnter={handleMenuEnter}
                             onMouseLeave={handleMenuLeave}
+                            title={DEBUG_BRIDGE ? '桥接区域（调试可见）' : undefined}
                           />
                           
                           {/* 菜单面板 */}

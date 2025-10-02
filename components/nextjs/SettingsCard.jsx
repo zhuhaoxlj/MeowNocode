@@ -3,15 +3,15 @@
  * 移除了依赖 Node.js fs 模块的功能
  */
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
+import { Card, CardContent, CardHeader, CardTitle } from '../../src/components/ui/card';
+import { Button } from '../../src/components/ui/button';
+import { Input } from '../../src/components/ui/input';
+import { Label } from '../../src/components/ui/label';
+import { Slider } from '../../src/components/ui/slider';
 import { X, Settings, ChevronDown, ChevronUp, Check, Music2, Type, Quote, Bot, Keyboard, Github, Star, Cloud, Database, Download, Upload } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
-import { useSettings } from '@/context/SettingsContext';
-import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useSettings } from '../../src/context/SettingsContext';
+import { useAuth } from '../../src/context/AuthContext';
 import { toast } from 'sonner';
 import WorkingMemosImport from './WorkingMemosImport';
 import ClearAllDataButton from './ClearAllDataButton';
