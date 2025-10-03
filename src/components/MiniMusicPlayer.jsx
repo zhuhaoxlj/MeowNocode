@@ -149,7 +149,14 @@ export default function MiniMusicPlayer({
   }, [isPlaying]);
 
   React.useEffect(() => {
+    let isPlayingLocally = false;
+    
     const onPauseOthers = () => {
+      // 如果是本地发起的播放，不要暂停自己
+      if (isPlayingLocally) {
+        isPlayingLocally = false;
+        return;
+      }
       if (audioRef.current) audioRef.current.pause();
       setPlayingState(false);
     };
@@ -163,6 +170,7 @@ export default function MiniMusicPlayer({
     };
     const onPlayCmd = () => {
       if (!audioRef.current) return;
+      isPlayingLocally = true;
       try { window.dispatchEvent(new CustomEvent('music:pause-others')); } catch {}
       audioRef.current.play();
       setPlayingState(true);
