@@ -45,7 +45,7 @@ const MemoList = ({
   const currentMousePositionRef = useRef({ x: 0, y: 0 });
   const safeZoneCheckIntervalRef = useRef(null);
   
-  // 🐛 调试模式：设置为 true 可以看到桥接区域（红色半透明）
+  // 🐛 调试模式：设置为 true 可以看到桥接区域（绿色半透明）
   const DEBUG_BRIDGE = false;
 
   // ✨ Amazon 风格的三角形安全区域检测
@@ -73,7 +73,7 @@ const MemoList = ({
     
     const menuWidth = 140;
     const menuHeight = 100;
-    const padding = 30; // 增加更大的容错空间，避免误判
+    const padding = 10; // 合理的容错空间
     
     // 1. 首先检查鼠标是否已经在菜单区域内或非常接近
     const inMenuArea = 
@@ -96,19 +96,16 @@ const MemoList = ({
     
     // 3. 检查鼠标是否在按钮和菜单之间的矩形安全区域内
     if (menuPos.showAbove) {
-      // 菜单在按钮上方
+      // 菜单在按钮上方：安全区域应该覆盖从菜单顶部到按钮底部
       const minX = Math.min(menuPos.buttonLeft || 0, menuPos.left) - padding;
       const maxX = Math.max(menuPos.buttonRight || 0, menuPos.left + menuWidth) + padding;
       const minY = menuPos.top - padding;
       const maxY = (menuPos.buttonBottom || 0) + padding;
       
-      const inSafeZone = 
-        currentMouse.x >= minX && 
+      return currentMouse.x >= minX && 
         currentMouse.x <= maxX &&
         currentMouse.y >= minY && 
         currentMouse.y <= maxY;
-      
-      return inSafeZone;
     } else {
       // 菜单在按钮下方
       const minX = Math.min(menuPos.buttonLeft || 0, menuPos.left) - padding;
@@ -116,13 +113,10 @@ const MemoList = ({
       const minY = (menuPos.buttonTop || 0) - padding;
       const maxY = menuPos.top + menuHeight + padding;
       
-      const inSafeZone = 
-        currentMouse.x >= minX && 
+      return currentMouse.x >= minX && 
         currentMouse.x <= maxX &&
         currentMouse.y >= minY && 
         currentMouse.y <= maxY;
-      
-      return inSafeZone;
     }
   };
 
@@ -145,15 +139,16 @@ const MemoList = ({
       buttonHeight: buttonRect.height,
     };
 
-    // 🎯 让菜单紧贴按钮，稍微重叠2px以确保无缝连接
+    // 🎯 让菜单在按钮正下方（或正上方）居中显示
     let top = buttonRect.bottom + 2;  // 紧贴按钮底部，稍微偏移2px
-    let left = buttonRect.right - menuWidth;
+    // 让菜单居中对齐按钮
+    let left = buttonRect.left + (buttonRect.width / 2) - (menuWidth / 2);
     let showAbove = false;
 
     // 检查是否超出底部
     if (top + menuHeight > viewportHeight - 8) {
-      // 向上显示，紧贴按钮顶部
-      top = buttonRect.top - menuHeight - 2;
+      // 向上显示，紧贴按钮顶部（使用更小的间距确保连接）
+      top = buttonRect.top - menuHeight + 2;  // 向上显示时也要保持小间距
       showAbove = true;
     }
 
@@ -187,8 +182,6 @@ const MemoList = ({
 
   // 悬停处理函数
   const handleMenuHover = (memoId, event) => {
-    console.log('🎯 鼠标进入按钮区域，显示菜单');
-    
     // 立即更新鼠标位置
     if (event) {
       currentMousePositionRef.current = { x: event.clientX, y: event.clientY };
@@ -230,10 +223,9 @@ const MemoList = ({
       clearInterval(safeZoneCheckIntervalRef.current);
     }
     
-    // ⚡ 关键优化：先等待 150ms，让鼠标位置稳定下来
-    // 避免鼠标在按钮上小幅移动时误触发关闭
+    // ⚡ 快速响应：短暂延迟后立即检查并关闭
     hoverTimerRef.current = setTimeout(() => {
-      // 延迟后再检查鼠标是否真的离开了安全区域
+      // 检查鼠标是否真的离开了安全区域
       const currentPos = currentMousePositionRef.current;
       const stillInSafeZone = isMouseMovingTowardsMenu(currentPos, menuPosition);
       
@@ -243,9 +235,9 @@ const MemoList = ({
         return;
       }
       
-      // 🚀 鼠标已离开安全区域，启动持续检查
+      // 🚀 鼠标已离开安全区域，快速检查后关闭
       let checkCount = 0;
-      const maxChecks = 4; // 最多检查 4 次（400ms）
+      const maxChecks = 2; // 最多检查 2 次（100ms）
       
       safeZoneCheckIntervalRef.current = setInterval(() => {
         checkCount++;
@@ -282,8 +274,8 @@ const MemoList = ({
         
         // 更新上一次鼠标位置
         lastMousePositionRef.current = { ...currentMousePositionRef.current };
-      }, 100);
-    }, 150); // 初始延迟 150ms
+      }, 50);
+    }, 100); // 初始延迟 100ms
   };
 
   const handleMenuEnter = () => {
@@ -415,29 +407,30 @@ const MemoList = ({
                           {/* 归档备忘录菜单面板 */}
                           {activeMenuId === memo.id && (
                             <>
-                              {/* 🚀 彻底修复：无缝桥接区域，从按钮到菜单 */}
+                              {/* 🚀 彻底修复：扩大桥接区域，完全覆盖按钮到菜单的区域 */}
                               <div
                                 className="fixed"
                                 style={{
+                                  // 扩大桥接区域，向上和向下都包含按钮和菜单
                                   top: menuPosition.showAbove 
-                                    ? `${menuPosition.top + 100}px`  // 向上显示时，桥接区域从菜单底部到按钮顶部
-                                    : `${menuPosition.buttonBottom}px`,  // 向下显示时，桥接区域从按钮底部到菜单顶部
-                                  left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
+                                    ? `${menuPosition.top}px`  // 向上：从菜单顶部开始
+                                    : `${menuPosition.buttonTop}px`,  // 向下：从按钮顶部开始（而不是底部）
+                                  left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0) - 30,
                                   width: Math.max(
                                     (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
                                     140
-                                  ),
+                                  ) + 60,  // 左右各扩展 30px
                                   height: menuPosition.showAbove
-                                    ? `${(menuPosition.buttonTop || 0) - (menuPosition.top || 0) - 100 + 4}px`  // 向上显示的桥接高度
-                                    : `${Math.max(0, (menuPosition.top || 0) - (menuPosition.buttonBottom || 0))}px`,  // 向下显示的桥接高度
+                                    ? `${Math.max(0, (menuPosition.buttonBottom || 0) - (menuPosition.top || 0))}px`  // 向上：从菜单顶部到按钮底部
+                                    : `${Math.max(0, (menuPosition.top || 0) + 100 - (menuPosition.buttonTop || 0))}px`,  // 向下：从按钮顶部到菜单底部
                                   zIndex: 49,
-                                  backgroundColor: DEBUG_BRIDGE ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
-                                  border: DEBUG_BRIDGE ? '1px solid red' : 'none',
+                                  backgroundColor: DEBUG_BRIDGE ? 'rgba(0, 255, 0, 0.3)' : 'transparent',
+                                  border: DEBUG_BRIDGE ? '2px solid green' : 'none',
                                   pointerEvents: 'auto'
                                 }}
                                 onMouseEnter={handleMenuEnter}
                                 onMouseLeave={handleMenuLeave}
-                                title={DEBUG_BRIDGE ? '桥接区域（调试可见）' : undefined}
+                                title={DEBUG_BRIDGE ? `桥接区域 (${menuPosition.showAbove ? '向上' : '向下'})` : undefined}
                               />
                               
                               {/* 菜单面板 */}
@@ -452,14 +445,60 @@ const MemoList = ({
                                 onMouseLeave={handleMenuLeave}
                               >
                               <button
-                                onClick={(e) => onMenuAction(e, memo.id, 'unarchive')}
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('🔵 点击取消归档:', memo.id);
+                                  
+                                  // 清除所有定时器和检查
+                                  if (hoverTimerRef.current) {
+                                    clearTimeout(hoverTimerRef.current);
+                                  }
+                                  if (safeZoneCheckIntervalRef.current) {
+                                    clearInterval(safeZoneCheckIntervalRef.current);
+                                  }
+                                  
+                                  // 执行操作（onMenuAction 会处理菜单关闭）
+                                  await onMenuAction(e, memo.id, 'unarchive');
+                                  
+                                  // 清理本地菜单状态
+                                  setHoverMenuId(null);
+                                  setMenuPosition({});
+                                }}
+                                onMouseDown={(e) => {
+                                  // 阻止 mousedown 事件触发 mouseleave
+                                  e.stopPropagation();
+                                }}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                               >
                                 <span>📤</span>
                                 <span className="truncate">取消归档</span>
                               </button>
                               <button
-                                onClick={(e) => onMenuAction(e, memo.id, 'delete')}
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('🔴 点击删除:', memo.id);
+                                  
+                                  // 清除所有定时器和检查
+                                  if (hoverTimerRef.current) {
+                                    clearTimeout(hoverTimerRef.current);
+                                  }
+                                  if (safeZoneCheckIntervalRef.current) {
+                                    clearInterval(safeZoneCheckIntervalRef.current);
+                                  }
+                                  
+                                  // 执行操作（onMenuAction 会处理菜单关闭）
+                                  await onMenuAction(e, memo.id, 'delete');
+                                  
+                                  // 清理本地菜单状态
+                                  setHoverMenuId(null);
+                                  setMenuPosition({});
+                                }}
+                                onMouseDown={(e) => {
+                                  // 阻止 mousedown 事件触发 mouseleave
+                                  e.stopPropagation();
+                                }}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 flex items-center space-x-2"
                               >
                                 <span>🗑️</span>

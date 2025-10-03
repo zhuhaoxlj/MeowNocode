@@ -347,13 +347,21 @@ export default function CompleteMemoApp() {
     e?.stopPropagation();
     
     try {
-      const memo = [...memos, ...pinnedMemos].find(m => m.id === memoId);
-      if (!memo) return;
+      // 从所有备忘录（包括归档的）中查找
+      const memo = [...memos, ...pinnedMemos, ...archivedMemos].find(m => m.id === memoId);
+      if (!memo) {
+        console.error('❌ 找不到备忘录:', memoId);
+        return;
+      }
       
       switch (action) {
         case 'delete':
           await dataService.deleteMemo(memoId);
           await loadMemos();
+          // 如果删除的是归档备忘录，也需要刷新归档列表
+          if (memo.archived) {
+            await loadArchivedMemos();
+          }
           toast.success('备忘录已删除');
           break;
         case 'pin':
