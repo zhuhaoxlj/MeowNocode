@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Header from '@/components/Header';
 import MemoInput from '@/components/MemoInput';
 import MemoList from '@/components/MemoList';
+import MusicSearchCard from '@/components/MusicSearchCard';
 import { useTheme } from '@/context/ThemeContext';
 
 // 🚀 使用 React.memo 优化，避免不必要的重渲染
@@ -65,6 +66,16 @@ const MainContent = React.memo(({
   onRemoveBacklink
 }) => {
   const { themeColor } = useTheme();
+  
+  // 音乐搜索状态
+  const [musicSearchOpen, setMusicSearchOpen] = useState(false);
+  const [musicSearchKeyword, setMusicSearchKeyword] = useState('');
+
+  // 处理音乐搜索打开
+  const handleOpenMusicSearch = (query) => {
+    setMusicSearchKeyword(query);
+    setMusicSearchOpen(true);
+  };
 
   // 调试信息 - 检查 MainContent 收到的 props 
   // console.log('🐛 MainContent Debug - Archive Props:', { 
@@ -93,7 +104,7 @@ const MainContent = React.memo(({
           setSearchQuery={setSearchQuery}
           searchInputRef={searchInputRef}
           onMobileMenuOpen={onMobileMenuOpen}
-          onOpenMusicSearch={onOpenMusicSearch}
+          onOpenMusicSearch={handleOpenMusicSearch}
           // 归档相关
           showArchived={showArchived}
           setShowArchived={setShowArchived}
@@ -147,6 +158,15 @@ const MainContent = React.memo(({
   onPreviewMemo={onPreviewMemo}
   onRemoveBacklink={onRemoveBacklink}
       />
+      
+      {/* 音乐搜索卡片 */}
+      {musicEnabled && (
+        <MusicSearchCard
+          open={musicSearchOpen}
+          keyword={musicSearchKeyword}
+          onClose={() => setMusicSearchOpen(false)}
+        />
+      )}
     </div>
   );
 });
