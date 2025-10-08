@@ -89,53 +89,132 @@ const NextJsSettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
     updateHitokotoConfig({ types: newTypes });
   };
 
-  const handleExportLocalData = () => {
-    const data = {
-      memos: localStorage.getItem('memos') || '[]',
-      pinnedMemos: localStorage.getItem('pinnedMemos') || '[]',
-      themeColor: localStorage.getItem('themeColor') || '#818CF8',
-      darkMode: localStorage.getItem('darkMode') || 'false',
-      hitokotoConfig: localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}',
-      fontConfig: localStorage.getItem('fontConfig') || '{"selectedFont":"default"}',
-      backgroundConfig: localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'
-    };
+  const handleExportLocalData = async () => {
+    try {
+      // 从数据库获取所有 memos（包括归档的）
+      const response = await fetch('/api/memos');
+      if (!response.ok) {
+        throw new Error('获取数据失败');
+      }
+      const result = await response.json();
+      const allMemos = result.memos || [];
+      
+      // 获取归档的 memos
+      const archivedResponse = await fetch('/api/memos/archived');
+      const archivedResult = await archivedResponse.json();
+      const archivedMemos = archivedResult.data || [];
+      
+      // 合并所有数据
+      const data = {
+        memos: [...allMemos, ...archivedMemos],
+        exportDate: new Date().toISOString(),
+        totalCount: allMemos.length + archivedMemos.length,
+        // 同时也导出设置数据
+        settings: {
+          themeColor: localStorage.getItem('themeColor') || '#818CF8',
+          darkMode: localStorage.getItem('darkMode') || 'false',
+          hitokotoConfig: localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}',
+          fontConfig: localStorage.getItem('fontConfig') || '{"selectedFont":"default"}',
+          backgroundConfig: localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'
+        }
+      };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `meow-app-data-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `meow-app-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    toast.success('本地数据导出成功');
+      toast.success(`数据导出成功！共导出 ${data.totalCount} 条备忘录`);
+    } catch (error) {
+      console.error('导出数据失败:', error);
+      toast.error('导出数据失败: ' + error.message);
+    }
   };
 
-  const handleImportLocalData = (e) => {
+  const handleImportLocalData = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target.result);
         
-        if (data.memos && data.pinnedMemos) {
-          localStorage.setItem('memos', data.memos);
-          localStorage.setItem('pinnedMemos', data.pinnedMemos);
+        // 检查新格式（包含 memos 数组）或旧格式（包含 memos 和 pinnedMemos 字符串）
+        let memosToImport = [];
+        
+        if (Array.isArray(data.memos)) {
+          // 新格式：直接使用 memos 数组
+          memosToImport = data.memos;
+        } else if (data.memos && data.pinnedMemos) {
+          // 旧格式：从 localStorage 字符串解析
+          const regularMemos = JSON.parse(data.memos);
+          const pinnedMemos = JSON.parse(data.pinnedMemos);
+          memosToImport = [...regularMemos, ...pinnedMemos];
+        } else {
+          toast.error('导入文件格式不正确，需要包含 memos 数据');
+          return;
+        }
+        
+        // 导入 memos 到数据库
+        let successCount = 0;
+        let failCount = 0;
+        
+        toast.info(`开始导入 ${memosToImport.length} 条备忘录...`);
+        
+        for (const memo of memosToImport) {
+          try {
+            // 使用 API 创建每条 memo
+            await fetch('/api/memos', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                content: memo.content,
+                tags: memo.tags || '',
+                visibility: memo.visibility || 'private',
+                pinned: memo.pinned || false,
+                archived: memo.archived || false,
+                // 保留原始时间戳（如果有）
+                created_ts: memo.created_ts || memo.timestamp || Date.now(),
+              }),
+            });
+            successCount++;
+          } catch (error) {
+            console.error('导入备忘录失败:', error);
+            failCount++;
+          }
+        }
+        
+        // 导入设置（如果有）
+        if (data.settings) {
+          const settings = data.settings;
+          if (settings.themeColor) localStorage.setItem('themeColor', settings.themeColor);
+          if (settings.darkMode) localStorage.setItem('darkMode', settings.darkMode);
+          if (settings.hitokotoConfig) localStorage.setItem('hitokotoConfig', settings.hitokotoConfig);
+          if (settings.fontConfig) localStorage.setItem('fontConfig', settings.fontConfig);
+          if (settings.backgroundConfig) localStorage.setItem('backgroundConfig', settings.backgroundConfig);
+        } else if (data.themeColor) {
+          // 兼容旧格式的设置
           localStorage.setItem('themeColor', data.themeColor || '#818CF8');
           localStorage.setItem('darkMode', data.darkMode || 'false');
           localStorage.setItem('hitokotoConfig', data.hitokotoConfig || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}');
           localStorage.setItem('fontConfig', data.fontConfig || '{"selectedFont":"default"}');
           localStorage.setItem('backgroundConfig', data.backgroundConfig || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}');
-          
-          toast.success('本地数据导入成功，请刷新页面查看');
-        } else {
-          toast.error('导入文件格式不正确');
         }
+        
+        toast.success(`数据导入完成！成功: ${successCount} 条，失败: ${failCount} 条。请刷新页面查看。`);
+        
+        // 重置文件输入
+        e.target.value = '';
       } catch (error) {
+        console.error('解析文件失败:', error);
         toast.error('解析文件失败: ' + error.message);
       }
     };
