@@ -162,52 +162,63 @@ export default function CompleteMemoApp() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // 初始化应用
+  // 初始化应用（只在认证后执行一次）
   useEffect(() => {
+    let isSubscribed = true;
+    
     const initApp = async () => {
       try {
-        await loadMemos();
-        await loadArchivedMemos();
-        setIsAppLoaded(true);
-        setTimeout(() => setIsInitialLoad(false), 100);
+        console.log('🚀 开始初始化应用...');
+        await Promise.all([
+          loadMemos(),
+          loadArchivedMemos()
+        ]);
+        
+        if (isSubscribed) {
+          setIsAppLoaded(true);
+          setTimeout(() => setIsInitialLoad(false), 100);
+          console.log('✅ 应用初始化完成');
+        }
       } catch (error) {
-        console.error('应用初始化失败:', error);
-        toast.error('应用初始化失败');
+        console.error('❌ 应用初始化失败:', error);
+        if (isSubscribed) {
+          toast.error('应用初始化失败');
+        }
       }
     };
     
-    if (isAuthenticated) {
+    if (isAuthenticated && !isAppLoaded) {
       initApp();
     }
-  }, [isAuthenticated]);
+    
+    return () => {
+      isSubscribed = false;
+    };
+  }, [isAuthenticated]); // 只依赖 isAuthenticated
 
   // 当 refreshTrigger 变化时重新加载数据
   useEffect(() => {
-    if (refreshTrigger > 0 && isAuthenticated) {
-      loadMemos();
+    if (refreshTrigger > 0 && isAuthenticated && isAppLoaded) {
+      console.log(`🔄 触发数据刷新 (trigger: ${refreshTrigger})`);
+      Promise.all([
+        loadMemos(),
+        loadArchivedMemos()
+      ]);
     }
-  }, [refreshTrigger, isAuthenticated]);
+  }, [refreshTrigger]);
 
-  // 当 memos 数据变化时重新加载归档数据
-  useEffect(() => {
-    if (memos.length > 0) {
-      // console.log('🐛 CompleteMemoApp Memos data changed, reloading archived memos...');
-      loadArchivedMemos();
-    }
-  }, [memos.length]);
-
-  // 加载数据
+  // 加载数据（添加性能日志）
   const loadMemos = async () => {
+    const startTime = Date.now();
     try {
+      console.log('📥 开始加载备忘录...');
       const memosData = await dataService.getAllMemos();
+      const loadTime = Date.now() - startTime;
+      console.log(`✅ 备忘录加载完成，耗时 ${loadTime}ms，共 ${memosData.length} 条`);
+      
       // 过滤掉已归档的备忘录
       const regular = memosData.filter(m => !m.pinned && !m.archived);
       const pinned = memosData.filter(m => m.pinned && !m.archived);
-      
-    // console.log('🔍 DEBUG: 原始数据 memosData:', memosData.length, memosData);
-    // console.log('🔍 DEBUG: 分离后的regular备忘录:', regular.length, regular);
-    // console.log('🔍 DEBUG: 分离后的pinned备忘录:', pinned.length, pinned);
-    // console.log('🔍 DEBUG: 过滤掉的归档备忘录:', memosData.filter(m => m.archived).length, memosData.filter(m => m.archived));
       
       setMemos(regular);
       setPinnedMemos(pinned);
@@ -216,20 +227,22 @@ export default function CompleteMemoApp() {
       // 生成热力图数据
       generateHeatmapData(memosData);
     } catch (error) {
-      console.error('加载备忘录失败:', error);
+      console.error('❌ 加载备忘录失败:', error);
       toast.error('加载备忘录失败');
     }
   };
 
-  // 加载归档的 memos
+  // 加载归档的 memos（添加性能日志）
   const loadArchivedMemos = async () => {
+    const startTime = Date.now();
     try {
-      // console.log('🐛 CompleteMemoApp - 开始加载归档 memos...');
+      console.log('📥 开始加载归档备忘录...');
       const response = await fetch('/api/memos/archived');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const result = await response.json();
+      const loadTime = Date.now() - startTime;
       
       const normalizedArchivedMemos = result.data.map(memo => ({
         id: memo.id,
@@ -243,9 +256,9 @@ export default function CompleteMemoApp() {
         archived: true
       }));
       setArchivedMemos(normalizedArchivedMemos);
-        // console.log(`🐛 CompleteMemoApp - 设置了 ${normalizedArchivedMemos.length} 条归档备忘录`);
+      console.log(`✅ 归档备忘录加载完成，耗时 ${loadTime}ms，共 ${normalizedArchivedMemos.length} 条`);
     } catch (error) {
-        // console.error('🐛 CompleteMemoApp - 获取归档备忘录失败:', error);
+      console.error('❌ 获取归档备忘录失败:', error);
       toast.error('获取归档备忘录失败');
     }
   };
