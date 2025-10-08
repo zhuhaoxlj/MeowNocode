@@ -214,7 +214,7 @@ export default function Demo() {
         <ol style={{ margin: '0', color: '#166534' }}>
           <li>在当前浏览器中添加一条备忘录</li>
           <li>打开另一个浏览器（如 Chrome、Firefox、Safari）</li>
-          <li>访问相同的地址: <code>http://localhost:3001/demo</code></li>
+          <li>访问相同的地址: <code>http://localhost:8081/demo</code></li>
           <li>🎉 神奇的时刻：你会看到刚才添加的备忘录！</li>
         </ol>
       </div>

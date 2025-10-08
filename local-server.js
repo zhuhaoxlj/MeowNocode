@@ -12,7 +12,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3001;
+const PORT = 8081;
 
 // 数据存储目录
 const DATA_DIR = path.join(__dirname, 'local-data');

@@ -136,7 +136,7 @@ console.log('1. 🚀 启动 Next.js 开发服务器:');
 console.log('   npm run dev');
 console.log('');
 console.log('2. 📱 访问新版本:');
-console.log('   http://localhost:3001');
+console.log('   http://localhost:8081');
 console.log('');
 console.log('3. 🔄 迁移现有数据 (可选):');
 console.log('   npm run migrate:data');
@@ -184,7 +184,7 @@ import '../src/index.css';
 export default function App({ Component, pageProps }) {
   useEffect(() => {
     console.log('🚀 MeowNocode Next.js 完整版已启动');
-    console.log('🌐 API 基础地址: http://localhost:3001/api');
+    console.log('🌐 API 基础地址: http://localhost:8081/api');
   }, []);
 
   return <Component {...pageProps} />;

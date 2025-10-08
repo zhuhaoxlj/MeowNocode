@@ -4,9 +4,9 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 8081",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -p 8081",
     "lint": "next lint",
     "export": "next export",
     "db:init": "node scripts/init-db.js",
