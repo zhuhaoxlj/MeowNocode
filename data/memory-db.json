@@ -386,9 +386,9 @@
       "tags": "",
       "visibility": "private",
       "pinned": true,
-      "archived": false,
+      "archived": true,
       "created_ts": "2025-08-28T08:37:43.000Z",
-      "updated_ts": "2025-09-21T19:08:25.573Z"
+      "updated_ts": "2025-10-04T13:59:27.415Z"
     },
     {
       "id": 40,
@@ -909,10 +909,30 @@
       "archived": false,
       "created_ts": "2025-10-03T14:20:27.027Z",
       "updated_ts": "2025-10-03T14:20:27.027Z"
+    },
+    {
+      "id": 145,
+      "content": "剪指甲",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-04T14:33:36.603Z",
+      "updated_ts": "2025-10-04T14:33:36.603Z"
+    },
+    {
+      "id": 146,
+      "content": "公司的购物卡",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-04T15:42:59.844Z",
+      "updated_ts": "2025-10-04T15:42:59.844Z"
     }
   ],
   "resources": [],
   "settings": {},
-  "nextMemoId": 145,
+  "nextMemoId": 147,
   "nextResourceId": 1
 }
