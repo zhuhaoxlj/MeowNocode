@@ -34,6 +34,12 @@ const MainContent = React.memo(({
   setShowArchived,
   archivedMemos,
   
+  // 分页相关
+  hasMore,
+  isLoadingMore,
+  totalMemos,
+  loadMoreTriggerRef,
+  
   // Refs
   searchInputRef,
   memosContainerRef,
@@ -152,11 +158,16 @@ const MainContent = React.memo(({
         onScrollToTop={onScrollToTop}
         clearFilters={clearFilters} // 传递清除筛选函数
         onUpdateMemo={onUpdateMemo}
-  // backlinks for memo cards
-  allMemos={allMemos}
-  onAddBacklink={onAddBacklink}
-  onPreviewMemo={onPreviewMemo}
-  onRemoveBacklink={onRemoveBacklink}
+        // backlinks for memo cards
+        allMemos={allMemos}
+        onAddBacklink={onAddBacklink}
+        onPreviewMemo={onPreviewMemo}
+        onRemoveBacklink={onRemoveBacklink}
+        // 分页相关
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        totalMemos={totalMemos}
+        loadMoreTriggerRef={loadMoreTriggerRef}
       />
       
       {/* 音乐搜索卡片 */}

@@ -52,6 +52,12 @@ export default function CompleteMemoApp() {
   const [allMemos, setAllMemos] = useState([]);
   const [heatmapData, setHeatmapData] = useState({});
   
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalMemos, setTotalMemos] = useState(0);
+  
   // 编辑状态
   const [newMemo, setNewMemo] = useState('');
   
@@ -88,6 +94,7 @@ export default function CompleteMemoApp() {
   const searchInputRef = useRef(null);
   const memosContainerRef = useRef(null);
   const menuRefs = useRef({});
+  const loadMoreTriggerRef = useRef(null); // 用于无限滚动的触发器
   
   // 回链状态
   const [pendingNewBacklinks, setPendingNewBacklinks] = useState([]);
@@ -201,36 +208,167 @@ export default function CompleteMemoApp() {
     if (refreshTrigger > 0 && isAuthenticated && isAppLoaded) {
       console.log(`🔄 触发数据刷新 (trigger: ${refreshTrigger})`);
       Promise.all([
-        loadMemos(),
+        loadMemos(true), // 重置页码
         loadArchivedMemos()
       ]);
     }
   }, [refreshTrigger]);
 
-  // 加载数据（添加性能日志）
-  const loadMemos = async () => {
+  // 加载首页数据（分页）
+  const loadMemos = async (resetPage = false) => {
     const startTime = Date.now();
     try {
-      console.log('📥 开始加载备忘录...');
-      const memosData = await dataService.getAllMemos();
+      const pageToLoad = resetPage ? 1 : currentPage;
+      console.log(`📥 开始加载备忘录... (页码: ${pageToLoad}, resetPage: ${resetPage})`);
+      
+      const result = await dataService.getMemos({ page: pageToLoad, limit: 50 });
       const loadTime = Date.now() - startTime;
-      console.log(`✅ 备忘录加载完成，耗时 ${loadTime}ms，共 ${memosData.length} 条`);
+      console.log(`✅ 备忘录加载完成，耗时 ${loadTime}ms，共 ${result.memos.length} 条`);
+      console.log(`📊 分页信息:`, result.pagination);
+      
+      const memosData = result.memos;
       
       // 过滤掉已归档的备忘录
       const regular = memosData.filter(m => !m.pinned && !m.archived);
       const pinned = memosData.filter(m => m.pinned && !m.archived);
       
-      setMemos(regular);
-      setPinnedMemos(pinned);
-      setAllMemos(memosData);
+      if (resetPage) {
+        // 重置数据
+        setMemos(regular);
+        setPinnedMemos(pinned);
+        setAllMemos(memosData);
+        setCurrentPage(1);
+      } else {
+        // 追加数据
+        setMemos(prev => [...prev, ...regular]);
+        setPinnedMemos(prev => [...prev, ...pinned]);
+        setAllMemos(prev => [...prev, ...memosData]);
+      }
       
-      // 生成热力图数据
-      generateHeatmapData(memosData);
+      // 更新分页状态
+      const newHasMore = result.pagination.hasMore;
+      const newTotal = result.pagination.total;
+      
+      console.log(`🔄 更新分页状态: hasMore=${newHasMore}, total=${newTotal}`);
+      setHasMore(newHasMore);
+      setTotalMemos(newTotal);
+      
+      // 生成热力图数据（需要所有数据，这里先用当前数据）
+      generateHeatmapData(resetPage ? memosData : [...allMemos, ...memosData]);
     } catch (error) {
       console.error('❌ 加载备忘录失败:', error);
       toast.error('加载备忘录失败');
     }
   };
+  
+  // 加载更多数据（使用 useCallback 避免闭包问题）
+  const loadMoreMemos = useCallback(async () => {
+    if (isLoadingMore || !hasMore) {
+      console.log('⏸️ 跳过加载更多:', { isLoadingMore, hasMore });
+      return;
+    }
+    
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      console.log(`📥 加载更多备忘录... (页码: ${nextPage})`);
+      
+      const result = await dataService.getMemos({ page: nextPage, limit: 50 });
+      const memosData = result.memos;
+      
+      // 过滤掉已归档的备忘录
+      const regular = memosData.filter(m => !m.pinned && !m.archived);
+      const pinned = memosData.filter(m => m.pinned && !m.archived);
+      
+      // 追加数据
+      setMemos(prev => [...prev, ...regular]);
+      setPinnedMemos(prev => [...prev, ...pinned]);
+      setAllMemos(prev => [...prev, ...memosData]);
+      
+      // 更新分页状态
+      setCurrentPage(nextPage);
+      setHasMore(result.pagination.hasMore);
+      setTotalMemos(result.pagination.total);
+      
+      console.log(`✅ 加载更多完成，当前共 ${regular.length} 条新数据，总共 ${result.pagination.total} 条`);
+    } catch (error) {
+      console.error('❌ 加载更多失败:', error);
+      toast.error('加载更多失败');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, currentPage]);
+  
+  // 设置无限滚动监听器（IntersectionObserver）
+  useEffect(() => {
+    // 使用 setTimeout 确保 DOM 已渲染
+    const setupObserver = () => {
+      const trigger = loadMoreTriggerRef.current;
+      
+      console.log('🔧 IntersectionObserver 设置中...', {
+        trigger: !!trigger,
+        hasMore,
+        isLoadingMore,
+        currentPage
+      });
+      
+      if (!trigger) {
+        console.warn('⚠️ loadMoreTriggerRef.current 不存在，将在下次渲染时重试');
+        return null;
+      }
+      
+      if (!hasMore) {
+        console.log('ℹ️ 没有更多数据了，不设置 observer');
+        return null;
+      }
+      
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            console.log('👁️ IntersectionObserver 回调触发:', {
+              isIntersecting: entry.isIntersecting,
+              intersectionRatio: entry.intersectionRatio,
+              hasMore,
+              isLoadingMore
+            });
+            
+            if (entry.isIntersecting && hasMore && !isLoadingMore) {
+              console.log('🔍 检测到滚动到底部，加载更多...');
+              loadMoreMemos();
+            }
+          });
+        },
+        {
+          root: null, // 使用视口作为根
+          rootMargin: '200px', // 提前 200px 开始加载
+          threshold: 0.1
+        }
+      );
+      
+      console.log('✅ 开始观察触发器元素');
+      observer.observe(trigger);
+      
+      return observer;
+    };
+    
+    // 延迟执行，确保 DOM 已渲染
+    const timer = setTimeout(() => {
+      const observer = setupObserver();
+      if (observer) {
+        // 保存到 ref 以便清理
+        loadMoreTriggerRef.observer = observer;
+      }
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      if (loadMoreTriggerRef.observer) {
+        console.log('🧹 清理 IntersectionObserver');
+        loadMoreTriggerRef.observer.disconnect();
+        delete loadMoreTriggerRef.observer;
+      }
+    };
+  }, [hasMore, isLoadingMore, currentPage, memos.length]);
 
   // 加载归档的 memos（添加性能日志）
   const loadArchivedMemos = async () => {
@@ -607,6 +745,12 @@ export default function CompleteMemoApp() {
                 showArchived={showArchived}
                 setShowArchived={handleSetShowArchived}
                 archivedMemos={archivedMemos}
+                
+                // 分页相关
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                totalMemos={totalMemos}
+                loadMoreTriggerRef={loadMoreTriggerRef}
                 
                 // Refs
                 searchInputRef={searchInputRef}

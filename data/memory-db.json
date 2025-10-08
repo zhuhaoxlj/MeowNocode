@@ -929,10 +929,20 @@
       "archived": true,
       "created_ts": "2025-08-22T17:00:32.000Z",
       "updated_ts": "2025-10-08T17:12:52.021Z"
+    },
+    {
+      "id": 94,
+      "content": "123123",
+      "tags": "",
+      "visibility": "private",
+      "pinned": false,
+      "archived": false,
+      "created_ts": "2025-10-08T17:36:06.621Z",
+      "updated_ts": "2025-10-08T17:36:06.621Z"
     }
   ],
   "resources": [],
   "settings": {},
-  "nextMemoId": 94,
+  "nextMemoId": 95,
   "nextResourceId": 1
 }

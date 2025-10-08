@@ -34,7 +34,12 @@ const MemoList = ({
   allMemos = [],
   onAddBacklink,
   onPreviewMemo,
-  onRemoveBacklink
+  onRemoveBacklink,
+  // 分页相关
+  hasMore,
+  isLoadingMore,
+  totalMemos,
+  loadMoreTriggerRef
 }) => {
   const { themeColor } = useTheme();
   const memosForBacklinks = (allMemos && allMemos.length) ? allMemos : [...pinnedMemos, ...memos];
@@ -989,6 +994,34 @@ const MemoList = ({
           )}
         </div>
 
+          </>
+        )}
+
+        {/* 无限滚动加载触发器 - 只在非归档视图显示 */}
+        {!showArchived && (
+          <>
+            {/* 加载更多触发器 */}
+            <div 
+              ref={loadMoreTriggerRef} 
+              className="h-20 flex items-center justify-center"
+            >
+              {isLoadingMore && (
+                <div className="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+                  <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+                  <p className="text-sm">加载中...</p>
+                </div>
+              )}
+              {!isLoadingMore && hasMore && (
+                <div className="text-sm text-gray-400 dark:text-gray-500">
+                  向下滚动加载更多...
+                </div>
+              )}
+              {!hasMore && totalMemos > 0 && (
+                <div className="text-sm text-gray-400 dark:text-gray-500 py-4">
+                  已加载全部 {totalMemos} 条备忘录 ✓
+                </div>
+              )}
+            </div>
           </>
         )}
 
