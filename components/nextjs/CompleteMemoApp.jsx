@@ -117,13 +117,8 @@ export default function CompleteMemoApp() {
   // 使用 useCallback 优化事件处理函数
   // 🚀 优化：接受内容参数，避免依赖异步状态更新
   const handleAddMemo = useCallback(async (content) => {
-    console.log('💥 [handleAddMemo] 被调用，参数:', content);
-    console.log('💥 [handleAddMemo] 当前 newMemo 状态:', newMemo);
-    
     // 如果传入 content，使用它；否则使用 newMemo 状态
     const memoContent = content !== undefined ? content : newMemo;
-    
-    console.log('💥 [handleAddMemo] 最终使用内容:', memoContent);
     
     if (!memoContent.trim()) {
       console.warn('⚠️ [handleAddMemo] 内容为空');
@@ -136,9 +131,7 @@ export default function CompleteMemoApp() {
         pinned: false
       };
       
-      console.log('💥 [handleAddMemo] 准备调用 API，内容:', memoData.content);
       const created = await dataService.createMemo(memoData);
-      console.log('✅ [handleAddMemo] API 调用成功，创建的 memo:', created);
       
       setNewMemo('');
       // 触发数据重新加载
@@ -175,7 +168,6 @@ export default function CompleteMemoApp() {
     
     const initApp = async () => {
       try {
-        console.log('🚀 开始初始化应用...');
         await Promise.all([
           loadMemos(),
           loadArchivedMemos()
@@ -184,7 +176,6 @@ export default function CompleteMemoApp() {
         if (isSubscribed) {
           setIsAppLoaded(true);
           setTimeout(() => setIsInitialLoad(false), 100);
-          console.log('✅ 应用初始化完成');
         }
       } catch (error) {
         console.error('❌ 应用初始化失败:', error);
@@ -219,12 +210,8 @@ export default function CompleteMemoApp() {
     const startTime = Date.now();
     try {
       const pageToLoad = resetPage ? 1 : currentPage;
-      console.log(`📥 开始加载备忘录... (页码: ${pageToLoad}, resetPage: ${resetPage})`);
       
       const result = await dataService.getMemos({ page: pageToLoad, limit: 50 });
-      const loadTime = Date.now() - startTime;
-      console.log(`✅ 备忘录加载完成，耗时 ${loadTime}ms，共 ${result.memos.length} 条`);
-      console.log(`📊 分页信息:`, result.pagination);
       
       const memosData = result.memos;
       
@@ -249,7 +236,6 @@ export default function CompleteMemoApp() {
       const newHasMore = result.pagination.hasMore;
       const newTotal = result.pagination.total;
       
-      console.log(`🔄 更新分页状态: hasMore=${newHasMore}, total=${newTotal}`);
       setHasMore(newHasMore);
       setTotalMemos(newTotal);
       
@@ -264,14 +250,12 @@ export default function CompleteMemoApp() {
   // 加载更多数据（使用 useCallback 避免闭包问题）
   const loadMoreMemos = useCallback(async () => {
     if (isLoadingMore || !hasMore) {
-      console.log('⏸️ 跳过加载更多:', { isLoadingMore, hasMore });
       return;
     }
     
     setIsLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
-      console.log(`📥 加载更多备忘录... (页码: ${nextPage})`);
       
       const result = await dataService.getMemos({ page: nextPage, limit: 50 });
       const memosData = result.memos;
@@ -290,7 +274,6 @@ export default function CompleteMemoApp() {
       setHasMore(result.pagination.hasMore);
       setTotalMemos(result.pagination.total);
       
-      console.log(`✅ 加载更多完成，当前共 ${regular.length} 条新数据，总共 ${result.pagination.total} 条`);
     } catch (error) {
       console.error('❌ 加载更多失败:', error);
       toast.error('加载更多失败');
@@ -305,35 +288,18 @@ export default function CompleteMemoApp() {
     const setupObserver = () => {
       const trigger = loadMoreTriggerRef.current;
       
-      console.log('🔧 IntersectionObserver 设置中...', {
-        trigger: !!trigger,
-        hasMore,
-        isLoadingMore,
-        currentPage
-      });
-      
       if (!trigger) {
-        console.warn('⚠️ loadMoreTriggerRef.current 不存在，将在下次渲染时重试');
         return null;
       }
       
       if (!hasMore) {
-        console.log('ℹ️ 没有更多数据了，不设置 observer');
         return null;
       }
       
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach(entry => {
-            console.log('👁️ IntersectionObserver 回调触发:', {
-              isIntersecting: entry.isIntersecting,
-              intersectionRatio: entry.intersectionRatio,
-              hasMore,
-              isLoadingMore
-            });
-            
             if (entry.isIntersecting && hasMore && !isLoadingMore) {
-              console.log('🔍 检测到滚动到底部，加载更多...');
               loadMoreMemos();
             }
           });
@@ -345,7 +311,6 @@ export default function CompleteMemoApp() {
         }
       );
       
-      console.log('✅ 开始观察触发器元素');
       observer.observe(trigger);
       
       return observer;
@@ -363,7 +328,6 @@ export default function CompleteMemoApp() {
     return () => {
       clearTimeout(timer);
       if (loadMoreTriggerRef.observer) {
-        console.log('🧹 清理 IntersectionObserver');
         loadMoreTriggerRef.observer.disconnect();
         delete loadMoreTriggerRef.observer;
       }
@@ -372,15 +336,12 @@ export default function CompleteMemoApp() {
 
   // 加载归档的 memos（添加性能日志）
   const loadArchivedMemos = async () => {
-    const startTime = Date.now();
     try {
-      console.log('📥 开始加载归档备忘录...');
       const response = await fetch('/api/memos/archived');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const result = await response.json();
-      const loadTime = Date.now() - startTime;
       
       const normalizedArchivedMemos = result.data.map(memo => ({
         id: memo.id,
@@ -394,7 +355,6 @@ export default function CompleteMemoApp() {
         archived: true
       }));
       setArchivedMemos(normalizedArchivedMemos);
-      console.log(`✅ 归档备忘录加载完成，耗时 ${loadTime}ms，共 ${normalizedArchivedMemos.length} 条`);
     } catch (error) {
       console.error('❌ 获取归档备忘录失败:', error);
       toast.error('获取归档备忘录失败');
@@ -544,7 +504,6 @@ export default function CompleteMemoApp() {
           toast.success('已取消归档');
           break;
         default:
-          console.log('未知操作:', action);
       }
       setActiveMenuId(null);
     } catch (error) {

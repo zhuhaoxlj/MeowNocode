@@ -149,8 +149,8 @@ const MemoEditor = React.memo(({
 
   // 🔍 性能排查模式：逐个测试每个函数的性能影响
   const PERF_DEBUG = {
-    enabled: true,  // 启用性能调试
-    logTiming: true,  // 记录每个步骤的耗时
+    enabled: false,  // 启用性能调试
+    logTiming: false,  // 记录每个步骤的耗时
     disableOnChange: false,  // 禁用 onChange 回调
     disableHeightAdjust: false,  // 禁用高度调整
     disableCharCount: false,  // 禁用字符计数

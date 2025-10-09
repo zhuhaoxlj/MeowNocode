@@ -35,7 +35,6 @@ export function ThemeProvider({ children }) {
       preloadFont(fontUrls.lxgw),
       preloadFont(fontUrls.kongshan)
     ]).then(() => {
-      console.log('所有字体已预加载');
     }).catch((error) => {
       console.error('字体预加载失败:', error);
     });
