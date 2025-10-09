@@ -431,12 +431,18 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                           // 如果 src 为空但有 alt，可能是 data URI 被 ReactMarkdown 过滤了
                           // 尝试从原始 markdown 中恢复 data URI
                           if (!props.src && props.alt) {
-                            // 从当前处理的内容中查找对应的图片引用
-                            const imgRegex = new RegExp(`!\\[${props.alt}\\]\\((data:image[^)]+)\\)`, 'i');
+                            // 转义特殊字符以避免正则表达式问题
+                            const escapedAlt = props.alt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const imgRegex = new RegExp(`!\\[${escapedAlt}\\]\\((data:image[^)]+)\\)`, 'i');
                             const match = part.content.match(imgRegex);
                             if (match) {
-                              return <img src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                              return <img key={props.alt} src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
                             }
+                          }
+                          
+                          // 如果有 src 且是 data URI，直接渲染
+                          if (props.src && props.src.startsWith('data:')) {
+                            return <img key={props.alt} src={props.src} alt={props.alt || '图片'} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
                           }
                           
                           return <LocalImage {...props} />;
@@ -520,12 +526,18 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                                 // 如果 src 为空但有 alt，可能是 data URI 被 ReactMarkdown 过滤了
                                 // 尝试从原始 markdown 中恢复 data URI
                                 if (!props.src && props.alt) {
-                                  // 从当前处理的内容中查找对应的图片引用
-                                  const imgRegex = new RegExp(`!\\[${props.alt}\\]\\((data:image[^)]+)\\)`, 'i');
+                                  // 转义特殊字符以避免正则表达式问题
+                                  const escapedAlt = props.alt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                  const imgRegex = new RegExp(`!\\[${escapedAlt}\\]\\((data:image[^)]+)\\)`, 'i');
                                   const match = inner.match(imgRegex);
                                   if (match) {
-                                    return <img src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                                    return <img key={props.alt} src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
                                   }
+                                }
+                                
+                                // 如果有 src 且是 data URI，直接渲染
+                                if (props.src && props.src.startsWith('data:')) {
+                                  return <img key={props.alt} src={props.src} alt={props.alt || '图片'} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
                                 }
                                 
                                 return <LocalImage {...props} />;
