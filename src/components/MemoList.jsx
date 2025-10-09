@@ -384,6 +384,7 @@ const MemoList = ({
                               activeTag={activeTag}
                               onTagClick={onTagClick}
                               onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
+                              memo={memo}
                             />
                           </div>
                           
@@ -572,6 +573,7 @@ const MemoList = ({
                               activeTag={activeTag}
                               onTagClick={onTagClick}
                               onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
+                              memo={memo}
                             />
                           </div>
                         )}
@@ -938,6 +940,7 @@ const MemoList = ({
                           activeTag={activeTag}
                           onTagClick={onTagClick}
                           onContentChange={(newContent) => onUpdateMemo(memo.id, { content: newContent })}
+                          memo={memo}
                         />
                       </div>
                     )}

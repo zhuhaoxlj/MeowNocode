@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/context/ThemeContext';
 import Spoiler from '@/components/Spoiler';
+import LazyImage from '@/components/LazyImage';
 import fileStorageService from '@/lib/fileStorageService';
 
 // LocalImage 组件处理 local: 引用的图片
@@ -142,8 +143,29 @@ const LocalImage = ({ src, alt, ...props }) => {
   );
 };
 
-const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) => {
+const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo }) => {
   const { themeColor, currentFont } = useTheme();
+  
+  // 🚀 如果 memo 有资源但 content 中没有图片引用，自动添加占位符
+  let processedContent = content;
+  if (memo?.resourceMeta && memo.resourceMeta.length > 0) {
+    // 检查 content 中是否已有图片引用
+    const hasImageReference = /!\[.*?\]\(.*?\)/.test(content);
+    
+    if (!hasImageReference) {
+      // 在内容末尾添加图片占位符引用
+      const imageReferences = memo.resourceMeta
+        .filter(r => r.type && r.type.startsWith('image/'))
+        .map(r => `![${r.filename}](placeholder-${r.id})`)
+        .join('\n');
+      
+      if (imageReferences) {
+        processedContent = content.trim() 
+          ? `${content}\n\n${imageReferences}` 
+          : imageReferences;
+      }
+    }
+  }
   
   // 调试：检查传入的内容
   // console.log('🔍 DEBUG ContentRenderer: Received content:', content?.substring(0, 200));
@@ -322,7 +344,7 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
     return result;
   };
 
-  const parts = parseContent(content);
+  const parts = parseContent(processedContent);
   const { darkMode } = useTheme();
   
   // 创建组件工厂函数，为每个 ReactMarkdown 实例维护独立的任务索引
@@ -445,7 +467,12 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                             return <img key={props.alt} src={props.src} alt={props.alt || '图片'} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
                           }
                           
-                          return <LocalImage {...props} />;
+                          // 🚀 使用懒加载图片组件（支持资源元数据）
+                          return <LazyImage 
+                            {...props} 
+                            resourceMeta={memo?.resourceMeta} 
+                            memoId={memo?.id} 
+                          />;
                         },
                         br: () => <br />,
                       }}
@@ -540,7 +567,12 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                                   return <img key={props.alt} src={props.src} alt={props.alt || '图片'} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
                                 }
                                 
-                                return <LocalImage {...props} />;
+                                // 🚀 使用懒加载图片组件（支持资源元数据）
+                                return <LazyImage 
+                                  {...props} 
+                                  resourceMeta={memo?.resourceMeta} 
+                                  memoId={memo?.id} 
+                                />;
                               },
                               br: () => <br />,
                             }}
