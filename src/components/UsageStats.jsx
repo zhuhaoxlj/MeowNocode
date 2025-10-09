@@ -1,12 +1,12 @@
 import React from 'react';
 
-const UsageStats = ({ memos = [], pinnedMemos = [] }) => {
+const UsageStats = ({ memos = [], pinnedMemos = [], totalCount = null }) => {
   // 计算统计数据
   const calculateStats = () => {
     const allMemos = [...memos, ...pinnedMemos];
     
-    // 总笔记条数
-    const totalMemos = allMemos.length;
+    // 总笔记条数 - 优先使用传入的 totalCount（API 返回的准确总数）
+    const totalMemos = totalCount !== null ? totalCount : allMemos.length;
     
     // 总标签数（去重）
     const allTags = allMemos.flatMap(memo => memo.tags || []);

@@ -12,6 +12,7 @@ const LeftSidebar = ({
   heatmapData,
   memos,
   pinnedMemos,
+  totalMemos,
   isLeftSidebarHidden,
   setIsLeftSidebarHidden,
   isLeftSidebarPinned,
@@ -31,7 +32,7 @@ const LeftSidebar = ({
   const { cloudSyncEnabled } = useSettings();
   
 
-  // 重置“今天”所有卡片为 FAIL（每日回顾用）
+  // 重置"今天"所有卡片为 FAIL（每日回顾用）
   const resetTodayReviewStatus = () => {
     try {
       const STORAGE_KEY = 'dailyReviewStatusV1';
@@ -44,7 +45,8 @@ const LeftSidebar = ({
         return `${y}-${m}-${day}`;
       };
       const todayStr = toLocalYMD(new Date());
-      const all = [...(memos || []), ...(pinnedMemos || [])];
+      // memos 已经包含所有笔记（包括固定和普通的）
+      const all = memos || [];
       const todays = all.filter(m => {
         const src = m.createdAt || m.timestamp;
         return src ? toLocalYMD(src) === todayStr : false;
@@ -108,7 +110,7 @@ const LeftSidebar = ({
 
         <div className="flex-1 overflow-hidden">
           <GitHubStyleHeatmap data={heatmapData} onDateClick={onDateClick} isSidebarHovered={!isLeftSidebarPinned && isLeftSidebarHovered} />
-          <UsageStats memos={memos} pinnedMemos={pinnedMemos} />
+          <UsageStats memos={memos} pinnedMemos={[]} totalCount={totalMemos} />
 
           {/* 每日回顾入口 */}
           <div className="px-2 pt-4">
