@@ -352,7 +352,7 @@ const MemoList = ({
             ) : (
               <div className="space-y-3">
                 {archivedMemos.map(memo => (
-                  <Card key={memo.id} className="group hover:shadow-lg transition-shadow duration-200 border-l-4 border-orange-400 overflow-hidden">
+                  <Card key={memo.uid || memo.id} className="group hover:shadow-lg transition-shadow duration-200 border-l-4 border-orange-400 overflow-hidden">
                     <CardContent className="p-3 overflow-hidden">
                       <div className="flex justify-between items-start">
                         <div className="flex-1 mr-3">
@@ -532,7 +532,7 @@ const MemoList = ({
             </h2>
             <div className="space-y-3 mb-4">
               {pinnedMemos.map(memo => (
-                <Card key={memo.id} className={`group hover:shadow-lg transition-shadow duration-200 border-l-4 overflow-hidden`} 
+                <Card key={memo.uid || memo.id} className={`group hover:shadow-lg transition-shadow duration-200 border-l-4 overflow-hidden`} 
                       style={{ borderLeftColor: themeColor }}>
                   <CardContent className="p-3 overflow-hidden">
                     <div className="flex justify-between items-start">
@@ -728,7 +728,7 @@ const MemoList = ({
             <div className="space-y-3">
               {memos.map(memo => (
                 <Card
-                  key={memo.id}
+                  key={memo.uid || memo.id}
                   className={`group hover:shadow-md transition-shadow rounded-xl shadow-sm relative bg-white dark:bg-gray-800 overflow-hidden ${
                     pinnedMemos.some(p => p.id === memo.id) ? 'border-l-4' : ''
                   }`}

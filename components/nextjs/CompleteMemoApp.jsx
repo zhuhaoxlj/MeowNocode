@@ -229,10 +229,22 @@ export default function CompleteMemoApp() {
         setAllMemos(memosData);
         setCurrentPage(1);
       } else {
-        // 追加数据
-        setMemos(prev => [...prev, ...regular]);
-        setPinnedMemos(prev => [...prev, ...pinned]);
-        setAllMemos(prev => [...prev, ...memosData]);
+        // 追加数据（去重）
+        setMemos(prev => {
+          const existingIds = new Set(prev.map(m => m.uid || m.id));
+          const newItems = regular.filter(m => !existingIds.has(m.uid || m.id));
+          return [...prev, ...newItems];
+        });
+        setPinnedMemos(prev => {
+          const existingIds = new Set(prev.map(m => m.uid || m.id));
+          const newItems = pinned.filter(m => !existingIds.has(m.uid || m.id));
+          return [...prev, ...newItems];
+        });
+        setAllMemos(prev => {
+          const existingIds = new Set(prev.map(m => m.uid || m.id));
+          const newItems = memosData.filter(m => !existingIds.has(m.uid || m.id));
+          return [...prev, ...newItems];
+        });
       }
       
       // 更新分页状态
@@ -267,10 +279,22 @@ export default function CompleteMemoApp() {
       const regular = memosData.filter(m => !m.pinned && !m.archived);
       const pinned = memosData.filter(m => m.pinned && !m.archived);
       
-      // 追加数据
-      setMemos(prev => [...prev, ...regular]);
-      setPinnedMemos(prev => [...prev, ...pinned]);
-      setAllMemos(prev => [...prev, ...memosData]);
+      // 追加数据（去重）
+      setMemos(prev => {
+        const existingIds = new Set(prev.map(m => m.uid || m.id));
+        const newItems = regular.filter(m => !existingIds.has(m.uid || m.id));
+        return [...prev, ...newItems];
+      });
+      setPinnedMemos(prev => {
+        const existingIds = new Set(prev.map(m => m.uid || m.id));
+        const newItems = pinned.filter(m => !existingIds.has(m.uid || m.id));
+        return [...prev, ...newItems];
+      });
+      setAllMemos(prev => {
+        const existingIds = new Set(prev.map(m => m.uid || m.id));
+        const newItems = memosData.filter(m => !existingIds.has(m.uid || m.id));
+        return [...prev, ...newItems];
+      });
       
       // 更新分页状态
       setCurrentPage(nextPage);
@@ -438,8 +462,8 @@ export default function CompleteMemoApp() {
       const result = await dataService.updateMemo(id, updates);
       // console.log('✅ DEBUG: dataService.updateMemo returned:', result);
       
-      // console.log('🔄 DEBUG: Calling loadMemos...');
-      await loadMemos();
+      // console.log('🔄 DEBUG: Calling loadMemos with resetPage...');
+      await loadMemos(true); // 重置页码，避免数据重复
       // console.log('✅ DEBUG: loadMemos completed');
       
       // 如果更新涉及归档状态，也重新加载归档列表
@@ -471,7 +495,7 @@ export default function CompleteMemoApp() {
       switch (action) {
         case 'delete':
           await dataService.deleteMemo(memoId);
-          await loadMemos();
+          await loadMemos(true); // 重置页码
           // 如果删除的是归档备忘录，也需要刷新归档列表
           if (memo.archived) {
             await loadArchivedMemos();
