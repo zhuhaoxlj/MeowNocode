@@ -8,37 +8,30 @@ export function ThemeProvider({ children }) {
   const [themeColor, setThemeColor] = useState('#818CF8');
   const [currentFont, setCurrentFont] = useState('default');
 
-  // 预加载字体资源
+  // 字体URL配置
+  const fontUrls = {
+    jinghua: 'https://pic.oneloved.top/2025-07/songti_1753944378889.ttf',
+    lxgw: 'https://pic.oneloved.top/2025-07/LXGWWenKai-Regular_1753944392267.ttf',
+    kongshan: 'https://pic.oneloved.top/2025-07/kongshan_1753944354149.ttf'
+  };
+
+  // 预加载当前选择的字体（按需预加载）
   useEffect(() => {
-    const fontUrls = {
-      jinghua: 'https://pic.oneloved.top/2025-07/songti_1753944378889.ttf',
-      lxgw: 'https://pic.oneloved.top/2025-07/LXGWWenKai-Regular_1753944392267.ttf',
-      kongshan: 'https://pic.oneloved.top/2025-07/kongshan_1753944354149.ttf'
-    };
+    // 移除之前的预加载链接
+    const existingPreloads = document.querySelectorAll('link[rel="preload"][as="font"][data-custom-font]');
+    existingPreloads.forEach(link => link.remove());
 
-    // 创建字体预加载函数
-    const preloadFont = (url) => {
-      return new Promise((resolve) => {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.href = url;
-        link.as = 'font';
-        link.crossOrigin = 'anonymous';
-        link.onload = resolve;
-        document.head.appendChild(link);
-      });
-    };
-
-    // 预加载所有字体
-    Promise.all([
-      preloadFont(fontUrls.jinghua),
-      preloadFont(fontUrls.lxgw),
-      preloadFont(fontUrls.kongshan)
-    ]).then(() => {
-    }).catch((error) => {
-      console.error('字体预加载失败:', error);
-    });
-  }, []);
+    // 只预加载当前选择的字体
+    if (currentFont !== 'default' && fontUrls[currentFont]) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.href = fontUrls[currentFont];
+      link.as = 'font';
+      link.crossOrigin = 'anonymous';
+      link.setAttribute('data-custom-font', currentFont);
+      document.head.appendChild(link);
+    }
+  }, [currentFont]);
 
   useEffect(() => {
     // 从localStorage加载主题设置
@@ -168,12 +161,6 @@ export function ThemeProvider({ children }) {
 
   // 应用字体设置
   useEffect(() => {
-    const fontUrls = {
-      jinghua: 'https://pic.oneloved.top/2025-07/songti_1753944378889.ttf',
-      lxgw: 'https://pic.oneloved.top/2025-07/LXGWWenKai-Regular_1753944392267.ttf',
-      kongshan: 'https://pic.oneloved.top/2025-07/kongshan_1753944354149.ttf'
-    };
-
     // 移除之前的字体样式
     const existingFontStyle = document.getElementById('custom-font-style');
     if (existingFontStyle) {
