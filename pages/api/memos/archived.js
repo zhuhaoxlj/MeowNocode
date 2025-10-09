@@ -1,7 +1,7 @@
 /**
  * API 路由：获取归档的备忘录
  */
-import { getDatabase } from '../../../lib/server/database-simple.js';
+import { getDatabase } from '../../../lib/server/database.js';
 
 export default function handler(req, res) {
   if (req.method !== 'GET') {
