@@ -460,17 +460,38 @@ export default function CompleteMemoApp() {
     try {
       // console.log('📡 DEBUG: Calling dataService.updateMemo...');
       const result = await dataService.updateMemo(id, updates);
-      // console.log('✅ DEBUG: dataService.updateMemo returned:', result);
+      const updatedMemo = result;
       
-      // console.log('🔄 DEBUG: Calling loadMemos with resetPage...');
-      await loadMemos(true); // 重置页码，避免数据重复
-      // console.log('✅ DEBUG: loadMemos completed');
+      // 🚀 直接更新前端状态，避免重新加载
       
-      // 如果更新涉及归档状态，也重新加载归档列表
+      // 1. 从所有列表中移除该 memo
+      setMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));
+      setPinnedMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));
+      setArchivedMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));
+      setAllMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));
+      
+      // 2. 根据新状态添加到对应列表
+      if (updatedMemo.archived) {
+        // 归档：添加到归档列表
+        setArchivedMemos(prev => [updatedMemo, ...prev]);
+      } else {
+        // 未归档：根据置顶状态添加
+        setAllMemos(prev => [updatedMemo, ...prev]);
+        
+        if (updatedMemo.pinned) {
+          setPinnedMemos(prev => [updatedMemo, ...prev]);
+        } else {
+          setMemos(prev => [updatedMemo, ...prev]);
+        }
+      }
+      
+      // 3. 更新总数
       if (updates.hasOwnProperty('archived')) {
-        // console.log('🔄 DEBUG: Archive status changed, reloading archived memos...');
-        await loadArchivedMemos();
-        // console.log('✅ DEBUG: loadArchivedMemos completed');
+        if (updates.archived) {
+          setTotalMemos(prev => Math.max(0, prev - 1));
+        } else {
+          setTotalMemos(prev => prev + 1);
+        }
       }
       
       toast.success('备忘录已更新');
@@ -495,11 +516,18 @@ export default function CompleteMemoApp() {
       switch (action) {
         case 'delete':
           await dataService.deleteMemo(memoId);
-          await loadMemos(true); // 重置页码
-          // 如果删除的是归档备忘录，也需要刷新归档列表
-          if (memo.archived) {
-            await loadArchivedMemos();
+          
+          // 🚀 直接从前端状态移除
+          setMemos(prev => prev.filter(m => m.id !== memoId && m.uid !== memoId));
+          setPinnedMemos(prev => prev.filter(m => m.id !== memoId && m.uid !== memoId));
+          setArchivedMemos(prev => prev.filter(m => m.id !== memoId && m.uid !== memoId));
+          setAllMemos(prev => prev.filter(m => m.id !== memoId && m.uid !== memoId));
+          
+          // 更新总数
+          if (!memo.archived) {
+            setTotalMemos(prev => Math.max(0, prev - 1));
           }
+          
           toast.success('备忘录已删除');
           break;
         case 'pin':

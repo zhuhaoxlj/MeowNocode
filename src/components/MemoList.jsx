@@ -982,7 +982,7 @@ const MemoList = ({
 
                     <div className="mt-3 flex justify-end">
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(memo.updated_ts || memo.created_ts).toLocaleString('zh-CN', {
+                        {new Date(memo.created_ts || memo.timestamp).toLocaleString('zh-CN', {
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
