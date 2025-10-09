@@ -21,6 +21,9 @@ import MobileSidebar from '../../src/components/MobileSidebar';
 import ShareDialog from '../../src/components/ShareDialog';
 import NextJsSettingsCard from './SettingsCard';
 
+// 导入 API 模式指示器
+import ApiModeIndicator from '../../src/components/ApiModeIndicator';
+
 // 导入数据服务
 import { dataService } from '../../lib/client/dataService.js';
 
@@ -792,6 +795,9 @@ export default function CompleteMemoApp() {
           toast.info('教程功能开发中');
         }}
       />
+      
+      {/* API 模式指示器 */}
+      <ApiModeIndicator />
     </div>
   );
 }
