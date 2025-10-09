@@ -20,9 +20,12 @@ export default function handler(req, res) {
       total: archivedMemos.length
     });
   } catch (error) {
-    console.error('获取归档备忘录失败:', error);
+    console.error('❌ 获取归档备忘录失败:', error);
     res.status(500).json({ 
-      error: `获取归档备忘录失败: ${error.message}` 
+      error: '获取归档备忘录失败',
+      message: error.message,
+      details: '请检查数据库配置和文件权限',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }

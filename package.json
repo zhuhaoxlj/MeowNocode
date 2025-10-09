@@ -9,6 +9,7 @@
     "start": "next start -p 8081",
     "lint": "next lint",
     "export": "next export",
+    "diagnose": "node scripts/diagnose-nas.js",
     "db:init": "node scripts/init-db.js",
     "db:migrate": "node scripts/migrate-data.js",
     "db:backup": "node scripts/backup-db.js",
