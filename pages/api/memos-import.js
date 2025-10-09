@@ -6,7 +6,7 @@ import sqlite3 from 'sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { IncomingForm } from 'formidable';
-import { getDatabase } from '../../lib/server/database.js';
+import { getDatabase } from '../../lib/server/database-config.js';
 
 // 配置 API 路由不解析 body，让 formidable 处理
 export const config = {

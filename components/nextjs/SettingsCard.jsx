@@ -14,6 +14,7 @@ import { useSettings } from '../../src/context/SettingsContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { toast } from 'sonner';
 import WorkingMemosImport from './WorkingMemosImport';
+import MemosDbImport from './MemosDbImport';
 import ClearAllDataButton from './ClearAllDataButton';
 
 const NextJsSettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
@@ -513,9 +514,15 @@ const NextJsSettingsCard = ({ isOpen, onClose, onOpenTutorial }) => {
                   本地数据包含所有想法、标签和设置，导出为JSON格式
                 </p>
 
-                {/* 从 Memos 导入 */}
+                {/* 从 Memos JSON 导入 */}
                 <div className="mt-6">
                   <WorkingMemosImport />
+                </div>
+
+                {/* 从 Memos 数据库导入 */}
+                <div className="mt-6">
+                  <Label className="text-sm font-medium block mb-3">从 Memos 数据库导入</Label>
+                  <MemosDbImport />
                 </div>
 
                 {/* 清空数据 */}

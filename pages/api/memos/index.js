@@ -1,4 +1,4 @@
-import { getDatabase } from '../../../lib/server/database.js';
+import { getDatabase } from '../../../lib/server/database-config.js';
 import { withMethods, withCors } from '../../../lib/server/middleware.js';
 
 async function handler(req, res) {

@@ -15,7 +15,12 @@
     "db:reset": "node scripts/reset-db.js",
     "migrate:data": "node scripts/migrate-browser-data.js",
     "migrate:sqlite": "node scripts/migrate-json-to-sqlite.js",
-    "full-migration": "node scripts/full-nextjs-migration.js"
+    "full-migration": "node scripts/full-nextjs-migration.js",
+    "import:memos": "node scripts/import-from-memos-db.js",
+    "import:json": "node scripts/import-json-to-memos.js",
+    "migrate:to-memos": "node scripts/migrate-to-memos-db.js",
+    "update:api": "node scripts/update-api-imports.js",
+    "test:memos": "node scripts/test-memos-db.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.872.0",

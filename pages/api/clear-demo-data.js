@@ -3,7 +3,7 @@
  */
 
 // 导入数据库获取函数，确保使用同一个实例
-import { getDatabase } from '../../lib/server/database.js';
+import { getDatabase } from '../../lib/server/database-config.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
