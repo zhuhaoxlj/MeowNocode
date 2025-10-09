@@ -40,13 +40,30 @@ async function handler(req, res) {
         
       case 'POST':
         try {
+          console.log('📥 收到 POST 请求 - 创建 memo');
+          console.log('   请求体:', JSON.stringify(req.body, null, 2));
+          
+          // 验证请求数据
+          if (!req.body || !req.body.content) {
+            console.error('❌ 无效的请求数据 - 缺少 content');
+            return res.status(400).json({ 
+              error: '无效的请求数据',
+              message: '必须提供 content 字段' 
+            });
+          }
+          
           const memo = db.createMemo(req.body);
+          console.log('✅ Memo 创建成功:', memo.id);
+          
           res.status(201).json({ memo });
         } catch (error) {
           console.error('❌ 创建 memo 失败:', error);
+          console.error('   错误堆栈:', error.stack);
+          console.error('   请求体:', req.body);
           res.status(500).json({ 
             error: '创建 memo 失败',
-            message: error.message 
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
           });
         }
         break;
