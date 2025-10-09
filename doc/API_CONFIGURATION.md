@@ -2,41 +2,25 @@
 
 ## 概述
 
-本项目支持在开发环境中灵活切换本地 API 和远程 API，方便开发和调试。
+本项目支持通过启动命令选择使用本地 API 或远程 API，方便开发和调试。
 
 ## 使用方法
 
-### 方法 1: 使用可视化切换按钮（推荐）✨
-
-开发环境启动后，页面右下角会显示一个紫色的 API 切换按钮：
-
-1. 点击右下角的 **🌐 本地 API** 或 **🌐 远程 API** 按钮
-2. 选择你想使用的 API 环境
-3. 页面会自动刷新并应用新配置
-
-### 方法 2: 使用浏览器控制台
-
-在浏览器开发者工具控制台中执行：
-
-```javascript
-// 切换到远程 API
-localStorage.setItem('API_MODE', 'remote');
-location.reload();
-
-// 切换到本地 API
-localStorage.setItem('API_MODE', 'local');
-location.reload();
-```
-
-### 方法 3: 使用启动脚本
+### 使用本地 API（默认）
 
 ```bash
-# 使用本地 API（默认）
 bun run dev
+```
 
-# 使用远程 API
+这将使用本地 Next.js API 路由（`http://localhost:8081/api`）
+
+### 使用远程 API
+
+```bash
 bun run dev:remote
 ```
+
+这将使用远程服务器 API（`http://111.170.174.134:18081/api`）
 
 ## 配置说明
 
@@ -45,7 +29,7 @@ bun run dev:remote
 API 配置文件位于项目根目录的 `api.config.js`，包含以下配置：
 
 ```javascript
-const API_CONFIGS = {
+export const API_CONFIGS = {
   local: {
     baseURL: '',  // 本地 Next.js API
     name: '本地 API',
@@ -61,12 +45,14 @@ const API_CONFIGS = {
 
 实际的 API 客户端位于 `lib/client/apiClient.js`，它会自动读取 `api.config.js` 的配置。
 
-### 添加新的 API 配置
+### 添加新的 API 环境
 
-如果需要添加其他 API 地址，可以在 `api.config.js` 中添加新配置：
+如果需要添加其他 API 环境（如测试服务器），按以下步骤操作：
+
+**1. 在 `api.config.js` 中添加配置：**
 
 ```javascript
-const API_CONFIGS = {
+export const API_CONFIGS = {
   local: { ... },
   remote: { ... },
   staging: {
@@ -76,7 +62,7 @@ const API_CONFIGS = {
 };
 ```
 
-然后在 `package.json` 中添加对应的脚本：
+**2. 在 `package.json` 中添加启动脚本：**
 
 ```json
 {
@@ -86,59 +72,59 @@ const API_CONFIGS = {
 }
 ```
 
+**3. 使用：**
+
+```bash
+bun run dev:staging
+```
+
 ## 工作原理
 
-1. **环境变量控制**：通过 `NEXT_PUBLIC_API_MODE` 环境变量来指定使用哪个 API 配置
-2. **自动配置**：`nextApiClient.js` 会根据配置自动选择对应的 baseURL
-3. **开发提示**：开发环境启动时会在控制台显示当前使用的 API 配置
+1. **环境变量控制**：通过 `NEXT_PUBLIC_API_MODE` 环境变量指定使用哪个 API
+2. **启动时确定**：配置在启动时就确定，无需在浏览器中切换
+3. **控制台提示**：开发环境启动时会在控制台显示当前使用的 API
 
-## 注意事项
+## 验证配置
 
-1. **生产环境**：生产环境仍然使用 `NEXT_PUBLIC_API_URL` 环境变量
-2. **CORS 问题**：使用远程 API 时，确保远程服务器配置了正确的 CORS 策略
-3. **网络访问**：使用远程 API 时需要确保网络可以访问远程服务器
+启动后，打开浏览器控制台，你会看到：
+
+### 本地 API 模式
+```
+🌐 [API Config] 当前模式: 本地 API (baseURL: localhost)
+🌐 [ApiClient] 初始化完成
+   模式: 本地 API
+   Base URL: http://localhost:8081
+```
+
+### 远程 API 模式
+```
+🌐 [API Config] 当前模式: 远程 API (baseURL: http://111.170.174.134:18081)
+🌐 [ApiClient] 初始化完成
+   模式: 远程 API
+   Base URL: http://111.170.174.134:18081
+```
 
 ## 常见问题
 
 ### Q: 如何知道当前使用的是哪个 API？
 
-A: 有以下几种方式：
-1. **查看右下角按钮**：按钮上会显示当前使用的 API（如 "🌐 远程 API"）
-2. **查看控制台**：启动时会显示类似信息：
-   ```
-   🌐 使用 远程 API: http://111.170.174.134:18081
-   ```
-3. **查看 Network 面板**：查看请求的 URL 地址
+A: 启动后查看浏览器控制台的输出信息，或查看 Network 面板中请求的 URL。
 
-### Q: 切换 API 后需要重启服务器吗？
+### Q: 如何切换 API？
 
-A: 不需要！
-- 使用可视化按钮切换：会自动刷新页面
-- 使用控制台切换：手动刷新页面即可（`F5` 或 `Cmd+R`）
-- 配置保存在浏览器 localStorage 中，刷新页面即可生效
+A: 停止当前服务器，使用不同的启动命令重新启动：
+- 切换到本地：`bun run dev`
+- 切换到远程：`bun run dev:remote`
 
 ### Q: 远程 API 连接失败怎么办？
 
 A: 请检查：
 1. 远程服务器是否正常运行
-2. 网络是否可以访问远程服务器（`http://111.170.174.134:18081`）
+2. 网络是否可以访问 `http://111.170.174.134:18081`
 3. 防火墙是否允许访问
-4. 查看浏览器控制台是否有 CORS 错误
+4. 浏览器控制台是否有 CORS 错误
 
-### Q: 切换按钮在生产环境会显示吗？
+### Q: 生产环境如何配置？
 
-A: 不会。切换按钮仅在开发环境（`NODE_ENV=development`）显示，生产环境自动隐藏。
-
-### Q: 如何在代码中获取当前 API 配置？
-
-A: 使用 api.config.js 提供的方法：
-```javascript
-import { getCurrentApiMode, getApiConfig } from './api.config';
-
-// 获取当前模式
-const mode = getCurrentApiMode(); // 'local' 或 'remote'
-
-// 获取当前配置
-const config = getApiConfig(); // { baseURL: '...', name: '...' }
-```
+A: 生产环境通过环境变量 `NEXT_PUBLIC_API_URL` 配置 API 地址。
 

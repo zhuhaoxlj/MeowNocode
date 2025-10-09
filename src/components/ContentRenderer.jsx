@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/context/ThemeContext';
 import Spoiler from '@/components/Spoiler';
 import LazyImage from '@/components/LazyImage';
+import ImageCarousel from '@/components/ImageCarousel';
+import ImagePreview from '@/components/ImagePreview';
 import fileStorageService from '@/lib/fileStorageService';
 
 // LocalImage 组件处理 local: 引用的图片
@@ -145,6 +147,8 @@ const LocalImage = ({ src, alt, ...props }) => {
 
 const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo }) => {
   const { themeColor, currentFont } = useTheme();
+  const [previewImages, setPreviewImages] = useState(null);
+  const [previewIndex, setPreviewIndex] = useState(0);
   
   // 🚀 如果 memo 有资源但 content 中没有图片引用，自动添加占位符
   let processedContent = content;
@@ -166,6 +170,85 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
       }
     }
   }
+
+  // 提取所有图片信息
+  const extractedImages = useMemo(() => {
+    const images = [];
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    let match;
+    
+    while ((match = imageRegex.exec(processedContent)) !== null) {
+      images.push({
+        alt: match[1] || '图片',
+        src: match[2],
+        placeholder: match[0]
+      });
+    }
+    
+    return images;
+  }, [processedContent]);
+
+  // 创建一个用于加载图片的组件
+  const ImageLoader = ({ src, alt, onLoad }) => {
+    const [imageSrc, setImageSrc] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+      const loadImage = async () => {
+        if (src && src.startsWith('data:')) {
+          setImageSrc(src);
+          onLoad?.(src, alt);
+          setIsLoading(false);
+          return;
+        }
+
+        if (src && src.startsWith('placeholder-') && memo?.resourceMeta) {
+          const resourceId = parseInt(src.replace('placeholder-', ''));
+          const resource = memo.resourceMeta.find(r => r.id === resourceId);
+          
+          if (resource) {
+            try {
+              const { dataService } = await import('../../lib/client/dataService');
+              const loadedResource = await dataService.getResource(resource.id);
+              
+              if (loadedResource && loadedResource.dataUri) {
+                setImageSrc(loadedResource.dataUri);
+                onLoad?.(loadedResource.dataUri, alt || resource.filename);
+              }
+            } catch (err) {
+              console.error('加载图片失败:', err);
+            }
+          }
+        }
+        setIsLoading(false);
+      };
+
+      loadImage();
+    }, [src, alt, onLoad]);
+
+    return null;
+  };
+
+  // 用于收集已加载的图片
+  const [loadedImages, setLoadedImages] = useState([]);
+
+  const handleImageLoad = (src, alt) => {
+    setLoadedImages(prev => {
+      // 避免重复添加
+      if (prev.find(img => img.src === src)) {
+        return prev;
+      }
+      return [...prev, { src, alt }];
+    });
+  };
+
+  // 判断是否使用轮播（2张或以上图片）
+  const useCarousel = extractedImages.length >= 2;
+
+  // 如果使用轮播，从内容中移除图片标记
+  const contentWithoutImages = useCarousel 
+    ? processedContent.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '').trim()
+    : processedContent;
   
   // 调试：检查传入的内容
   // console.log('🔍 DEBUG ContentRenderer: Received content:', content?.substring(0, 200));
@@ -377,8 +460,19 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
   };
 
   return (
-    <div className={`prose prose-sm max-w-none dark:prose-invert break-words overflow-hidden ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
-      {parts.map((part, index) => {
+    <>
+      {/* 隐藏的图片加载器 */}
+      {useCarousel && extractedImages.map((img, idx) => (
+        <ImageLoader 
+          key={`loader-${idx}`}
+          src={img.src} 
+          alt={img.alt}
+          onLoad={handleImageLoad}
+        />
+      ))}
+
+      <div className={`prose prose-sm max-w-none dark:prose-invert break-words overflow-hidden ${currentFont !== 'default' ? 'custom-font-content' : ''}`}>
+        {parseContent(contentWithoutImages).map((part, index) => {
         if (part.type === 'tag') {
           const isSecondLevel = part.tagName.includes('/');
           const [parentTag, childTag] = isSecondLevel ? part.tagName.split('/') : [part.tagName, null];
@@ -458,13 +552,35 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
                             const imgRegex = new RegExp(`!\\[${escapedAlt}\\]\\((data:image[^)]+)\\)`, 'i');
                             const match = part.content.match(imgRegex);
                             if (match) {
-                              return <img key={props.alt} src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                              return (
+                                <img 
+                                  key={props.alt} 
+                                  src={match[1]} 
+                                  alt={props.alt} 
+                                  className="max-w-full h-auto rounded-lg shadow-sm my-2 cursor-pointer hover:opacity-90 transition-opacity" 
+                                  onClick={() => {
+                                    setPreviewImages([{ src: match[1], alt: props.alt }]);
+                                    setPreviewIndex(0);
+                                  }}
+                                />
+                              );
                             }
                           }
                           
-                          // 如果有 src 且是 data URI，直接渲染
+                          // 如果有 src 且是 data URI，直接渲染（支持点击放大）
                           if (props.src && props.src.startsWith('data:')) {
-                            return <img key={props.alt} src={props.src} alt={props.alt || '图片'} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                            return (
+                              <img 
+                                key={props.alt} 
+                                src={props.src} 
+                                alt={props.alt || '图片'} 
+                                className="max-w-full h-auto rounded-lg shadow-sm my-2 cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => {
+                                  setPreviewImages([{ src: props.src, alt: props.alt || '图片' }]);
+                                  setPreviewIndex(0);
+                                }}
+                              />
+                            );
                           }
                           
                           // 🚀 使用懒加载图片组件（支持资源元数据）
@@ -558,13 +674,35 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
                                   const imgRegex = new RegExp(`!\\[${escapedAlt}\\]\\((data:image[^)]+)\\)`, 'i');
                                   const match = inner.match(imgRegex);
                                   if (match) {
-                                    return <img key={props.alt} src={match[1]} alt={props.alt} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                                    return (
+                                      <img 
+                                        key={props.alt} 
+                                        src={match[1]} 
+                                        alt={props.alt} 
+                                        className="max-w-full h-auto rounded-lg shadow-sm my-2 cursor-pointer hover:opacity-90 transition-opacity"
+                                        onClick={() => {
+                                          setPreviewImages([{ src: match[1], alt: props.alt }]);
+                                          setPreviewIndex(0);
+                                        }}
+                                      />
+                                    );
                                   }
                                 }
                                 
-                                // 如果有 src 且是 data URI，直接渲染
+                                // 如果有 src 且是 data URI，直接渲染（支持点击放大）
                                 if (props.src && props.src.startsWith('data:')) {
-                                  return <img key={props.alt} src={props.src} alt={props.alt || '图片'} className="max-w-full h-auto rounded-lg shadow-sm my-2" />;
+                                  return (
+                                    <img 
+                                      key={props.alt} 
+                                      src={props.src} 
+                                      alt={props.alt || '图片'} 
+                                      className="max-w-full h-auto rounded-lg shadow-sm my-2 cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => {
+                                        setPreviewImages([{ src: props.src, alt: props.alt || '图片' }]);
+                                        setPreviewIndex(0);
+                                      }}
+                                    />
+                                  );
                                 }
                                 
                                 // 🚀 使用懒加载图片组件（支持资源元数据）
@@ -595,7 +733,29 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
           );
         }
       })}
-    </div>
+      </div>
+
+      {/* 图片轮播 */}
+      {useCarousel && loadedImages.length >= 2 && (
+        <ImageCarousel
+          images={loadedImages}
+          height="300px"
+          onImageClick={(image, index) => {
+            setPreviewImages(loadedImages);
+            setPreviewIndex(index);
+          }}
+        />
+      )}
+
+      {/* 图片预览 */}
+      {previewImages && (
+        <ImagePreview
+          images={previewImages}
+          initialIndex={previewIndex}
+          onClose={() => setPreviewImages(null)}
+        />
+      )}
+    </>
   );
 };
 
