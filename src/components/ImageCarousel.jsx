@@ -1,17 +1,23 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 
 /**
  * 图片轮播组件
  * 功能：
  * 1. 固定高度展示
- * 2. 鼠标滚轮切换图片（循环）
- * 3. 点击图片放大
- * 4. 指示器切换
+ * 2. 点击图片放大
+ * 3. 左右箭头按钮切换
+ * 4. 指示器点击切换
+ * 5. 指示器上滚轮切换（禁止页面滚动）
+ * 6. 键盘方向键切换
  */
 const ImageCarousel = ({ images = [], onImageClick, height = '300px' }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isIndicatorHovered, setIsIndicatorHovered] = useState(false);
+  const indicatorRef = useRef(null);
+  const wheelTimeoutRef = useRef(null);
+  const isWheelThrottledRef = useRef(false);
 
   // 循环切换到下一张
   const goToNext = useCallback(() => {
@@ -28,14 +34,45 @@ const ImageCarousel = ({ images = [], onImageClick, height = '300px' }) => {
     setCurrentIndex(index);
   }, []);
 
-  // 处理滚轮事件
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    if (e.deltaY > 0) {
-      goToNext();
-    } else {
-      goToPrev();
-    }
+  // 使用原生 DOM 事件监听器处理指示器上的滚轮事件
+  useEffect(() => {
+    const indicatorElement = indicatorRef.current;
+    if (!indicatorElement) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // 节流控制：在300ms内只允许切换一次
+      if (isWheelThrottledRef.current) return;
+      
+      isWheelThrottledRef.current = true;
+      
+      if (e.deltaY > 0) {
+        goToNext();
+      } else {
+        goToPrev();
+      }
+      
+      // 300ms后解除节流
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
+      
+      wheelTimeoutRef.current = setTimeout(() => {
+        isWheelThrottledRef.current = false;
+      }, 300);
+    };
+
+    // 使用原生 addEventListener，设置 passive: false 以允许 preventDefault
+    indicatorElement.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      indicatorElement.removeEventListener('wheel', handleWheel);
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
+    };
   }, [goToNext, goToPrev]);
 
   // 处理键盘事件
@@ -89,7 +126,6 @@ const ImageCarousel = ({ images = [], onImageClick, height = '300px' }) => {
       className="relative group my-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onWheel={handleWheel}
     >
       {/* 图片容器 */}
       <div 
@@ -143,7 +179,12 @@ const ImageCarousel = ({ images = [], onImageClick, height = '300px' }) => {
       </div>
 
       {/* 指示器 */}
-      <div className="flex justify-center items-center gap-2 mt-3">
+      <div 
+        ref={indicatorRef}
+        className="flex justify-center items-center gap-2 mt-3 py-2 relative"
+        onMouseEnter={() => setIsIndicatorHovered(true)}
+        onMouseLeave={() => setIsIndicatorHovered(false)}
+      >
         {images.map((_, index) => (
           <button
             key={index}
@@ -156,14 +197,15 @@ const ImageCarousel = ({ images = [], onImageClick, height = '300px' }) => {
             aria-label={`跳转到图片 ${index + 1}`}
           />
         ))}
+        
+        {/* 悬停提示 */}
+        {isIndicatorHovered && (
+          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap pointer-events-none">
+            滚动切换图片
+          </div>
+        )}
       </div>
 
-      {/* 滚轮提示（仅在悬停时显示） */}
-      {isHovered && images.length > 1 && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          滚动切换图片
-        </div>
-      )}
     </div>
   );
 };
