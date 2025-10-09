@@ -394,7 +394,7 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
           // 渲染文本部分：支持 __html 原样 HTML + spoiler + markdown
           const rawSegments = splitByRawHtml(part.content);
           return (
-            <>
+            <React.Fragment key={index}>
               {rawSegments.map((rawSeg, rawIdx) => {
                 if (rawSeg.kind === 'rawhtml') {
                   // 直接渲染原样 HTML（来自 ```__html ... ``` 块）
@@ -559,7 +559,7 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange }) =>
                   </React.Fragment>
                 );
               })}
-            </>
+            </React.Fragment>
           );
         }
       })}
