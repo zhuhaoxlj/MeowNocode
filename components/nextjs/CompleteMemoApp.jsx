@@ -234,9 +234,11 @@ export default function CompleteMemoApp() {
   const loadMemos = useCallback(async (resetPage = false) => {
     // 🔒 防止并发请求（竞态条件的关键修复）
     if (loadingLockRef.current) {
+      console.log('⚠️ loadMemos 已被锁定，跳过本次调用');
       return;
     }
     
+    console.log(`🔒 加载数据 - resetPage: ${resetPage}, currentPage: ${currentPage}`);
     loadingLockRef.current = true;
     
     try {
@@ -252,6 +254,8 @@ export default function CompleteMemoApp() {
       
       if (resetPage) {
         // 重置数据
+        console.log(`🔄 重置页面 - regular: ${regular.length}条, pinned: ${pinned.length}条`);
+        console.log('   前3条:', regular.slice(0, 3).map(m => `ID${m.id}(${m.created_ts?.substring(0,10)})`));
         setMemos(regular);
         setPinnedMemos(pinned);
         setAllMemos(memosData);
@@ -261,7 +265,11 @@ export default function CompleteMemoApp() {
         setMemos(prev => {
           const existingIds = new Set(prev.map(m => m.uid || m.id));
           const newItems = regular.filter(m => !existingIds.has(m.uid || m.id));
-          return [...prev, ...newItems];
+          console.log(`📄 追加第${pageToLoad}页 - 新增: ${newItems.length}条, 总计: ${prev.length + newItems.length}条`);
+          console.log('   新增前3条:', newItems.slice(0, 3).map(m => `ID${m.id}(${m.created_ts?.substring(0,10)})`));
+          const result = [...prev, ...newItems];
+          console.log('   追加后前5条:', result.slice(0, 5).map(m => `ID${m.id}(${m.created_ts?.substring(0,10)})`));
+          return result;
         });
         setPinnedMemos(prev => {
           const existingIds = new Set(prev.map(m => m.uid || m.id));
@@ -282,8 +290,10 @@ export default function CompleteMemoApp() {
       setHasMore(newHasMore);
       setTotalMemos(newTotal);
       
-      // 生成热力图数据（需要所有数据，这里先用当前数据）
-      generateHeatmapData(resetPage ? memosData : [...allMemos, ...memosData]);
+      // 生成热力图数据（使用刚加载的数据）
+      if (resetPage) {
+        generateHeatmapData(memosData);
+      }
     } catch (error) {
       console.error('❌ 加载备忘录失败:', error);
       toast.error('加载备忘录失败');
@@ -291,7 +301,7 @@ export default function CompleteMemoApp() {
       // 🔒 释放锁
       loadingLockRef.current = false;
     }
-  }, [currentPage, generateHeatmapData, allMemos]);
+  }, [currentPage, generateHeatmapData]);
 
   // 检测移动端
   useEffect(() => {
@@ -342,7 +352,7 @@ export default function CompleteMemoApp() {
     if (refreshTrigger > 0 && isAuthenticated && isAppLoaded) {
       // 移除 console.log 避免控制台打开时影响性能
       Promise.all([
-        loadMemos(true), // 重置页码
+        loadMemos(true), // 重置页码（内部会重置所有状态）
         loadArchivedMemos()
       ]);
     }
@@ -351,10 +361,18 @@ export default function CompleteMemoApp() {
   
   // 加载更多数据（使用 useCallback 避免闭包问题）
   const loadMoreMemos = useCallback(async () => {
-    if (isLoadingMore || !hasMore) {
+    // 🔒 如果主加载正在进行，不要触发加载更多
+    if (loadingLockRef.current) {
+      console.log('⚠️ 主加载正在进行，跳过加载更多');
       return;
     }
     
+    if (isLoadingMore || !hasMore) {
+      console.log(`⚠️ 跳过加载更多 - isLoadingMore: ${isLoadingMore}, hasMore: ${hasMore}`);
+      return;
+    }
+    
+    console.log(`📄 开始加载更多 - 当前页: ${currentPage}`);
     setIsLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
@@ -413,7 +431,9 @@ export default function CompleteMemoApp() {
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach(entry => {
-            if (entry.isIntersecting && hasMore && !isLoadingMore) {
+            // 🔒 增加更严格的检查，防止在初始加载时触发
+            if (entry.isIntersecting && hasMore && !isLoadingMore && !loadingLockRef.current) {
+              console.log('🔍 IntersectionObserver 触发 - 准备加载更多');
               loadMoreMemos();
             }
           });
@@ -430,14 +450,17 @@ export default function CompleteMemoApp() {
       return observer;
     };
     
-    // 延迟执行，确保 DOM 已渲染
+    // ⚡ 增加延迟，确保第一页完全加载完成后再设置监听器
     const timer = setTimeout(() => {
-      const observer = setupObserver();
-      if (observer) {
-        // 保存到 ref 以便清理
-        loadMoreTriggerRef.observer = observer;
+      // 🔒 只有在没有加载锁时才设置监听器
+      if (!loadingLockRef.current) {
+        const observer = setupObserver();
+        if (observer) {
+          // 保存到 ref 以便清理
+          loadMoreTriggerRef.observer = observer;
+        }
       }
-    }, 100);
+    }, 500); // 从 100ms 增加到 500ms
     
     return () => {
       clearTimeout(timer);
@@ -505,7 +528,26 @@ export default function CompleteMemoApp() {
       const result = await dataService.updateMemo(id, updates);
       const updatedMemo = result;
       
-      // 🚀 直接更新前端状态，避免重新加载
+      // 🚀 如果只是内容更新（不涉及置顶/归档状态变化），使用原地更新
+      const isStatusChange = updates.hasOwnProperty('pinned') || updates.hasOwnProperty('archived');
+      
+      if (!isStatusChange) {
+        // 原地更新，保持位置不变
+        console.log(`✏️ 原地更新 ID${id} - created_ts: ${updatedMemo.created_ts?.substring(0,19)}`);
+        setMemos(prev => {
+          const result = prev.map(m => (m.id === id || m.uid === id) ? updatedMemo : m);
+          console.log('   更新后前5条:', result.slice(0, 5).map(m => `ID${m.id}(${m.created_ts?.substring(0,10)})`));
+          return result;
+        });
+        setPinnedMemos(prev => prev.map(m => (m.id === id || m.uid === id) ? updatedMemo : m));
+        setArchivedMemos(prev => prev.map(m => (m.id === id || m.uid === id) ? updatedMemo : m));
+        setAllMemos(prev => prev.map(m => (m.id === id || m.uid === id) ? updatedMemo : m));
+        
+        toast.success('备忘录已更新');
+        return;
+      }
+      
+      // 🔄 状态变化时才需要移动位置
       
       // 1. 从所有列表中移除该 memo
       setMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));

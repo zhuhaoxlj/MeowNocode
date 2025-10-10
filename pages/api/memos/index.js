@@ -8,6 +8,11 @@ async function handler(req, res) {
     switch (req.method) {
       case 'GET':
         try {
+          // 设置缓存控制头，防止浏览器缓存旧数据
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+          
           // 从查询参数获取分页信息
           const page = parseInt(req.query.page) || 1;
           const limit = parseInt(req.query.limit) || 50; // 默认每页 50 条
