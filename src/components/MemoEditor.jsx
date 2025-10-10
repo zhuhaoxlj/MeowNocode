@@ -24,6 +24,9 @@ const MemoEditor = React.memo(({
   onAddBacklink,
   onRemoveBacklink,
   onPreviewMemo,
+  // attachments related
+  attachments = [],
+  onAttachmentsChange,
   // optional focus callbacks
   onFocus,
   onBlur,
@@ -42,6 +45,19 @@ const MemoEditor = React.memo(({
   const [showBacklinkPicker, setShowBacklinkPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState(null);
   const backlinkBtnRef = useRef(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+  // 使用传入的 attachments 或本地状态
+  const [localAttachments, setLocalAttachments] = useState([]);
+  const pastedAttachments = attachments.length > 0 ? attachments : localAttachments;
+  const setPastedAttachments = onAttachmentsChange || setLocalAttachments;
+
+  // 当内容被清空时，也清空附件列表
+  useEffect(() => {
+    if (!value || value.trim() === '') {
+      setPastedAttachments([]);
+    }
+  }, [value, setPastedAttachments]);
 
   // 获取一言或内置句子
   const fetchHitokoto = async () => {
@@ -257,6 +273,86 @@ const MemoEditor = React.memo(({
         debouncedAdjustHeight();
       }, 0);
     }, [value, onChange, debouncedAdjustHeight]);
+
+  // 上传附件到服务器（参考 memos 实现）
+  const uploadAttachment = useCallback(async (file) => {
+    try {
+      setIsUploadingAttachment(true);
+      
+      const arrayBuffer = await file.arrayBuffer();
+      
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        body: arrayBuffer,
+        headers: {
+          'Content-Type': file.type,
+          'X-Filename': file.name || `image-${Date.now()}.${file.type.split('/')[1]}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('上传失败');
+      }
+      
+      const attachment = await response.json();
+      setIsUploadingAttachment(false);
+      
+      return attachment;
+    } catch (error) {
+      setIsUploadingAttachment(false);
+      throw error;
+    }
+  }, []);
+
+  // 删除附件
+  const removeAttachment = useCallback(async (attachmentId) => {
+    // 从附件列表中移除
+    setPastedAttachments(prev => prev.filter(att => att.id !== attachmentId));
+    
+    // 从服务器删除
+    try {
+      await fetch(`/api/attachments/${attachmentId}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('删除附件失败:', error);
+    }
+    
+    toast.success('图片已删除');
+  }, []);
+
+  // 处理粘贴事件（支持图片） - 参考 memos 实现
+  const handlePaste = useCallback(async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    // 检查是否有图片
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      if (item.type.startsWith('image/')) {
+        e.preventDefault(); // 阻止默认的文本粘贴
+        
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        try {
+          // 立即上传到服务器（像 memos 一样）
+          const attachment = await uploadAttachment(file);
+          
+          // 添加到附件列表
+          setPastedAttachments(prev => [...prev, attachment]);
+          
+          toast.success(`图片已上传 (${(file.size / 1024).toFixed(0)} KB)`);
+        } catch (error) {
+          console.error('图片上传失败:', error);
+          toast.error('图片上传失败: ' + error.message);
+        }
+        
+        break; // 只处理第一张图片
+      }
+    }
+  }, [uploadAttachment]);
 
   // 处理键盘事件 - 使用 useCallback 优化
   const handleKeyDown = useCallback((e) => {
@@ -557,6 +653,56 @@ const MemoEditor = React.memo(({
         '--tw-ring-color': themeColor
       } : {}}
     >
+      {/* 粘贴的附件预览（显示在输入框上方） */}
+      {pastedAttachments.length > 0 && (
+        <div className="px-3 pt-3 pb-2 flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700">
+          {pastedAttachments.map((att) => (
+            <div
+              key={att.id}
+              className="inline-flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 group transition-all hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              {/* 图片缩略图 */}
+              <img
+                src={att.url}
+                alt={att.filename}
+                className="w-8 h-8 object-cover rounded"
+              />
+              
+              {/* 文件名 */}
+              <span className="text-xs text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
+                {att.filename}
+              </span>
+              
+              {/* 文件大小 */}
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {(att.size / 1024).toFixed(0)} KB
+              </span>
+              
+              {/* 删除按钮 */}
+              <button
+                type="button"
+                onClick={() => removeAttachment(att.id)}
+                className="ml-1 w-5 h-5 rounded-full hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center justify-center text-gray-500 dark:text-gray-300 opacity-70 group-hover:opacity-100 transition-opacity"
+                aria-label="删除附件"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* 上传中提示 */}
+      {isUploadingAttachment && (
+        <div className="px-3 pt-2 pb-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>上传中...</span>
+        </div>
+      )}
+
       {/* 主要文本区域 */}
       <textarea
         ref={textareaRef}
@@ -566,6 +712,7 @@ const MemoEditor = React.memo(({
         onCompositionUpdate={handleCompositionUpdate}
         onCompositionEnd={handleCompositionEnd}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}

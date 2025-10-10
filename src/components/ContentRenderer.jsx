@@ -8,6 +8,74 @@ import ImageCarousel from '@/components/ImageCarousel';
 import ImagePreview from '@/components/ImagePreview';
 import fileStorageService from '@/lib/fileStorageService';
 
+// PastedImage 组件处理 local:// 引用的临时粘贴图片（从 IndexedDB）
+const PastedImage = ({ imageId, alt, onClick }) => {
+  const [imageSrc, setImageSrc] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadImage = async () => {
+      try {
+        const request = indexedDB.open('MemoImagesDB', 1);
+        
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          const transaction = db.transaction(['images'], 'readonly');
+          const store = transaction.objectStore('images');
+          const getRequest = store.get(imageId);
+          
+          getRequest.onsuccess = () => {
+            if (getRequest.result) {
+              setImageSrc(getRequest.result.data);
+            }
+            setLoading(false);
+          };
+          
+          getRequest.onerror = () => {
+            setLoading(false);
+          };
+        };
+        
+        request.onerror = () => {
+          setLoading(false);
+        };
+      } catch (error) {
+        console.error('加载图片失败:', error);
+        setLoading(false);
+      }
+    };
+
+    loadImage();
+  }, [imageId]);
+
+  if (loading) {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg my-2 text-sm text-gray-600 dark:text-gray-400">
+        <span>⏳</span>
+        <span>加载中...</span>
+      </div>
+    );
+  }
+
+  if (!imageSrc) {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg my-2 text-sm text-gray-600 dark:text-gray-400">
+        <span>📷</span>
+        <span>{alt || '图片'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={imageSrc} 
+      alt={alt || '图片'} 
+      className="max-w-full h-auto rounded-lg shadow-sm my-2 cursor-pointer hover:opacity-90 transition-opacity"
+      onClick={onClick}
+    />
+  );
+};
+
 // LocalImage 组件处理 local: 引用的图片
 const LocalImage = ({ src, alt, ...props }) => {
   const [imageSrc, setImageSrc] = useState(null);
@@ -544,6 +612,39 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
                         strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                         em: ({node, ...props}) => <em className="italic" {...props} />,
                         img: ({node, ...props}) => {
+                          // 处理 local:// 引用（粘贴的临时图片）
+                          if (props.src && props.src.startsWith('local://')) {
+                            const imageId = props.src.replace('local://', '');
+                            return (
+                              <PastedImage
+                                key={imageId}
+                                imageId={imageId}
+                                alt={props.alt}
+                                onClick={async () => {
+                                  // 从 IndexedDB 获取图片用于预览
+                                  try {
+                                    const request = indexedDB.open('MemoImagesDB', 1);
+                                    request.onsuccess = (event) => {
+                                      const db = event.target.result;
+                                      const transaction = db.transaction(['images'], 'readonly');
+                                      const store = transaction.objectStore('images');
+                                      const getRequest = store.get(imageId);
+                                      
+                                      getRequest.onsuccess = () => {
+                                        if (getRequest.result) {
+                                          setPreviewImages([{ src: getRequest.result.data, alt: props.alt || '图片' }]);
+                                          setPreviewIndex(0);
+                                        }
+                                      };
+                                    };
+                                  } catch (error) {
+                                    console.error('获取图片失败:', error);
+                                  }
+                                }}
+                              />
+                            );
+                          }
+                          
                           // 如果 src 为空但有 alt，可能是 data URI 被 ReactMarkdown 过滤了
                           // 尝试从原始 markdown 中恢复 data URI
                           if (!props.src && props.alt) {
@@ -666,6 +767,39 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
                               strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
                               em: ({node, ...props}) => <em className="italic" {...props} />,
                               img: ({node, ...props}) => {
+                                // 处理 local:// 引用（粘贴的临时图片）
+                                if (props.src && props.src.startsWith('local://')) {
+                                  const imageId = props.src.replace('local://', '');
+                                  return (
+                                    <PastedImage
+                                      key={imageId}
+                                      imageId={imageId}
+                                      alt={props.alt}
+                                      onClick={async () => {
+                                        // 从 IndexedDB 获取图片用于预览
+                                        try {
+                                          const request = indexedDB.open('MemoImagesDB', 1);
+                                          request.onsuccess = (event) => {
+                                            const db = event.target.result;
+                                            const transaction = db.transaction(['images'], 'readonly');
+                                            const store = transaction.objectStore('images');
+                                            const getRequest = store.get(imageId);
+                                            
+                                            getRequest.onsuccess = () => {
+                                              if (getRequest.result) {
+                                                setPreviewImages([{ src: getRequest.result.data, alt: props.alt || '图片' }]);
+                                                setPreviewIndex(0);
+                                              }
+                                            };
+                                          };
+                                        } catch (error) {
+                                          console.error('获取图片失败:', error);
+                                        }
+                                      }}
+                                    />
+                                  );
+                                }
+                                
                                 // 如果 src 为空但有 alt，可能是 data URI 被 ReactMarkdown 过滤了
                                 // 尝试从原始 markdown 中恢复 data URI
                                 if (!props.src && props.alt) {
@@ -745,6 +879,68 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
             setPreviewIndex(index);
           }}
         />
+      )}
+
+      {/* 附件列表（参考 memos 实现） */}
+      {memo && memo.attachments && memo.attachments.length > 0 && (
+        <div className="mt-4">
+          {/* 如果是图片附件，使用轮播图 */}
+          {memo.attachments.filter(att => att.type && att.type.startsWith('image/')).length > 1 ? (
+            <ImageCarousel
+              images={memo.attachments
+                .filter(att => att.type && att.type.startsWith('image/'))
+                .map(att => ({
+                  src: `/api/attachments/${att.id}`,
+                  alt: att.filename || '附件'
+                }))}
+              onImageClick={(index) => {
+                const imageAtts = memo.attachments.filter(att => att.type && att.type.startsWith('image/'));
+                setPreviewImages(imageAtts.map(att => ({
+                  src: `/api/attachments/${att.id}`,
+                  alt: att.filename || '附件'
+                })));
+                setPreviewIndex(index);
+              }}
+            />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {memo.attachments.map(att => {
+                if (att.type && att.type.startsWith('image/')) {
+                  return (
+                    <img
+                      key={att.id}
+                      src={`/api/attachments/${att.id}`}
+                      alt={att.filename || '附件'}
+                      className="max-w-full h-auto rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setPreviewImages([{
+                          src: `/api/attachments/${att.id}`,
+                          alt: att.filename || '附件'
+                        }]);
+                        setPreviewIndex(0);
+                      }}
+                      loading="lazy"
+                    />
+                  );
+                } else {
+                  // 非图片附件，显示下载链接
+                  return (
+                    <a
+                      key={att.id}
+                      href={`/api/attachments/${att.id}`}
+                      download={att.filename}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <span>📎</span>
+                      <span className="text-sm">{att.filename}</span>
+                      <span className="text-xs text-gray-500">({(att.size / 1024).toFixed(0)} KB)</span>
+                    </a>
+                  );
+                }
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* 图片预览 */}

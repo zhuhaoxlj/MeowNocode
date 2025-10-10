@@ -18,8 +18,14 @@ async function handler(req, res) {
           // 调用分页方法
           const result = db.getMemosPaginated({ limit, offset });
           
+          // 为每个 memo 加载附件列表（类似 memos 的做法）
+          const memosWithAttachments = result.memos.map(memo => ({
+            ...memo,
+            attachments: db.getResourcesByMemoId(memo.id)
+          }));
+          
           res.status(200).json({
-            memos: result.memos,
+            memos: memosWithAttachments,
             pagination: {
               page,
               limit,
@@ -44,16 +50,27 @@ async function handler(req, res) {
           console.log('   请求体:', JSON.stringify(req.body, null, 2));
           
           // 验证请求数据
-          if (!req.body || !req.body.content) {
-            console.error('❌ 无效的请求数据 - 缺少 content');
+          if (!req.body || (!req.body.content && !req.body.attachmentIds)) {
+            console.error('❌ 无效的请求数据 - 缺少 content 或 attachmentIds');
             return res.status(400).json({ 
               error: '无效的请求数据',
-              message: '必须提供 content 字段' 
+              message: '必须提供 content 或 attachmentIds 字段' 
             });
           }
           
+          // 创建 memo
           const memo = db.createMemo(req.body);
           console.log('✅ Memo 创建成功:', memo.id);
+          
+          // 如果有附件 ID，关联附件到 memo
+          if (req.body.attachmentIds && req.body.attachmentIds.length > 0) {
+            console.log(`📎 关联 ${req.body.attachmentIds.length} 个附件到 memo ${memo.id}`);
+            for (const attachmentId of req.body.attachmentIds) {
+              db.updateResourceMemoId(attachmentId, memo.id);
+            }
+            // 获取关联后的附件列表
+            memo.attachments = db.getResourcesByMemoId(memo.id);
+          }
           
           res.status(201).json({ memo });
         } catch (error) {
@@ -84,3 +101,12 @@ async function handler(req, res) {
 }
 
 export default withCors(withMethods(['GET', 'POST'])(handler));
+
+// 增加请求体大小限制，支持大图片（最大 10MB）
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};

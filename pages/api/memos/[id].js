@@ -57,3 +57,12 @@ async function handler(req, res) {
 }
 
 export default withCors(withMethods(['GET', 'PUT', 'DELETE'])(handler));
+
+// 增加请求体大小限制，支持大图片（最大 10MB）
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};

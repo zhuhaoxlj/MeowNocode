@@ -119,21 +119,50 @@ export default function CompleteMemoApp() {
   
   // 使用 useCallback 优化事件处理函数
   // 🚀 优化：接受内容参数，避免依赖异步状态更新
-  const handleAddMemo = useCallback(async (content) => {
-    // 如果传入 content，使用它；否则使用 newMemo 状态
-    const memoContent = content !== undefined ? content : newMemo;
+  const handleAddMemo = useCallback(async (contentOrData) => {
+    // 兼容两种输入：字符串或对象 { content, attachmentIds }
+    let memoData;
     
-    if (!memoContent.trim()) {
-      console.warn('⚠️ [handleAddMemo] 内容为空');
-      return;
-    }
-    
-    try {
-      const memoData = {
+    if (typeof contentOrData === 'string') {
+      // 旧的方式：直接传字符串
+      if (!contentOrData.trim()) {
+        console.warn('⚠️ [handleAddMemo] 内容为空');
+        return;
+      }
+      memoData = {
+        content: contentOrData.trim(),
+        pinned: false
+      };
+    } else if (typeof contentOrData === 'object' && contentOrData !== null) {
+      // 新的方式：传对象（参考 memos）
+      const { content, attachmentIds } = contentOrData;
+      
+      // 验证：至少要有内容或附件
+      if (!content?.trim() && (!attachmentIds || attachmentIds.length === 0)) {
+        console.warn('⚠️ [handleAddMemo] 内容和附件都为空');
+        return;
+      }
+      
+      memoData = {
+        content: content?.trim() || '',
+        attachmentIds: attachmentIds || [],
+        pinned: false
+      };
+    } else {
+      // 使用 newMemo 状态
+      const memoContent = newMemo;
+      if (!memoContent.trim()) {
+        console.warn('⚠️ [handleAddMemo] 内容为空');
+        return;
+      }
+      memoData = {
         content: memoContent.trim(),
         pinned: false
       };
-      
+    }
+    
+    try {
+      console.log('📝 [handleAddMemo] 创建 memo:', memoData);
       const created = await dataService.createMemo(memoData);
       
       setNewMemo('');
