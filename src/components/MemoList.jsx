@@ -44,86 +44,7 @@ const MemoList = ({
   const { themeColor } = useTheme();
   const memosForBacklinks = (allMemos && allMemos.length) ? allMemos : [...pinnedMemos, ...memos];
   const [menuPosition, setMenuPosition] = useState({});
-  const [hoverMenuId, setHoverMenuId] = useState(null);
-  const hoverTimerRef = useRef(null);
-  const lastMousePositionRef = useRef({ x: 0, y: 0 });
-  const currentMousePositionRef = useRef({ x: 0, y: 0 });
-  const safeZoneCheckIntervalRef = useRef(null);
-  
-  // 🐛 调试模式：设置为 true 可以看到桥接区域（绿色半透明）
-  const DEBUG_BRIDGE = false;
 
-  // ✨ Amazon 风格的三角形安全区域检测
-  // 判断点是否在三角形内（使用叉积算法）
-  const isPointInTriangle = (point, triangle) => {
-    const [p1, p2, p3] = triangle;
-    
-    const sign = (p1, p2, p3) => {
-      return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-    };
-    
-    const d1 = sign(point, p1, p2);
-    const d2 = sign(point, p2, p3);
-    const d3 = sign(point, p3, p1);
-    
-    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-    
-    return !(hasNeg && hasPos);
-  };
-
-  // 检查鼠标是否在朝菜单方向移动（使用矩形安全区域 + 扩展区域）
-  const isMouseMovingTowardsMenu = (currentMouse, menuPos) => {
-    if (!menuPos.top || !menuPos.left) return false;
-    
-    const menuWidth = 140;
-    const menuHeight = 100;
-    const padding = 10; // 合理的容错空间
-    
-    // 1. 首先检查鼠标是否已经在菜单区域内或非常接近
-    const inMenuArea = 
-      currentMouse.x >= menuPos.left - padding && 
-      currentMouse.x <= menuPos.left + menuWidth + padding &&
-      currentMouse.y >= menuPos.top - padding && 
-      currentMouse.y <= menuPos.top + menuHeight + padding;
-    
-    if (inMenuArea) return true;
-    
-    // 2. 检查鼠标是否在按钮区域内或附近
-    const inButtonArea = 
-      menuPos.buttonLeft && menuPos.buttonTop &&
-      currentMouse.x >= menuPos.buttonLeft - padding &&
-      currentMouse.x <= menuPos.buttonRight + padding &&
-      currentMouse.y >= menuPos.buttonTop - padding &&
-      currentMouse.y <= menuPos.buttonBottom + padding;
-    
-    if (inButtonArea) return true;
-    
-    // 3. 检查鼠标是否在按钮和菜单之间的矩形安全区域内
-    if (menuPos.showAbove) {
-      // 菜单在按钮上方：安全区域应该覆盖从菜单顶部到按钮底部
-      const minX = Math.min(menuPos.buttonLeft || 0, menuPos.left) - padding;
-      const maxX = Math.max(menuPos.buttonRight || 0, menuPos.left + menuWidth) + padding;
-      const minY = menuPos.top - padding;
-      const maxY = (menuPos.buttonBottom || 0) + padding;
-      
-      return currentMouse.x >= minX && 
-        currentMouse.x <= maxX &&
-        currentMouse.y >= minY && 
-        currentMouse.y <= maxY;
-    } else {
-      // 菜单在按钮下方
-      const minX = Math.min(menuPos.buttonLeft || 0, menuPos.left) - padding;
-      const maxX = Math.max(menuPos.buttonRight || 0, menuPos.left + menuWidth) + padding;
-      const minY = (menuPos.buttonTop || 0) - padding;
-      const maxY = menuPos.top + menuHeight + padding;
-      
-      return currentMouse.x >= minX && 
-        currentMouse.x <= maxX &&
-        currentMouse.y >= minY && 
-        currentMouse.y <= maxY;
-    }
-  };
 
   // 🚀 彻底修复：菜单紧贴按钮，桥接区域无缝连接
   const calculateMenuPosition = (buttonElement, menuId) => {
@@ -185,112 +106,27 @@ const MemoList = ({
     return result;
   };
 
-  // 悬停处理函数
-  const handleMenuHover = (memoId, event) => {
-    // 立即更新鼠标位置
-    if (event) {
-      currentMousePositionRef.current = { x: event.clientX, y: event.clientY };
-      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+  // 点击处理函数
+  const handleMenuClick = (memoId, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // 如果点击的是当前已打开的菜单，则关闭它
+    if (activeMenuId === memoId) {
+      onMenuButtonClick(null);
+      setMenuPosition({});
+      return;
     }
     
-    // 清除之前的定时器和检查interval
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-    }
-    if (safeZoneCheckIntervalRef.current) {
-      clearInterval(safeZoneCheckIntervalRef.current);
-    }
-    
-    // 立即计算菜单位置并设置
+    // 计算菜单位置并设置
     if (menuRefs.current[memoId]) {
       const buttonElement = menuRefs.current[memoId];
       const position = calculateMenuPosition(buttonElement, memoId);
       setMenuPosition(position);
     }
     
-    // 立即显示菜单
-    setHoverMenuId(memoId);
+    // 显示菜单
     onMenuButtonClick(memoId);
-  };
-
-  const handleMenuLeave = (event) => {
-    // 记录鼠标位置
-    if (event) {
-      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
-      currentMousePositionRef.current = { x: event.clientX, y: event.clientY };
-    }
-    
-    // 清除之前的定时器和检查
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-    }
-    if (safeZoneCheckIntervalRef.current) {
-      clearInterval(safeZoneCheckIntervalRef.current);
-    }
-    
-    // ⚡ 快速响应：短暂延迟后立即检查并关闭
-    hoverTimerRef.current = setTimeout(() => {
-      // 检查鼠标是否真的离开了安全区域
-      const currentPos = currentMousePositionRef.current;
-      const stillInSafeZone = isMouseMovingTowardsMenu(currentPos, menuPosition);
-      
-      if (stillInSafeZone) {
-        // 鼠标还在安全区域内，不做任何处理
-        console.log('🔍 鼠标还在安全区域内，保持菜单打开');
-        return;
-      }
-      
-      // 🚀 鼠标已离开安全区域，快速检查后关闭
-      let checkCount = 0;
-      const maxChecks = 2; // 最多检查 2 次（100ms）
-      
-      safeZoneCheckIntervalRef.current = setInterval(() => {
-        checkCount++;
-        
-        const isInSafeZone = isMouseMovingTowardsMenu(
-          currentMousePositionRef.current, 
-          menuPosition
-        );
-        
-        console.log(`🔍 安全区域检查 ${checkCount}/${maxChecks}:`, isInSafeZone);
-        
-        // 如果鼠标回到安全区域，停止检查
-        if (isInSafeZone) {
-          console.log('✅ 鼠标回到安全区域');
-          if (safeZoneCheckIntervalRef.current) {
-            clearInterval(safeZoneCheckIntervalRef.current);
-          }
-          return;
-        }
-        
-        // 如果鼠标持续不在安全区域，或者已经检查了足够次数，关闭菜单
-        if (!isInSafeZone && checkCount >= maxChecks) {
-          console.log('❌ 鼠标离开，关闭菜单');
-          if (safeZoneCheckIntervalRef.current) {
-            clearInterval(safeZoneCheckIntervalRef.current);
-          }
-          
-          setHoverMenuId(null);
-          setMenuPosition({});
-          if (activeMenuId) {
-            onMenuButtonClick(activeMenuId);
-          }
-        }
-        
-        // 更新上一次鼠标位置
-        lastMousePositionRef.current = { ...currentMousePositionRef.current };
-      }, 50);
-    }, 100); // 初始延迟 100ms
-  };
-
-  const handleMenuEnter = () => {
-    // 鼠标进入菜单时取消关闭定时器和检查interval
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-    }
-    if (safeZoneCheckIntervalRef.current) {
-      clearInterval(safeZoneCheckIntervalRef.current);
-    }
   };
 
   // 处理菜单定位（作为备用，防止其他地方直接设置activeMenuId）
@@ -302,32 +138,31 @@ const MemoList = ({
     }
   }, [activeMenuId, menuPosition]);
 
-  // 🎯 全局鼠标移动监听器 - 实时跟踪鼠标位置
+  // 点击外部区域关闭菜单
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      currentMousePositionRef.current = { x: e.clientX, y: e.clientY };
-    };
-    
-    // 只在菜单打开时添加监听器，优化性能
-    if (activeMenuId) {
-      document.addEventListener('mousemove', handleMouseMove);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-      };
-    }
-  }, [activeMenuId]);
+    if (!activeMenuId) return;
 
-  // 清理定时器和interval
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current);
-      }
-      if (safeZoneCheckIntervalRef.current) {
-        clearInterval(safeZoneCheckIntervalRef.current);
+    const handleClickOutside = (event) => {
+      // 检查点击是否在菜单按钮或菜单面板内
+      const isClickInsideMenu = event.target.closest('.memo-menu-panel');
+      const isClickInsideButton = event.target.closest('.memo-menu-button');
+      
+      if (!isClickInsideMenu && !isClickInsideButton) {
+        onMenuButtonClick(null);
+        setMenuPosition({});
       }
     };
-  }, []);
+
+    // 添加延迟以避免立即触发
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeMenuId, onMenuButtonClick]);
 
   return (
     <div className="flex-1 overflow-hidden h-full">
@@ -396,84 +231,33 @@ const MemoList = ({
                         </div>
                         
                         {/* 归档备忘录菜单按钮 */}
-                        <div 
-                          className="relative flex-shrink-0"
-                          onMouseEnter={(e) => handleMenuHover(memo.id, e)}
-                          onMouseLeave={handleMenuLeave}
-                        >
+                        <div className="relative flex-shrink-0">
                           <div
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 cursor-pointer flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                            className="memo-menu-button opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 cursor-pointer flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                             ref={(el) => {
                               if (el) menuRefs.current[memo.id] = el;
                             }}
+                            onClick={(e) => handleMenuClick(memo.id, e)}
                           >
                             <MoreVertical className="h-4 w-4" />
                           </div>
                           
                           {/* 归档备忘录菜单面板 */}
                           {activeMenuId === memo.id && (
-                            <>
-                              {/* 🚀 彻底修复：扩大桥接区域，完全覆盖按钮到菜单的区域 */}
-                              <div
-                                className="fixed"
-                                style={{
-                                  // 扩大桥接区域，向上和向下都包含按钮和菜单
-                                  top: menuPosition.showAbove 
-                                    ? `${menuPosition.top}px`  // 向上：从菜单顶部开始
-                                    : `${menuPosition.buttonTop}px`,  // 向下：从按钮顶部开始（而不是底部）
-                                  left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0) - 30,
-                                  width: Math.max(
-                                    (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
-                                    140
-                                  ) + 60,  // 左右各扩展 30px
-                                  height: menuPosition.showAbove
-                                    ? `${Math.max(0, (menuPosition.buttonBottom || 0) - (menuPosition.top || 0))}px`  // 向上：从菜单顶部到按钮底部
-                                    : `${Math.max(0, (menuPosition.top || 0) + 100 - (menuPosition.buttonTop || 0))}px`,  // 向下：从按钮顶部到菜单底部
-                                  zIndex: 49,
-                                  backgroundColor: DEBUG_BRIDGE ? 'rgba(0, 255, 0, 0.3)' : 'transparent',
-                                  border: DEBUG_BRIDGE ? '2px solid green' : 'none',
-                                  pointerEvents: 'auto'
-                                }}
-                                onMouseEnter={handleMenuEnter}
-                                onMouseLeave={handleMenuLeave}
-                                title={DEBUG_BRIDGE ? `桥接区域 (${menuPosition.showAbove ? '向上' : '向下'})` : undefined}
-                              />
-                              
-                              {/* 菜单面板 */}
-                              <div 
-                                className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
-                                style={{
-                                  top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
-                                  left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
-                                  transform: 'none' // 取消默认的transform
-                                }}
-                                onMouseEnter={handleMenuEnter}
-                                onMouseLeave={handleMenuLeave}
-                              >
+                            <div 
+                              className="memo-menu-panel fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+                              style={{
+                                top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
+                                left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
+                                transform: 'none' // 取消默认的transform
+                              }}
+                            >
                               <button
                                 onClick={async (e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log('🔵 点击取消归档:', memo.id);
-                                  
-                                  // 清除所有定时器和检查
-                                  if (hoverTimerRef.current) {
-                                    clearTimeout(hoverTimerRef.current);
-                                  }
-                                  if (safeZoneCheckIntervalRef.current) {
-                                    clearInterval(safeZoneCheckIntervalRef.current);
-                                  }
-                                  
                                   // 执行操作（onMenuAction 会处理菜单关闭）
                                   await onMenuAction(e, memo.id, 'unarchive');
-                                  
-                                  // 清理本地菜单状态
-                                  setHoverMenuId(null);
-                                  setMenuPosition({});
-                                }}
-                                onMouseDown={(e) => {
-                                  // 阻止 mousedown 事件触发 mouseleave
-                                  e.stopPropagation();
                                 }}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                               >
@@ -484,26 +268,8 @@ const MemoList = ({
                                 onClick={async (e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log('🔴 点击删除:', memo.id);
-                                  
-                                  // 清除所有定时器和检查
-                                  if (hoverTimerRef.current) {
-                                    clearTimeout(hoverTimerRef.current);
-                                  }
-                                  if (safeZoneCheckIntervalRef.current) {
-                                    clearInterval(safeZoneCheckIntervalRef.current);
-                                  }
-                                  
                                   // 执行操作（onMenuAction 会处理菜单关闭）
                                   await onMenuAction(e, memo.id, 'delete');
-                                  
-                                  // 清理本地菜单状态
-                                  setHoverMenuId(null);
-                                  setMenuPosition({});
-                                }}
-                                onMouseDown={(e) => {
-                                  // 阻止 mousedown 事件触发 mouseleave
-                                  e.stopPropagation();
                                 }}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 flex items-center space-x-2"
                               >
@@ -511,7 +277,6 @@ const MemoList = ({
                                 <span className="truncate">删除</span>
                               </button>
                               </div>
-                            </>
                           )}
                         </div>
                       </div>
@@ -588,56 +353,28 @@ const MemoList = ({
                       </div>
                       
                       {/* 菜单按钮 */}
-                      <div 
-                        className="relative flex-shrink-0"
-                        onMouseEnter={(e) => handleMenuHover(memo.id, e)}
-                        onMouseLeave={handleMenuLeave}
-                      >
+                      <div className="relative flex-shrink-0">
                         <div
-                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0 cursor-pointer flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                          className="memo-menu-button opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0 cursor-pointer flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                           ref={el => {
                             if (menuRefs.current) {
                               menuRefs.current[memo.id] = el;
                             }
                           }}
+                          onClick={(e) => handleMenuClick(memo.id, e)}
                         >
                           <MoreVertical className="h-4 w-4" />
                         </div>
                         
                         {/* 菜单面板 - 置顶备忘录专用 */}
                         {activeMenuId === memo.id && (
-                          <>
-                            {/* 🚀 彻底修复：无缝桥接区域，从按钮到菜单 - 置顶菜单 */}
-                            <div
-                              className="fixed"
-                              style={{
-                                top: menuPosition.buttonBottom ? `${menuPosition.buttonBottom}px` : 'auto',
-                                left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
-                                width: Math.max(
-                                  (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
-                                  160
-                                ),
-                                height: menuPosition.top ? `${menuPosition.top - (menuPosition.buttonBottom || 0)}px` : '0px',
-                                zIndex: 49,
-                                backgroundColor: DEBUG_BRIDGE ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
-                                border: DEBUG_BRIDGE ? '1px solid red' : 'none',
-                                pointerEvents: 'auto'
-                              }}
-                              onMouseEnter={handleMenuEnter}
-                              onMouseLeave={handleMenuLeave}
-                              title={DEBUG_BRIDGE ? '桥接区域（调试可见）' : undefined}
-                            />
-                            
-                            {/* 菜单面板 */}
                             <div 
-                              className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 w-40"
+                              className="memo-menu-panel fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 w-40"
                               style={{
                                 top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
                                 left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
                                 transform: 'none' // 取消默认的transform
                               }}
-                              onMouseEnter={handleMenuEnter}
-                              onMouseLeave={handleMenuLeave}
                             >
                             <button
                               onClick={(e) => onMenuAction(e, memo.id, 'unpin')}
@@ -668,7 +405,6 @@ const MemoList = ({
                               <span className="truncate">删除</span>
                             </button>
                             </div>
-                          </>
                         )}
                       </div>
                     </div>
@@ -739,50 +475,24 @@ const MemoList = ({
                     <div
                       className="absolute top-3 right-3"
                       ref={(el) => menuRefs.current[memo.id] = el}
-                      onMouseEnter={(e) => handleMenuHover(memo.id, e)}
-                      onMouseLeave={handleMenuLeave}
                     >
                       <div
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 touch:opacity-100 cursor-pointer"
+                        className="memo-menu-button p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 touch:opacity-100 cursor-pointer"
                         aria-label="操作菜单"
+                        onClick={(e) => handleMenuClick(memo.id, e)}
                       >
                         <MoreVertical className="h-4 w-4 text-gray-500" />
                       </div>
 
-                      {/* 菜单面板容器 - 包含桥接区域 */}
+                      {/* 菜单面板 */}
                       {activeMenuId === memo.id && (
-                        <>
-                          {/* 🚀 彻底修复：无缝桥接区域，从按钮到菜单 - 普通菜单 */}
                           <div
-                            className="fixed"
-                            style={{
-                              top: menuPosition.buttonBottom ? `${menuPosition.buttonBottom}px` : 'auto',
-                              left: Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
-                              width: Math.max(
-                                (menuPosition.buttonRight || 0) - Math.min(menuPosition.left || 0, menuPosition.buttonLeft || 0),
-                                192
-                              ),
-                              height: menuPosition.top ? `${menuPosition.top - (menuPosition.buttonBottom || 0)}px` : '0px',
-                              zIndex: 49,
-                              backgroundColor: DEBUG_BRIDGE ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
-                              border: DEBUG_BRIDGE ? '1px solid red' : 'none',
-                              pointerEvents: 'auto'
-                            }}
-                            onMouseEnter={handleMenuEnter}
-                            onMouseLeave={handleMenuLeave}
-                            title={DEBUG_BRIDGE ? '桥接区域（调试可见）' : undefined}
-                          />
-                          
-                          {/* 菜单面板 */}
-                          <div
-                            className="fixed w-40 sm:w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
+                            className="memo-menu-panel fixed w-40 sm:w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
                             style={{
                               top: menuPosition.top ? `${menuPosition.top}px` : 'auto',
                               left: menuPosition.left ? `${menuPosition.left}px` : 'auto',
                               transform: 'none' // 取消默认的transform
                             }}
-                            onMouseEnter={handleMenuEnter}
-                            onMouseLeave={handleMenuLeave}
                             onClick={(e) => e.stopPropagation()}
                           >
                           {/* 置顶/取消置顶按钮 */}
@@ -870,7 +580,6 @@ const MemoList = ({
                             })}</div>
                           </div>
                           </div>
-                        </>
                       )}
                     </div>
                     
