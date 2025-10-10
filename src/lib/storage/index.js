@@ -7,7 +7,6 @@
 export { StorageAdapter } from './StorageAdapter.js';
 export { LocalDBAdapter } from './LocalDBAdapter.js';
 export { BrowserStorageAdapter } from './BrowserStorageAdapter.js';
-export { CloudflareStorageAdapter } from './CloudflareStorageAdapter.js';
 
 // 工厂和管理器
 export { StorageFactory, storageFactory, STORAGE_TYPES, STORAGE_TYPE_CONFIGS } from './StorageFactory.js';

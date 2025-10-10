@@ -6,13 +6,11 @@
 
 import { BrowserStorageAdapter } from './BrowserStorageAdapter.js';
 import { LocalDBAdapter } from './LocalDBAdapter.js';
-import { CloudflareStorageAdapter } from './CloudflareStorageAdapter.js';
 
 // 存储类型常量
 export const STORAGE_TYPES = {
   BROWSER: 'browser',
   LOCAL_DB: 'localdb',
-  CLOUDFLARE: 'cloudflare',
   S3: 's3' // 预留
 };
 
@@ -40,20 +38,6 @@ export const STORAGE_TYPE_CONFIGS = {
       { key: 'dbPath', label: '数据库文件名', type: 'text', default: 'meownocode.db' },
       { key: 'autoSave', label: '自动保存', type: 'boolean', default: true },
       { key: 'saveInterval', label: '保存间隔(秒)', type: 'number', default: 30 }
-    ]
-  },
-  
-  [STORAGE_TYPES.CLOUDFLARE]: {
-    name: 'Cloudflare Workers',
-    description: 'D1 数据库 + R2 存储，全球访问',
-    icon: '☁️',
-    pros: ['跨设备同步', '全球访问', '高可用', '免费额度充足'],
-    cons: ['需要网络', '配置复杂'],
-    requiresConfig: true,
-    isDefault: false,
-    configFields: [
-      { key: 'baseURL', label: 'API 地址', type: 'text', placeholder: 'https://your-worker.workers.dev' },
-      { key: 'apiKey', label: 'API 密钥', type: 'password', required: false }
     ]
   },
   
@@ -103,10 +87,6 @@ export class StorageFactory {
 
       case STORAGE_TYPES.LOCAL_DB:
         adapter = new LocalDBAdapter(config);
-        break;
-
-      case STORAGE_TYPES.CLOUDFLARE:
-        adapter = new CloudflareStorageAdapter(config);
         break;
 
       case STORAGE_TYPES.S3:

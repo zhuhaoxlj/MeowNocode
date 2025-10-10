@@ -240,7 +240,7 @@ export class LocalDBAdapter extends StorageAdapter {
         query += ' WHERE ' + conditions.join(' AND ');
       }
       
-      query += ' GROUP BY m.id ORDER BY m.created_at DESC';
+      query += ' GROUP BY m.id ORDER BY m.updated_at DESC';
       
       if (limit) {
         query += ' LIMIT ? OFFSET ?';

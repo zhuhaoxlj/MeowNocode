@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DatabaseService } from '@/lib/database';
-import { D1DatabaseService } from '@/lib/d1';
-import { D1ApiClient } from '@/lib/d1-api';
 import { useAuth } from './AuthContext';
 import { getDeletedMemoTombstones, removeDeletedMemoTombstones } from '@/lib/utils';
 
@@ -30,7 +28,6 @@ export function SettingsProvider({ children }) {
     imageUrl: '' // 用户自定义头像URL
   });
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
-  const [cloudProvider, setCloudProvider] = useState('supabase'); // 'supabase' 或 'd1'
   const [aiConfig, setAiConfig] = useState({
     baseUrl: '',
     apiKey: '',
@@ -86,41 +83,11 @@ export function SettingsProvider({ children }) {
     if (syncingRef.current) { pendingRef.current = true; return; }
     syncingRef.current = true;
     try {
-      // 先下行：拉取云端，基于 lastCloudSyncAt 处理“远端删除”，避免本地旧数据回传导致复活
+      // 先下行：拉取云端，基于 lastCloudSyncAt 处理"远端删除"，避免本地旧数据回传导致复活
       const lastSyncAt = Number(localStorage.getItem('lastCloudSyncAt') || 0);
       let cloudMemos = [];
-      if (cloudProvider === 'supabase') {
-        if (user) {
-          try { cloudMemos = await DatabaseService.getUserMemos(user.id); } catch {}
-        }
-      } else {
-        try {
-          const res = await D1ApiClient.restoreUserData();
-          if (res?.success) {
-            cloudMemos = (res.data?.memos || []).map(m => ({
-              memo_id: m.memo_id,
-              content: m.content,
-              tags: JSON.parse(m.tags || '[]'),
-              backlinks: JSON.parse(m.backlinks || '[]'),
-              created_at: m.created_at,
-              updated_at: m.updated_at
-            }));
-          } else {
-            throw new Error('restore via API failed');
-          }
-        } catch {
-          try {
-            const ms = await D1DatabaseService.getAllMemos();
-            cloudMemos = (ms || []).map(m => ({
-              memo_id: m.memo_id,
-              content: m.content,
-              tags: JSON.parse(m.tags || '[]'),
-              backlinks: JSON.parse(m.backlinks || '[]'),
-              created_at: m.created_at,
-              updated_at: m.updated_at
-            }));
-          } catch {}
-        }
+      if (user) {
+        try { cloudMemos = await DatabaseService.getUserMemos(user.id); } catch {}
       }
 
       // 与本地对比并应用远端删除/更新/新增
@@ -253,46 +220,16 @@ export function SettingsProvider({ children }) {
       }
 
       // 再进行上行同步（upsert settings & memos）
-      if (cloudProvider === 'supabase') {
-        if (!user) return; // need auth
-        await DatabaseService.syncUserData(user.id);
-      } else {
-        // d1
-        await (async () => {
-          // 优先 API 客户端，失败降级
-          try {
-            const localData = {
-              memos: JSON.parse(localStorage.getItem('memos') || '[]'),
-              pinnedMemos: JSON.parse(localStorage.getItem('pinnedMemos') || '[]'),
-              themeColor: localStorage.getItem('themeColor') || '#818CF8',
-              darkMode: localStorage.getItem('darkMode') || 'false',
-              hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
-              fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-              backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'),
-              avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
-              canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null'),
-              musicConfig: JSON.parse(localStorage.getItem('musicConfig') || '{"enabled":true,"customSongs":[]}')
-            };
-            await D1ApiClient.syncUserData(localData);
-          } catch (_) {
-            await D1DatabaseService.syncUserData();
-          }
-        })();
-      }
+      if (!user) return; // need auth
+      await DatabaseService.syncUserData(user.id);
 
       // 然后处理删除墓碑，推送云端删除
       const tombstones = getDeletedMemoTombstones();
       if (tombstones && tombstones.length) {
         const ids = tombstones.map(t => t.id);
-        if (cloudProvider === 'supabase') {
-          if (user) {
-            for (const id of ids) {
-              try { await DatabaseService.deleteMemo(user.id, id); } catch {}
-            }
-          }
-        } else {
+        if (user) {
           for (const id of ids) {
-            try { await D1ApiClient.deleteMemo(id); } catch { try { await D1DatabaseService.deleteMemo(id); } catch {} }
+            try { await DatabaseService.deleteMemo(user.id, id); } catch {}
           }
         }
         removeDeletedMemoTombstones(ids);
@@ -308,7 +245,7 @@ export function SettingsProvider({ children }) {
         syncTimerRef.current = setTimeout(doSync, 500);
       }
     }
-  }, [cloudSyncEnabled, cloudProvider, user]);
+  }, [cloudSyncEnabled, user]);
 
   const scheduleSync = React.useCallback((reason = 'change') => {
     if (!cloudSyncEnabled) return;
@@ -374,15 +311,6 @@ export function SettingsProvider({ children }) {
       }
     }
 
-    // 从localStorage加载云服务提供商设置
-    const savedCloudProvider = localStorage.getItem('cloudProvider');
-    if (savedCloudProvider) {
-      try {
-        setCloudProvider(savedCloudProvider);
-      } catch (error) {
-        console.warn('Failed to parse cloud provider config:', error);
-      }
-    }
 
   }, []);
 
@@ -465,10 +393,6 @@ export function SettingsProvider({ children }) {
     localStorage.setItem('cloudSyncEnabled', JSON.stringify(cloudSyncEnabled));
   }, [cloudSyncEnabled]);
 
-  useEffect(() => {
-    // 保存云服务提供商设置到localStorage
-    localStorage.setItem('cloudProvider', cloudProvider);
-  }, [cloudProvider]);
 
 
   useEffect(() => {
@@ -541,20 +465,9 @@ export function SettingsProvider({ children }) {
           if (cloudSyncEnabled) scheduleSync('startup');
           return;
         }
-        if (cloudProvider === 'supabase') {
-          if (!user) return; // need auth to restore
-          await DatabaseService.restoreUserData(user.id);
-          try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.supabase' } })); } catch {}
-        } else {
-          try {
-            const res = await D1ApiClient.restoreUserData();
-            if (!res?.success) throw new Error('restore via API failed');
-            try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.d1.api' } })); } catch {}
-          } catch (_) {
-            await D1DatabaseService.restoreUserData();
-            try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.d1.db' } })); } catch {}
-          }
-        }
+        if (!user) return; // need auth to restore
+        await DatabaseService.restoreUserData(user.id);
+        try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'restore.supabase' } })); } catch {}
         // after restore, schedule a push to ensure any local-only fields are upserted formats
         if (cloudSyncEnabled) scheduleSync('post-restore');
       } catch (e) {
@@ -562,7 +475,7 @@ export function SettingsProvider({ children }) {
       }
     };
     maybeRestore();
-  }, [cloudSyncEnabled, cloudProvider, user, scheduleSync]);
+  }, [cloudSyncEnabled, user, scheduleSync]);
 
   // 统一“手动同步”按钮逻辑：云 -> 本地 合并 -> 云
   const manualSync = async () => {
@@ -584,40 +497,9 @@ export function SettingsProvider({ children }) {
       // 拉取云端
   let cloudMemos = [];
   let cloudSettings = null;
-      if (cloudProvider === 'supabase') {
-        if (!user) throw new Error('请先登录');
-        cloudMemos = await DatabaseService.getUserMemos(user.id);
-        cloudSettings = await DatabaseService.getUserSettings(user.id);
-      } else {
-        try {
-          const res = await D1ApiClient.restoreUserData();
-          if (res?.success) {
-            cloudMemos = (res.data?.memos || []).map(m => ({
-              memo_id: m.memo_id,
-              content: m.content,
-              tags: JSON.parse(m.tags || '[]'),
-              backlinks: JSON.parse(m.backlinks || '[]'),
-              created_at: m.created_at,
-              updated_at: m.updated_at
-            }));
-            cloudSettings = res.data?.settings || null;
-          } else {
-            throw new Error(res?.message || 'D1恢复失败');
-          }
-        } catch (_) {
-          const memos = await D1DatabaseService.getAllMemos();
-          const settings = await D1DatabaseService.getUserSettings();
-          cloudMemos = (memos || []).map(m => ({
-            memo_id: m.memo_id,
-            content: m.content,
-            tags: JSON.parse(m.tags || '[]'),
-            backlinks: JSON.parse(m.backlinks || '[]'),
-            created_at: m.created_at,
-            updated_at: m.updated_at
-          }));
-          cloudSettings = settings || null;
-        }
-      }
+      if (!user) throw new Error('请先登录');
+      cloudMemos = await DatabaseService.getUserMemos(user.id);
+      cloudSettings = await DatabaseService.getUserSettings(user.id);
 
       // 合并
       const localMap = new Map((local.memos || []).map(m => [String(m.id), m]));
@@ -712,24 +594,14 @@ export function SettingsProvider({ children }) {
 
       // 删除墓碑
       const toDeleteIds = Array.from(deletedSet);
-      if (cloudProvider === 'supabase') {
-        if (!user) throw new Error('请先登录');
-        for (const id of toDeleteIds) {
-          try { await DatabaseService.deleteMemo(user.id, id); } catch {}
-        }
-        for (const memo of merged) {
-          await DatabaseService.upsertMemo(user.id, memo);
-        }
-  await DatabaseService.upsertUserSettings(user.id, mergedSettings);
-      } else {
-        for (const id of toDeleteIds) {
-          try { await D1ApiClient.deleteMemo(id); } catch { try { await D1DatabaseService.deleteMemo(id); } catch {} }
-        }
-        for (const memo of merged) {
-          try { await D1ApiClient.upsertMemo(memo); } catch { await D1DatabaseService.upsertMemo(memo); }
-        }
-        try { await D1ApiClient.upsertUserSettings(mergedSettings); } catch { await D1DatabaseService.upsertUserSettings(mergedSettings); }
+      if (!user) throw new Error('请先登录');
+      for (const id of toDeleteIds) {
+        try { await DatabaseService.deleteMemo(user.id, id); } catch {}
       }
+      for (const memo of merged) {
+        await DatabaseService.upsertMemo(user.id, memo);
+      }
+      await DatabaseService.upsertUserSettings(user.id, mergedSettings);
       removeDeletedMemoTombstones(toDeleteIds);
       localStorage.setItem('lastCloudSyncAt', String(Date.now()));
       try { window.dispatchEvent(new CustomEvent('app:dataChanged', { detail: { part: 'manualSync' } })); } catch {}
@@ -761,14 +633,6 @@ export function SettingsProvider({ children }) {
     setCloudSyncEnabled(enabled);
   };
 
-  const updateCloudProvider = (provider) => {
-    try {
-      setCloudProvider(provider);
-    } catch (error) {
-      console.error('更新云服务提供商失败:', error);
-      throw error;
-    }
-  };
 
 
   const updateAiConfig = (newConfig) => {
@@ -813,103 +677,6 @@ export function SettingsProvider({ children }) {
     }
   };
 
-  // D1同步功能
-  const syncToD1 = async () => {
-    try {
-      // 获取本地数据
-      const localData = {
-        memos: JSON.parse(localStorage.getItem('memos') || '[]'),
-        pinnedMemos: JSON.parse(localStorage.getItem('pinnedMemos') || '[]'),
-        themeColor: localStorage.getItem('themeColor') || '#818CF8',
-        darkMode: localStorage.getItem('darkMode') || 'false',
-        hitokotoConfig: JSON.parse(localStorage.getItem('hitokotoConfig') || '{"enabled":true,"types":["a","b","c","d","i","j","k"]}'),
-        fontConfig: JSON.parse(localStorage.getItem('fontConfig') || '{"selectedFont":"default"}'),
-  backgroundConfig: JSON.parse(localStorage.getItem('backgroundConfig') || '{"imageUrl":"","brightness":50,"blur":10,"useRandom":false}'),
-  avatarConfig: JSON.parse(localStorage.getItem('avatarConfig') || '{"imageUrl":""}'),
-  canvasConfig: JSON.parse(localStorage.getItem('canvasState') || 'null')
-      };
-
-      // 优先尝试使用API客户端（适用于Cloudflare Pages）
-      try {
-        const result = await D1ApiClient.syncUserData(localData);
-        return result;
-      } catch (apiError) {
-        console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
-        
-        // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
-        const result = await D1DatabaseService.syncUserData();
-        return result;
-      }
-    } catch (error) {
-      console.error('同步到D1失败:', error);
-      return { success: false, message: error.message };
-    }
-  };
-
-  const restoreFromD1 = async () => {
-    try {
-      // 优先尝试使用API客户端（适用于Cloudflare Pages）
-      try {
-        const result = await D1ApiClient.restoreUserData();
-        
-        if (result.success) {
-          // 恢复到本地存储
-          if (result.data.memos && result.data.memos.length > 0) {
-            const localMemos = result.data.memos.map(memo => ({
-              id: memo.memo_id,
-              content: memo.content,
-              tags: JSON.parse(memo.tags || '[]'),
-              timestamp: memo.created_at,
-              lastModified: memo.updated_at,
-              createdAt: memo.created_at,
-              updatedAt: memo.updated_at
-            }));
-            localStorage.setItem('memos', JSON.stringify(localMemos));
-          }
-
-          if (result.data.settings) {
-            if (result.data.settings.pinned_memos) {
-              localStorage.setItem('pinnedMemos', result.data.settings.pinned_memos);
-            }
-            if (result.data.settings.theme_color) {
-              localStorage.setItem('themeColor', result.data.settings.theme_color);
-            }
-            if (result.data.settings.dark_mode !== null) {
-              localStorage.setItem('darkMode', result.data.settings.dark_mode.toString());
-            }
-            if (result.data.settings.hitokoto_config) {
-              localStorage.setItem('hitokotoConfig', result.data.settings.hitokoto_config);
-            }
-            if (result.data.settings.font_config) {
-              localStorage.setItem('fontConfig', result.data.settings.font_config);
-            }
-            if (result.data.settings.background_config) {
-              localStorage.setItem('backgroundConfig', result.data.settings.background_config);
-            }
-            if (result.data.settings.avatar_config) {
-              localStorage.setItem('avatarConfig', result.data.settings.avatar_config);
-            }
-            if (result.data.settings.canvas_config) {
-              localStorage.setItem('canvasState', result.data.settings.canvas_config);
-            }
-          }
-          
-          return { success: true, message: '从D1恢复数据成功，请刷新页面查看' };
-        }
-        
-        throw new Error(result.message || '恢复数据失败');
-      } catch (apiError) {
-        console.warn('D1 API客户端失败，尝试直接访问D1数据库:', apiError);
-        
-        // 如果API客户端失败，尝试直接访问D1数据库（适用于Cloudflare Workers）
-  const result = await D1DatabaseService.restoreUserData();
-        return result;
-      }
-    } catch (error) {
-      console.error('从D1恢复失败:', error);
-      return { success: false, message: error.message };
-    }
-  };
 
   return (
     <SettingsContext.Provider value={{
@@ -923,12 +690,8 @@ export function SettingsProvider({ children }) {
       updateAvatarConfig,
       cloudSyncEnabled,
       updateCloudSyncEnabled,
-      cloudProvider,
-      updateCloudProvider,
       syncToSupabase,
       restoreFromSupabase,
-      syncToD1,
-      restoreFromD1,
       aiConfig,
       updateAiConfig,
       keyboardShortcuts,
