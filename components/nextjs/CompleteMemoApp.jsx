@@ -117,6 +117,9 @@ export default function CompleteMemoApp() {
   // 创建数据刷新触发器
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
+  // 🔒 添加请求锁，防止并发请求导致的竞态条件
+  const loadingLockRef = useRef(false);
+  
   // 使用 useCallback 优化事件处理函数
   // 🚀 优化：接受内容参数，避免依赖异步状态更新
   const handleAddMemo = useCallback(async (contentOrData) => {
@@ -162,7 +165,7 @@ export default function CompleteMemoApp() {
     }
     
     try {
-      console.log('📝 [handleAddMemo] 创建 memo:', memoData);
+      // 移除 console.log 避免控制台打开时影响性能
       const created = await dataService.createMemo(memoData);
       
       setNewMemo('');
@@ -183,63 +186,59 @@ export default function CompleteMemoApp() {
     // 编辑器失焦处理
   }, []);
 
-  // 检测移动端
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
+  // 生成热力图数据
+  const generateHeatmapData = useCallback((memosData) => {
+    const heatmapCounts = {};
+    memosData.forEach(memo => {
+      const date = new Date(memo.created_ts || memo.createdAt).toISOString().split('T')[0];
+      heatmapCounts[date] = (heatmapCounts[date] || 0) + 1;
+    });
     
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    // 转换为GitHubStyleHeatmap期望的数组格式
+    const heatmapArray = Object.entries(heatmapCounts).map(([date, count]) => ({
+      date,
+      count
+    }));
+    
+    setHeatmapData(heatmapArray);
   }, []);
 
-  // 初始化应用（只在认证后执行一次）
-  useEffect(() => {
-    let isSubscribed = true;
-    
-    const initApp = async () => {
-      try {
-        await Promise.all([
-          loadMemos(),
-          loadArchivedMemos()
-        ]);
-        
-        if (isSubscribed) {
-          setIsAppLoaded(true);
-          setTimeout(() => setIsInitialLoad(false), 100);
-        }
-      } catch (error) {
-        console.error('❌ 应用初始化失败:', error);
-        if (isSubscribed) {
-          toast.error('应用初始化失败');
-        }
+  // 加载归档的 memos（添加性能日志）
+  const loadArchivedMemos = useCallback(async () => {
+    try {
+      const response = await fetch('/api/memos/archived');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-    };
-    
-    if (isAuthenticated && !isAppLoaded) {
-      initApp();
+      const result = await response.json();
+      
+      const normalizedArchivedMemos = result.data.map(memo => ({
+        id: memo.id,
+        content: memo.content,
+        tags: memo.tags,
+        visibility: memo.visibility,
+        pinned: memo.pinned,
+        created_ts: memo.created_ts,
+        updated_ts: memo.updated_ts,
+        timestamp: memo.created_ts || memo.timestamp,
+        archived: true
+      }));
+      setArchivedMemos(normalizedArchivedMemos);
+    } catch (error) {
+      console.error('❌ 获取归档备忘录失败:', error);
+      toast.error('获取归档备忘录失败');
+    }
+  }, []);
+
+  // 加载首页数据（分页）- 使用 useCallback 优化
+  const loadMemos = useCallback(async (resetPage = false) => {
+    // 🔒 防止并发请求（竞态条件的关键修复）
+    if (loadingLockRef.current) {
+      return;
     }
     
-    return () => {
-      isSubscribed = false;
-    };
-  }, [isAuthenticated]); // 只依赖 isAuthenticated
-
-  // 当 refreshTrigger 变化时重新加载数据
-  useEffect(() => {
-    if (refreshTrigger > 0 && isAuthenticated && isAppLoaded) {
-      console.log(`🔄 触发数据刷新 (trigger: ${refreshTrigger})`);
-      Promise.all([
-        loadMemos(true), // 重置页码
-        loadArchivedMemos()
-      ]);
-    }
-  }, [refreshTrigger]);
-
-  // 加载首页数据（分页）
-  const loadMemos = async (resetPage = false) => {
-    const startTime = Date.now();
+    loadingLockRef.current = true;
+    
     try {
       const pageToLoad = resetPage ? 1 : currentPage;
       
@@ -288,8 +287,67 @@ export default function CompleteMemoApp() {
     } catch (error) {
       console.error('❌ 加载备忘录失败:', error);
       toast.error('加载备忘录失败');
+    } finally {
+      // 🔒 释放锁
+      loadingLockRef.current = false;
     }
-  };
+  }, [currentPage, generateHeatmapData, allMemos]);
+
+  // 检测移动端
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // 初始化应用（只在认证后执行一次）
+  useEffect(() => {
+    let isSubscribed = true;
+    
+    const initApp = async () => {
+      try {
+        await Promise.all([
+          loadMemos(),
+          loadArchivedMemos()
+        ]);
+        
+        if (isSubscribed) {
+          setIsAppLoaded(true);
+          setTimeout(() => setIsInitialLoad(false), 100);
+        }
+      } catch (error) {
+        console.error('❌ 应用初始化失败:', error);
+        if (isSubscribed) {
+          toast.error('应用初始化失败');
+        }
+      }
+    };
+    
+    if (isAuthenticated && !isAppLoaded) {
+      initApp();
+    }
+    
+    return () => {
+      isSubscribed = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // 只依赖 isAuthenticated，避免无限循环
+
+  // 当 refreshTrigger 变化时重新加载数据
+  useEffect(() => {
+    if (refreshTrigger > 0 && isAuthenticated && isAppLoaded) {
+      // 移除 console.log 避免控制台打开时影响性能
+      Promise.all([
+        loadMemos(true), // 重置页码
+        loadArchivedMemos()
+      ]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger, isAuthenticated, isAppLoaded]); // 不包含函数依赖，避免无限循环
   
   // 加载更多数据（使用 useCallback 避免闭包问题）
   const loadMoreMemos = useCallback(async () => {
@@ -388,51 +446,7 @@ export default function CompleteMemoApp() {
         delete loadMoreTriggerRef.observer;
       }
     };
-  }, [hasMore, isLoadingMore, currentPage, memos.length]);
-
-  // 加载归档的 memos（添加性能日志）
-  const loadArchivedMemos = async () => {
-    try {
-      const response = await fetch('/api/memos/archived');
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const result = await response.json();
-      
-      const normalizedArchivedMemos = result.data.map(memo => ({
-        id: memo.id,
-        content: memo.content,
-        tags: memo.tags,
-        visibility: memo.visibility,
-        pinned: memo.pinned,
-        created_ts: memo.created_ts,
-        updated_ts: memo.updated_ts,
-        timestamp: memo.created_ts || memo.timestamp,
-        archived: true
-      }));
-      setArchivedMemos(normalizedArchivedMemos);
-    } catch (error) {
-      console.error('❌ 获取归档备忘录失败:', error);
-      toast.error('获取归档备忘录失败');
-    }
-  };
-
-  // 生成热力图数据
-  const generateHeatmapData = (memosData) => {
-    const heatmapCounts = {};
-    memosData.forEach(memo => {
-      const date = new Date(memo.created_ts || memo.createdAt).toISOString().split('T')[0];
-      heatmapCounts[date] = (heatmapCounts[date] || 0) + 1;
-    });
-    
-    // 转换为GitHubStyleHeatmap期望的数组格式
-    const heatmapArray = Object.entries(heatmapCounts).map(([date, count]) => ({
-      date,
-      count
-    }));
-    
-    setHeatmapData(heatmapArray);
-  };
+  }, [hasMore, isLoadingMore, currentPage, memos.length, loadMoreMemos]);
 
   // 筛选备忘录
   const filteredMemos = memos.filter(memo => {
@@ -499,18 +513,38 @@ export default function CompleteMemoApp() {
       setArchivedMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));
       setAllMemos(prev => prev.filter(m => m.id !== id && m.uid !== id));
       
-      // 2. 根据新状态添加到对应列表
+      // 辅助函数：按时间降序插入 memo（保持正确的排序）
+      const insertMemoSorted = (list, memo) => {
+        const newList = [...list];
+        // 找到第一个创建时间早于当前 memo 的位置
+        const insertIndex = newList.findIndex(m => {
+          const memoTime = new Date(memo.created_ts || memo.createdAt).getTime();
+          const itemTime = new Date(m.created_ts || m.createdAt).getTime();
+          return itemTime < memoTime;
+        });
+        
+        if (insertIndex === -1) {
+          // 如果没找到，说明是最早的，添加到末尾
+          return [...newList, memo];
+        } else {
+          // 插入到正确的位置
+          newList.splice(insertIndex, 0, memo);
+          return newList;
+        }
+      };
+      
+      // 2. 根据新状态添加到对应列表（按时间顺序）
       if (updatedMemo.archived) {
-        // 归档：添加到归档列表
-        setArchivedMemos(prev => [updatedMemo, ...prev]);
+        // 归档：添加到归档列表，按时间排序
+        setArchivedMemos(prev => insertMemoSorted(prev, updatedMemo));
       } else {
-        // 未归档：根据置顶状态添加
-        setAllMemos(prev => [updatedMemo, ...prev]);
+        // 未归档：根据置顶状态添加，按时间排序
+        setAllMemos(prev => insertMemoSorted(prev, updatedMemo));
         
         if (updatedMemo.pinned) {
-          setPinnedMemos(prev => [updatedMemo, ...prev]);
+          setPinnedMemos(prev => insertMemoSorted(prev, updatedMemo));
         } else {
-          setMemos(prev => [updatedMemo, ...prev]);
+          setMemos(prev => insertMemoSorted(prev, updatedMemo));
         }
       }
       
@@ -569,7 +603,34 @@ export default function CompleteMemoApp() {
           break;
         case 'edit':
           setEditingId(memoId);
-          setEditContent(memo.content);
+          
+          // 🚀 如果 content 中没有有效的图片引用但有 resourceMeta，添加占位符
+          let editableContent = memo.content;
+          if (memo.resourceMeta && memo.resourceMeta.length > 0) {
+            const hasValidImageReference = /!\[.*?\]\((?:data:|placeholder-|https?:)/.test(memo.content);
+            const hasInvalidImageReference = /!\[.*?\]\(\.\/local\//.test(memo.content);
+            
+            if (!hasValidImageReference) {
+              // 清除无效引用
+              if (hasInvalidImageReference) {
+                editableContent = memo.content.replace(/!\[.*?\]\(\.\/local\/[^)]*\)\s*/g, '');
+              }
+              
+              // 添加 resourceMeta 的占位符
+              const imageReferences = memo.resourceMeta
+                .filter(r => r.type && r.type.startsWith('image/'))
+                .map(r => `![${r.filename}](placeholder-${r.id})`)
+                .join('\n');
+              
+              if (imageReferences) {
+                editableContent = editableContent.trim() 
+                  ? `${editableContent}\n\n${imageReferences}` 
+                  : imageReferences;
+              }
+            }
+          }
+          
+          setEditContent(editableContent);
           break;
         case 'share':
           setSelectedMemoForShare(memo);

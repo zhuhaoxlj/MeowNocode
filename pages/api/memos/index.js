@@ -13,7 +13,8 @@ async function handler(req, res) {
           const limit = parseInt(req.query.limit) || 50; // 默认每页 50 条
           const offset = (page - 1) * limit;
           
-          console.log(`📖 获取 memos - 页码: ${page}, 每页: ${limit}, 偏移: ${offset}`);
+          // 移除 console.log 避免控制台打开时影响性能
+          // console.log(`📖 获取 memos - 页码: ${page}, 每页: ${limit}, 偏移: ${offset}`);
           
           // 调用分页方法
           const result = db.getMemosPaginated({ limit, offset });

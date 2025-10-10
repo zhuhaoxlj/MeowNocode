@@ -140,5 +140,6 @@ const LazyImage = ({ src, alt, resourceMeta, memoId, ...props }) => {
   );
 };
 
-export default LazyImage;
+// 使用 React.memo 优化，避免父组件重新渲染时重新加载图片
+export default React.memo(LazyImage);
 

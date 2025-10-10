@@ -9,7 +9,7 @@ import ImagePreview from '@/components/ImagePreview';
 import fileStorageService from '@/lib/fileStorageService';
 
 // PastedImage 组件处理 local:// 引用的临时粘贴图片（从 IndexedDB）
-const PastedImage = ({ imageId, alt, onClick }) => {
+const PastedImage = React.memo(({ imageId, alt, onClick }) => {
   const [imageSrc, setImageSrc] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -74,7 +74,7 @@ const PastedImage = ({ imageId, alt, onClick }) => {
       onClick={onClick}
     />
   );
-};
+});
 
 // LocalImage 组件处理 local: 引用的图片
 const LocalImage = ({ src, alt, ...props }) => {
@@ -218,13 +218,22 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
   const [previewImages, setPreviewImages] = useState(null);
   const [previewIndex, setPreviewIndex] = useState(0);
   
-  // 🚀 如果 memo 有资源但 content 中没有图片引用，自动添加占位符
+  // 🚀 如果 memo 有资源但 content 中没有有效的图片引用，自动添加占位符
   let processedContent = content;
   if (memo?.resourceMeta && memo.resourceMeta.length > 0) {
-    // 检查 content 中是否已有图片引用
-    const hasImageReference = /!\[.*?\]\(.*?\)/.test(content);
+    // 检查 content 中是否已有有效的图片引用（data:、http、placeholder-）
+    const hasValidImageReference = /!\[.*?\]\((?:data:|placeholder-|https?:)/.test(content);
     
-    if (!hasImageReference) {
+    // 检查是否有无效的图片引用（./local/ 等）
+    const hasInvalidImageReference = /!\[.*?\]\(\.\/local\//.test(content);
+    
+    if (!hasValidImageReference) {
+      // 如果有无效引用，先移除它们
+      let cleanedContent = content;
+      if (hasInvalidImageReference) {
+        cleanedContent = content.replace(/!\[.*?\]\(\.\/local\/[^)]*\)\s*/g, '');
+      }
+      
       // 在内容末尾添加图片占位符引用
       const imageReferences = memo.resourceMeta
         .filter(r => r.type && r.type.startsWith('image/'))
@@ -232,8 +241,8 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
         .join('\n');
       
       if (imageReferences) {
-        processedContent = content.trim() 
-          ? `${content}\n\n${imageReferences}` 
+        processedContent = cleanedContent.trim() 
+          ? `${cleanedContent}\n\n${imageReferences}` 
           : imageReferences;
       }
     }
@@ -242,15 +251,21 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
   // 提取所有图片信息
   const extractedImages = useMemo(() => {
     const images = [];
+    const seen = new Set(); // 用于去重
     const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     let match;
     
     while ((match = imageRegex.exec(processedContent)) !== null) {
-      images.push({
-        alt: match[1] || '图片',
-        src: match[2],
-        placeholder: match[0]
-      });
+      const src = match[2];
+      // 去重：相同的 src 只添加一次
+      if (!seen.has(src)) {
+        seen.add(src);
+        images.push({
+          alt: match[1] || '图片',
+          src: src,
+          placeholder: match[0]
+        });
+      }
     }
     
     return images;
@@ -299,6 +314,11 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
 
   // 用于收集已加载的图片
   const [loadedImages, setLoadedImages] = useState([]);
+
+  // 🚀 当 memo 或 processedContent 改变时，重置 loadedImages
+  useEffect(() => {
+    setLoadedImages([]);
+  }, [memo?.id, processedContent]);
 
   const handleImageLoad = (src, alt) => {
     setLoadedImages(prev => {
@@ -881,8 +901,8 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
         />
       )}
 
-      {/* 附件列表（参考 memos 实现） */}
-      {memo && memo.attachments && memo.attachments.length > 0 && (
+      {/* 附件列表（参考 memos 实现）- 🚀 只在没有 resourceMeta 时才显示，避免重复 */}
+      {memo && memo.attachments && memo.attachments.length > 0 && !memo.resourceMeta && (
         <div className="mt-4">
           {/* 如果是图片附件，使用轮播图 */}
           {memo.attachments.filter(att => att.type && att.type.startsWith('image/')).length > 1 ? (
@@ -955,4 +975,14 @@ const ContentRenderer = ({ content, activeTag, onTagClick, onContentChange, memo
   );
 };
 
-export default ContentRenderer;
+// 使用 React.memo 优化，避免父组件状态更新导致不必要的重新渲染
+export default React.memo(ContentRenderer, (prevProps, nextProps) => {
+  // 只在这些关键 props 变化时才重新渲染
+  return (
+    prevProps.content === nextProps.content &&
+    prevProps.memoId === nextProps.memoId &&
+    prevProps.editable === nextProps.editable &&
+    prevProps.resources === nextProps.resources &&
+    prevProps.showHoverMenu === nextProps.showHoverMenu
+  );
+});
