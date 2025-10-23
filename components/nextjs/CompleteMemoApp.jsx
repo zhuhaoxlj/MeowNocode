@@ -321,7 +321,7 @@ export default function CompleteMemoApp() {
     const initApp = async () => {
       try {
         await Promise.all([
-          loadMemos(),
+          loadMemos(true), // 传入 true 以触发热力图数据生成
           loadArchivedMemos()
         ]);
         
@@ -828,28 +828,26 @@ export default function CompleteMemoApp() {
       <div className="flex h-full">
         {/* 左侧边栏 - 桌面端 */}
         {!isMobile && (
-          <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
-            <LeftSidebar
-              heatmapData={heatmapData}
-              memos={allMemos}
-              pinnedMemos={[]}
-              totalMemos={totalMemos}
-              isLeftSidebarHidden={isLeftSidebarHidden}
-              setIsLeftSidebarHidden={setIsLeftSidebarHidden}
-              isLeftSidebarPinned={isLeftSidebarPinned}
-              setIsLeftSidebarPinned={setIsLeftSidebarPinned}
-              isLeftSidebarHovered={isLeftSidebarHovered}
-              isAppLoaded={isAppLoaded}
-              isInitialLoad={isInitialLoad}
-              isCanvasMode={isCanvasMode}
-              setIsCanvasMode={setIsCanvasMode}
-              onSettingsOpen={onSettingsOpen}
-              onDateClick={onDateClick}
-              onOpenDailyReview={onOpenDailyReview}
-              showFavoriteRandomButton={true}
-              onFavoriteRandomBackground={onFavoriteRandomBackground}
-            />
-          </div>
+          <LeftSidebar
+            heatmapData={heatmapData}
+            memos={allMemos}
+            pinnedMemos={[]}
+            totalMemos={totalMemos}
+            isLeftSidebarHidden={isLeftSidebarHidden}
+            setIsLeftSidebarHidden={setIsLeftSidebarHidden}
+            isLeftSidebarPinned={isLeftSidebarPinned}
+            setIsLeftSidebarPinned={setIsLeftSidebarPinned}
+            isLeftSidebarHovered={isLeftSidebarHovered}
+            isAppLoaded={isAppLoaded}
+            isInitialLoad={isInitialLoad}
+            isCanvasMode={isCanvasMode}
+            setIsCanvasMode={setIsCanvasMode}
+            onSettingsOpen={onSettingsOpen}
+            onDateClick={onDateClick}
+            onOpenDailyReview={onOpenDailyReview}
+            showFavoriteRandomButton={true}
+            onFavoriteRandomBackground={onFavoriteRandomBackground}
+          />
         )}
         
         {/* 移动端侧边栏 */}
@@ -935,21 +933,19 @@ export default function CompleteMemoApp() {
             
             {/* 右侧边栏 - 桌面端 */}
             {!isMobile && (
-              <div className="w-80 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
-                <RightSidebar
-                  memos={allMemos}
-                  activeTag={activeTag}
-                  setActiveTag={setActiveTag}
-                  isRightSidebarHidden={isRightSidebarHidden}
-                  setIsRightSidebarHidden={setIsRightSidebarHidden}
-                  isRightSidebarPinned={isRightSidebarPinned}
-                  setIsRightSidebarPinned={setIsRightSidebarPinned}
-                  isRightSidebarHovered={isRightSidebarHovered}
-                  isAppLoaded={isAppLoaded}
-                  isInitialLoad={isInitialLoad}
-                  isCanvasMode={isCanvasMode}
-                />
-              </div>
+              <RightSidebar
+                memos={allMemos}
+                activeTag={activeTag}
+                setActiveTag={setActiveTag}
+                isRightSidebarHidden={isRightSidebarHidden}
+                setIsRightSidebarHidden={setIsRightSidebarHidden}
+                isRightSidebarPinned={isRightSidebarPinned}
+                setIsRightSidebarPinned={setIsRightSidebarPinned}
+                isRightSidebarHovered={isRightSidebarHovered}
+                isAppLoaded={isAppLoaded}
+                isInitialLoad={isInitialLoad}
+                isCanvasMode={isCanvasMode}
+              />
             )}
           </div>
           

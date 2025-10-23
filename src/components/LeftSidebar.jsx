@@ -70,9 +70,9 @@ const LeftSidebar = ({
 
   return (
     <div
-      className={`hidden lg:flex flex-col ${isAppLoaded && !isInitialLoad ? 'transition-all duration-300 ease-in-out' : ''} ${
+      className={`hidden lg:flex flex-col bg-white dark:bg-gray-800 overflow-y-auto ${isAppLoaded && !isInitialLoad ? 'transition-all duration-300 ease-in-out' : ''} ${
         isLeftSidebarPinned
-          ? 'border-r dark:border-gray-700 lg:w-1/5 lg:min-w-[240px] opacity-100 translate-x-0'
+          ? 'border-r border-gray-200 dark:border-gray-700 lg:w-1/5 lg:min-w-[240px] opacity-100 translate-x-0'
           : isLeftSidebarHovered
             ? 'fixed left-0 top-16 z-30 m-4 rounded-2xl shadow-xl border dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm w-80 h-[calc(100vh-8rem)] max-h-[80vh] opacity-100 translate-x-0'
             : isAppLoaded && !isInitialLoad
@@ -108,7 +108,7 @@ const LeftSidebar = ({
           <h2 className="text-lg font-semibold dark:text-gray-200">记忆热力图</h2>
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           <GitHubStyleHeatmap data={heatmapData} onDateClick={onDateClick} isSidebarHovered={!isLeftSidebarPinned && isLeftSidebarHovered} />
           <UsageStats memos={memos} pinnedMemos={[]} totalCount={totalMemos} />
 

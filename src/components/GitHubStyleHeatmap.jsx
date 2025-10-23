@@ -292,8 +292,8 @@ const GitHubStyleHeatmap = ({ data = [], onDateClick, isSidebarHovered = false }
       </div>
 
       {/* 热力图区域背景为透明 */}
-      <div className="px-2 bg-transparent rounded overflow-hidden">
-        <div className="flex gap-1" style={{ minHeight: '110px' }}>
+      <div className="px-2 bg-transparent rounded">
+        <div className="flex gap-1" style={{ minHeight: '120px', height: 'auto' }}>
           {grid}
         </div>
       </div>
