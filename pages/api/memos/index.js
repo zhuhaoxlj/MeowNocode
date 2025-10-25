@@ -8,6 +8,8 @@ async function handler(req, res) {
     switch (req.method) {
       case 'GET':
         try {
+          const apiStartTime = Date.now();
+          
           // 设置缓存控制头，防止浏览器缓存旧数据
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
           res.setHeader('Pragma', 'no-cache');
@@ -18,30 +20,16 @@ async function handler(req, res) {
           const limit = parseInt(req.query.limit) || 50; // 默认每页 50 条
           const offset = (page - 1) * limit;
           
-          // 移除 console.log 避免控制台打开时影响性能
-          // console.log(`📖 获取 memos - 页码: ${page}, 每页: ${limit}, 偏移: ${offset}`);
-          
           // 调用分页方法
           const result = db.getMemosPaginated({ limit, offset });
           
-          // 🚀 性能优化：批量加载附件，避免 N+1 查询
-          const memoIds = result.memos.map(m => m.id);
-          const allAttachments = memoIds.length > 0 ? db.getResourcesByMemoIds(memoIds) : [];
+          // 🚀 性能优化关键：只返回资源元数据，不返回 blob（避免传输 15MB+ 数据）
+          // memos-database.js 的 getMemosPaginated 已经包含了 resourceMeta
+          // 我们不需要再查询完整的资源数据
+          const memosWithAttachments = result.memos;
           
-          // 建立 memo_id -> attachments 的映射关系
-          const attachmentsByMemoId = {};
-          allAttachments.forEach(att => {
-            if (!attachmentsByMemoId[att.memo_id]) {
-              attachmentsByMemoId[att.memo_id] = [];
-            }
-            attachmentsByMemoId[att.memo_id].push(att);
-          });
-          
-          // 合并数据
-          const memosWithAttachments = result.memos.map(memo => ({
-            ...memo,
-            attachments: attachmentsByMemoId[memo.id] || []
-          }));
+          const apiDuration = Date.now() - apiStartTime;
+          console.log(`⚡ API /api/memos 执行时间: ${apiDuration}ms (${memosWithAttachments.length} 条记录)`);
           
           res.status(200).json({
             memos: memosWithAttachments,
