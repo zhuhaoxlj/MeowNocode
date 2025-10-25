@@ -116,14 +116,76 @@
     filter: brightness(0.9);
   }
 
-  /* 隐藏滚动条但保持滚动功能 */
+  /* 隐藏滚动条但保持滚动功能 - 完美兼容 Safari */
   .scrollbar-hidden {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
   }
 
   .scrollbar-hidden::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important; /* Chrome, Safari, Opera */
+    -webkit-appearance: none !important;
+  }
+  
+  .scrollbar-hidden::-webkit-scrollbar-track {
+    display: none !important;
+    background: transparent !important;
+  }
+  
+  .scrollbar-hidden::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+  }
+  
+  .scrollbar-hidden::-webkit-scrollbar-track-piece {
+    display: none !important;
+  }
+  
+  .scrollbar-hidden::-webkit-scrollbar-corner {
+    display: none !important;
+  }
+
+  /* 🎨 美化滚动条 - 更细更现代 - Safari 兼容 */
+  .scrollbar-modern {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent; /* thumb track */
+  }
+
+  .scrollbar-modern::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+    -webkit-appearance: none; /* Safari 专用 */
+  }
+
+  .scrollbar-modern::-webkit-scrollbar-track {
+    background: transparent !important;
+    -webkit-box-shadow: none !important;
+  }
+
+  .scrollbar-modern::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.3) !important;
+    border-radius: 9999px !important;
+    border: 1px solid transparent !important;
+    background-clip: padding-box !important;
+    -webkit-border-radius: 9999px; /* Safari 专用 */
+  }
+
+  .scrollbar-modern::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.5) !important;
+  }
+
+  .dark .scrollbar-modern {
+    scrollbar-color: rgba(75, 85, 99, 0.3) transparent;
+  }
+
+  .dark .scrollbar-modern::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.3) !important;
+  }
+
+  .dark .scrollbar-modern::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(75, 85, 99, 0.5) !important;
   }
 
   /* 颜色选择器样式 */

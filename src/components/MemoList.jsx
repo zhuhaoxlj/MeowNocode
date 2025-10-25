@@ -169,7 +169,7 @@ const MemoList = ({
       {/* 统一的大滚动容器 - 包含所有内容 */}
       <div
         ref={memosContainerRef}
-        className="h-full overflow-y-auto"
+        className="h-full overflow-y-auto scrollbar-hidden"
       >
         {/* 归档视图 */}
         {showArchived ? (

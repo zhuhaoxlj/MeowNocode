@@ -18,7 +18,7 @@ const RightSidebar = ({
 
   return (
     <div
-      className={`hidden lg:flex flex-col bg-white dark:bg-gray-800 overflow-y-auto ${isAppLoaded && !isInitialLoad ? 'transition-all duration-300 ease-in-out' : ''} ${
+      className={`hidden lg:flex flex-col bg-white dark:bg-gray-800 overflow-y-auto scrollbar-hidden ${isAppLoaded && !isInitialLoad ? 'transition-all duration-300 ease-in-out' : ''} ${
         isRightSidebarPinned
           ? 'border-l border-gray-200 dark:border-gray-700 lg:w-1/5 lg:min-w-[240px] opacity-100 translate-x-0'
           : isRightSidebarHovered
