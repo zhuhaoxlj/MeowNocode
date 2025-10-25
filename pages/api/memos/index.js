@@ -24,10 +24,23 @@ async function handler(req, res) {
           // 调用分页方法
           const result = db.getMemosPaginated({ limit, offset });
           
-          // 为每个 memo 加载附件列表（类似 memos 的做法）
+          // 🚀 性能优化：批量加载附件，避免 N+1 查询
+          const memoIds = result.memos.map(m => m.id);
+          const allAttachments = memoIds.length > 0 ? db.getResourcesByMemoIds(memoIds) : [];
+          
+          // 建立 memo_id -> attachments 的映射关系
+          const attachmentsByMemoId = {};
+          allAttachments.forEach(att => {
+            if (!attachmentsByMemoId[att.memo_id]) {
+              attachmentsByMemoId[att.memo_id] = [];
+            }
+            attachmentsByMemoId[att.memo_id].push(att);
+          });
+          
+          // 合并数据
           const memosWithAttachments = result.memos.map(memo => ({
             ...memo,
-            attachments: db.getResourcesByMemoId(memo.id)
+            attachments: attachmentsByMemoId[memo.id] || []
           }));
           
           res.status(200).json({

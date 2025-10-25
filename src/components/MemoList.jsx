@@ -753,4 +753,17 @@ const MemoList = ({
   );
 };
 
-export default MemoList;
+// 🚀 使用 React.memo 优化，避免不必要的重新渲染
+export default React.memo(MemoList, (prevProps, nextProps) => {
+  // 只在这些关键 props 变化时才重新渲染
+  return (
+    prevProps.memos === nextProps.memos &&
+    prevProps.pinnedMemos === nextProps.pinnedMemos &&
+    prevProps.archivedMemos === nextProps.archivedMemos &&
+    prevProps.showArchived === nextProps.showArchived &&
+    prevProps.activeMenuId === nextProps.activeMenuId &&
+    prevProps.editingId === nextProps.editingId &&
+    prevProps.hasMore === nextProps.hasMore &&
+    prevProps.isLoadingMore === nextProps.isLoadingMore
+  );
+});
