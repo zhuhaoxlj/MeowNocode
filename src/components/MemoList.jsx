@@ -170,6 +170,7 @@ const MemoList = ({
       <div
         ref={memosContainerRef}
         className="h-full overflow-y-auto scrollbar-hidden"
+        style={{ minHeight: '600px' }} // 防止 CLS，为内容预留空间
       >
         {/* 归档视图 */}
         {showArchived ? (
@@ -304,7 +305,7 @@ const MemoList = ({
                       <div className="flex-1 mr-3">
                         {editingId === memo.id ? (
                           <MemoEditor
-                            content={editContent}
+                            value={editContent}
                             onChange={onEditContentChange}
                             onSave={onSaveEdit}
                             onCancel={onCancelEdit}
@@ -416,7 +417,10 @@ const MemoList = ({
         )}
 
         {/* 近期想法区域 */}
-        <div className={`px-4 pb-4 ${pinnedMemos.length === 0 ? 'pt-4' : ''}`}>
+        <div
+          className={`px-4 pb-4 ${pinnedMemos.length === 0 ? 'pt-4' : ''}`}
+          style={{ minHeight: '400px' }} // 防止 CLS，为动态内容预留空间
+        >
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg sm:text-xl font-semibold flex items-center">
               <Clock

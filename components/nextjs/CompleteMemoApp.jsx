@@ -609,15 +609,16 @@ export default function CompleteMemoApp() {
   // 菜单操作
   const onMenuAction = async (e, memoId, action) => {
     e?.stopPropagation();
-    
+
     try {
-      // 从所有备忘录（包括归档的）中查找
-      const memo = [...memos, ...pinnedMemos, ...archivedMemos].find(m => m.id === memoId);
+      // 从所有备忘录（包括归档的）中查找 - 同时检查 id 和 uid
+      const memo = [...memos, ...pinnedMemos, ...archivedMemos].find(m => m.id === memoId || m.uid === memoId);
+
       if (!memo) {
         console.error('❌ 找不到备忘录:', memoId);
         return;
       }
-      
+
       switch (action) {
         case 'delete':
           await dataService.deleteMemo(memoId);
@@ -645,33 +646,35 @@ export default function CompleteMemoApp() {
           break;
         case 'edit':
           setEditingId(memoId);
-          
+
+          // ✅ 确保 content 不为 undefined/null，防止输入框为空
+          let editableContent = memo.content || '';
+
           // 🚀 如果 content 中没有有效的图片引用但有 resourceMeta，添加占位符
-          let editableContent = memo.content;
           if (memo.resourceMeta && memo.resourceMeta.length > 0) {
-            const hasValidImageReference = /!\[.*?\]\((?:data:|placeholder-|https?:)/.test(memo.content);
-            const hasInvalidImageReference = /!\[.*?\]\(\.\/local\//.test(memo.content);
-            
+            const hasValidImageReference = /!\[.*?\]\((?:data:|placeholder-|https?:)/.test(editableContent);
+            const hasInvalidImageReference = /!\[.*?\]\(\.\/local\//.test(editableContent);
+
             if (!hasValidImageReference) {
               // 清除无效引用
               if (hasInvalidImageReference) {
-                editableContent = memo.content.replace(/!\[.*?\]\(\.\/local\/[^)]*\)\s*/g, '');
+                editableContent = editableContent.replace(/!\[.*?\]\(\.\/local\/[^)]*\)\s*/g, '');
               }
-              
+
               // 添加 resourceMeta 的占位符
               const imageReferences = memo.resourceMeta
                 .filter(r => r.type && r.type.startsWith('image/'))
                 .map(r => `![${r.filename}](placeholder-${r.id})`)
                 .join('\n');
-              
+
               if (imageReferences) {
-                editableContent = editableContent.trim() 
-                  ? `${editableContent}\n\n${imageReferences}` 
+                editableContent = editableContent.trim()
+                  ? `${editableContent}\n\n${imageReferences}`
                   : imageReferences;
               }
             }
           }
-          
+
           setEditContent(editableContent);
           break;
         case 'share':

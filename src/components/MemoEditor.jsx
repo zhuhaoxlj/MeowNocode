@@ -594,9 +594,21 @@ const MemoEditor = React.memo(({
     }
   }, [autoFocus]);
 
-  // 组件挂载时获取一言，以及当一言配置变化时重新获取
+  // 组件挂载时延迟获取一言，使用 requestIdleCallback 优化性能
   useEffect(() => {
-    fetchHitokoto();
+    // 使用 requestIdleCallback 延迟非关键API请求
+    if ('requestIdleCallback' in window) {
+      const idleCallbackId = requestIdleCallback(() => {
+        fetchHitokoto();
+      }, { timeout: 2000 });
+      return () => cancelIdleCallback(idleCallbackId);
+    } else {
+      // 降级方案：延迟 1 秒后执行
+      const timerId = setTimeout(() => {
+        fetchHitokoto();
+      }, 1000);
+      return () => clearTimeout(timerId);
+    }
   }, [hitokotoConfig]);
 
   // 计算字符数 - 使用 useMemo 缓存计算结果
