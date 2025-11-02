@@ -307,8 +307,7 @@ const MemoList = ({
                           <MemoEditor
                             value={editContent}
                             onChange={onEditContentChange}
-                            onSave={onSaveEdit}
-                            onCancel={onCancelEdit}
+                            onSubmit={onSaveEdit}
                           />
                         ) : (
                           <div 
