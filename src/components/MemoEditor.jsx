@@ -52,13 +52,6 @@ const MemoEditor = React.memo(({
   const pastedAttachments = attachments.length > 0 ? attachments : localAttachments;
   const setPastedAttachments = onAttachmentsChange || setLocalAttachments;
 
-  // 当内容被清空时，也清空附件列表
-  useEffect(() => {
-    if (!value || value.trim() === '') {
-      setPastedAttachments([]);
-    }
-  }, [value, setPastedAttachments]);
-
   // 获取一言或内置句子
   const fetchHitokoto = async () => {
     if (!hitokotoConfig.enabled) {
