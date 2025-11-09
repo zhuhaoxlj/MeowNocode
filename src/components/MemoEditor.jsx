@@ -277,10 +277,16 @@ const MemoEditor = React.memo(({
   // 上传附件到服务器（参考 memos 实现）
   const uploadAttachment = useCallback(async (file) => {
     try {
+      console.log('📤 [MemoEditor uploadAttachment] 开始上传文件:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
+
       setIsUploadingAttachment(true);
-      
+
       const arrayBuffer = await file.arrayBuffer();
-      
+
       const response = await fetch('/api/attachments/upload', {
         method: 'POST',
         body: arrayBuffer,
@@ -289,16 +295,19 @@ const MemoEditor = React.memo(({
           'X-Filename': file.name || `image-${Date.now()}.${file.type.split('/')[1]}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('上传失败');
       }
-      
+
       const attachment = await response.json();
+      console.log('✅ [MemoEditor uploadAttachment] 上传成功，返回:', attachment);
+
       setIsUploadingAttachment(false);
-      
+
       return attachment;
     } catch (error) {
+      console.error('❌ [MemoEditor uploadAttachment] 上传失败:', error);
       setIsUploadingAttachment(false);
       throw error;
     }
@@ -326,29 +335,41 @@ const MemoEditor = React.memo(({
     const items = e.clipboardData?.items;
     if (!items) return;
 
+    console.log('📋 [MemoEditor handlePaste] 检测到粘贴事件，items数量:', items.length);
+
     // 检查是否有图片
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      
+
+      console.log(`   - Item ${i}: type = ${item.type}`);
+
       if (item.type.startsWith('image/')) {
         e.preventDefault(); // 阻止默认的文本粘贴
-        
+
         const file = item.getAsFile();
         if (!file) continue;
+
+        console.log('🖼️ [MemoEditor handlePaste] 检测到图片，准备上传');
 
         try {
           // 立即上传到服务器（像 memos 一样）
           const attachment = await uploadAttachment(file);
-          
+
+          console.log('📎 [MemoEditor handlePaste] 添加到附件列表，ID:', attachment.id);
+
           // 添加到附件列表
-          setPastedAttachments(prev => [...prev, attachment]);
-          
+          setPastedAttachments(prev => {
+            const newList = [...prev, attachment];
+            console.log('   - 当前附件列表:', newList.map(a => ({ id: a.id, filename: a.filename })));
+            return newList;
+          });
+
           toast.success(`图片已上传 (${(file.size / 1024).toFixed(0)} KB)`);
         } catch (error) {
-          console.error('图片上传失败:', error);
+          console.error('❌ [MemoEditor handlePaste] 图片上传失败:', error);
           toast.error('图片上传失败: ' + error.message);
         }
-        
+
         break; // 只处理第一张图片
       }
     }

@@ -123,9 +123,11 @@ export default function CompleteMemoApp() {
   // 使用 useCallback 优化事件处理函数
   // 🚀 优化：接受内容参数，避免依赖异步状态更新
   const handleAddMemo = useCallback(async (contentOrData) => {
+    console.log('📥 [CompleteMemoApp handleAddMemo] 接收数据:', contentOrData);
+
     // 兼容两种输入：字符串或对象 { content, attachmentIds }
     let memoData;
-    
+
     if (typeof contentOrData === 'string') {
       // 旧的方式：直接传字符串
       if (!contentOrData.trim()) {
@@ -136,21 +138,32 @@ export default function CompleteMemoApp() {
         content: contentOrData.trim(),
         pinned: false
       };
+      console.log('   - 使用字符串模式，memoData:', memoData);
     } else if (typeof contentOrData === 'object' && contentOrData !== null) {
       // 新的方式：传对象（参考 memos）
       const { content, attachmentIds } = contentOrData;
-      
+
+      console.log('   - 使用对象模式');
+      console.log('     * content 长度:', content?.length || 0);
+      console.log('     * attachmentIds:', attachmentIds);
+
       // 验证：至少要有内容或附件
       if (!content?.trim() && (!attachmentIds || attachmentIds.length === 0)) {
         console.warn('⚠️ [handleAddMemo] 内容和附件都为空');
         return;
       }
-      
+
       memoData = {
         content: content?.trim() || '',
         attachmentIds: attachmentIds || [],
         pinned: false
       };
+
+      console.log('   - 构建的 memoData:', {
+        contentLength: memoData.content.length,
+        attachmentIds: memoData.attachmentIds,
+        pinned: memoData.pinned
+      });
     } else {
       // 使用 newMemo 状态
       const memoContent = newMemo;
@@ -162,11 +175,13 @@ export default function CompleteMemoApp() {
         content: memoContent.trim(),
         pinned: false
       };
+      console.log('   - 使用状态模式，memoData:', memoData);
     }
-    
+
     try {
-      // 移除 console.log 避免控制台打开时影响性能
+      console.log('📡 [CompleteMemoApp handleAddMemo] 调用 dataService.createMemo，参数:', memoData);
       const created = await dataService.createMemo(memoData);
+      console.log('✅ [CompleteMemoApp handleAddMemo] 创建成功，返回:', created);
       
       setNewMemo('');
       // 触发数据重新加载

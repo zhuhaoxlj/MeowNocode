@@ -22,19 +22,29 @@ const MemoInput = React.memo(({ newMemo, setNewMemo, onAddMemo, onEditorFocus, o
   // 🚀 处理提交（Ctrl+Enter） - 参考 memos 实现
   const handleSubmit = React.useCallback(async () => {
     if (!localValue.trim() && attachments.length === 0) return;
-    
-    console.log('🚀 [MemoInput handleSubmit] localValue:', localValue, 'attachments:', attachments);
-    
+
+    // 🔧 修复：创建memo数据的快照，避免状态清空后数据丢失
+    const currentAttachments = [...attachments];
+    const currentContent = localValue.trim();
+
+    console.log('🚀 [MemoInput handleSubmit] 开始提交');
+    console.log('   - 内容长度:', currentContent.length, '字符');
+    console.log('   - 附件数量:', currentAttachments.length);
+    console.log('   - 附件详情:', currentAttachments.map(att => ({ id: att.id, filename: att.filename, size: att.size })));
+
     // 构建 memo 数据（类似 memos 的结构）
+    const attachmentIds = currentAttachments.map(att => att.id);
     const memoData = {
-      content: localValue.trim(),
-      attachmentIds: attachments.map(att => att.id) // 只传附件 ID
+      content: currentContent,
+      attachmentIds: attachmentIds
     };
-    
+
+    console.log('   - 构建的 memoData:', { contentLength: memoData.content.length, attachmentIds: memoData.attachmentIds });
+
     // 1. 立即清空本地输入框和附件（避免闪烁）
     setLocalValue('');
     setAttachments([]);
-    
+
     // 2. 清理定时器
     if (updateTimerRef.current) {
       clearTimeout(updateTimerRef.current);
@@ -42,11 +52,11 @@ const MemoInput = React.memo(({ newMemo, setNewMemo, onAddMemo, onEditorFocus, o
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
     }
-    
-    // 3. 同步父组件状态
-    setNewMemo(memoData.content);
-    
-    // 4. 传递完整数据给 onAddMemo
+
+    // 3. 同步父组件状态（使用快照数据）
+    setNewMemo(currentContent);
+
+    // 4. 传递完整数据给 onAddMemo（使用快照数据）
     onAddMemo(memoData);
   }, [localValue, attachments, setNewMemo, onAddMemo]);
 

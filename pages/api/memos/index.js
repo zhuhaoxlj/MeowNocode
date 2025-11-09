@@ -72,11 +72,19 @@ async function handler(req, res) {
           // 如果有附件 ID，关联附件到 memo
           if (req.body.attachmentIds && req.body.attachmentIds.length > 0) {
             console.log(`📎 关联 ${req.body.attachmentIds.length} 个附件到 memo ${memo.id}`);
+            console.log('   附件 IDs:', req.body.attachmentIds);
+
             for (const attachmentId of req.body.attachmentIds) {
+              console.log(`   - 关联附件 ${attachmentId} 到 memo ${memo.id}`);
               db.updateResourceMemoId(attachmentId, memo.id);
             }
+
             // 获取关联后的附件列表
             memo.attachments = db.getResourcesByMemoId(memo.id);
+            console.log(`✅ 附件关联完成，memo ${memo.id} 现在有 ${memo.attachments.length} 个附件`);
+            console.log('   附件详情:', memo.attachments.map(a => ({ id: a.id, filename: a.filename })));
+          } else {
+            console.log('   没有附件需要关联');
           }
           
           res.status(201).json({ memo });
