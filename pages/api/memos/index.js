@@ -55,20 +55,20 @@ async function handler(req, res) {
         try {
           console.log('📥 收到 POST 请求 - 创建 memo');
           console.log('   请求体:', JSON.stringify(req.body, null, 2));
-          
+
           // 验证请求数据
           if (!req.body || (!req.body.content && !req.body.attachmentIds)) {
             console.error('❌ 无效的请求数据 - 缺少 content 或 attachmentIds');
-            return res.status(400).json({ 
+            return res.status(400).json({
               error: '无效的请求数据',
-              message: '必须提供 content 或 attachmentIds 字段' 
+              message: '必须提供 content 或 attachmentIds 字段'
             });
           }
-          
+
           // 创建 memo
           const memo = db.createMemo(req.body);
           console.log('✅ Memo 创建成功:', memo.id);
-          
+
           // 如果有附件 ID，关联附件到 memo
           if (req.body.attachmentIds && req.body.attachmentIds.length > 0) {
             console.log(`📎 关联 ${req.body.attachmentIds.length} 个附件到 memo ${memo.id}`);
@@ -79,20 +79,26 @@ async function handler(req, res) {
               db.updateResourceMemoId(attachmentId, memo.id);
             }
 
-            // 获取关联后的附件列表
-            memo.attachments = db.getResourcesByMemoId(memo.id);
-            console.log(`✅ 附件关联完成，memo ${memo.id} 现在有 ${memo.attachments.length} 个附件`);
-            console.log('   附件详情:', memo.attachments.map(a => ({ id: a.id, filename: a.filename })));
+            // 🚀 获取资源元数据（不含 blob），与 GET API 保持一致
+            memo.resourceMeta = db.getResourcesByMemoId(memo.id).map(res => ({
+              id: res.id,
+              filename: res.filename,
+              type: res.type,
+              size: res.size,
+              uid: res.uid
+            }));
+            console.log(`✅ 附件关联完成，memo ${memo.id} 现在有 ${memo.resourceMeta.length} 个附件`);
+            console.log('   附件详情:', memo.resourceMeta.map(a => ({ id: a.id, filename: a.filename })));
           } else {
             console.log('   没有附件需要关联');
           }
-          
+
           res.status(201).json({ memo });
         } catch (error) {
           console.error('❌ 创建 memo 失败:', error);
           console.error('   错误堆栈:', error.stack);
           console.error('   请求体:', req.body);
-          res.status(500).json({ 
+          res.status(500).json({
             error: '创建 memo 失败',
             message: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined

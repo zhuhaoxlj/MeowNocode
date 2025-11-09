@@ -344,6 +344,30 @@ const MemoEditor = React.memo(({
         if (!file) continue;
 
         console.log('🖼️ [MemoEditor handlePaste] 检测到图片，准备上传');
+        console.log('   - 文件信息:', { name: file.name, size: file.size, type: file.type });
+
+        // 🚀 去重检查：检查是否已经存在相同的图片（基于文件大小、类型）
+        const isDuplicate = pastedAttachments.some(att => {
+          // 比较文件大小和类型
+          const sameSize = att.size === file.size;
+          const sameType = att.type === file.type;
+
+          // 如果大小和类型都相同，很可能是同一张图片
+          if (sameSize && sameType) {
+            console.log('⚠️ [MemoEditor handlePaste] 检测到重复图片:', {
+              existing: { filename: att.filename, size: att.size },
+              new: { name: file.name, size: file.size }
+            });
+            return true;
+          }
+          return false;
+        });
+
+        if (isDuplicate) {
+          console.log('⏭️ [MemoEditor handlePaste] 跳过重复图片上传');
+          toast.info('图片已存在，无需重复上传');
+          break;
+        }
 
         try {
           // 立即上传到服务器（像 memos 一样）
@@ -367,7 +391,7 @@ const MemoEditor = React.memo(({
         break; // 只处理第一张图片
       }
     }
-  }, [uploadAttachment, setPastedAttachments]);
+  }, [uploadAttachment, setPastedAttachments, pastedAttachments]);
 
   // 处理键盘事件 - 使用 useCallback 优化
   const handleKeyDown = useCallback((e) => {
