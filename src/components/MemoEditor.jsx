@@ -49,7 +49,8 @@ const MemoEditor = React.memo(({
 
   // 使用传入的 attachments 或本地状态
   const [localAttachments, setLocalAttachments] = useState([]);
-  const pastedAttachments = attachments.length > 0 ? attachments : localAttachments;
+  // 如果父组件提供了 onAttachmentsChange，使用受控模式；否则使用非受控模式
+  const pastedAttachments = onAttachmentsChange ? attachments : localAttachments;
   const setPastedAttachments = onAttachmentsChange || setLocalAttachments;
 
   // 获取一言或内置句子
@@ -310,7 +311,7 @@ const MemoEditor = React.memo(({
   const removeAttachment = useCallback(async (attachmentId) => {
     // 从附件列表中移除
     setPastedAttachments(prev => prev.filter(att => att.id !== attachmentId));
-    
+
     // 从服务器删除
     try {
       await fetch(`/api/attachments/${attachmentId}`, {
@@ -319,9 +320,9 @@ const MemoEditor = React.memo(({
     } catch (error) {
       console.error('删除附件失败:', error);
     }
-    
+
     toast.success('图片已删除');
-  }, []);
+  }, [setPastedAttachments]);
 
   // 处理粘贴事件（支持图片） - 参考 memos 实现
   const handlePaste = useCallback(async (e) => {
@@ -366,7 +367,7 @@ const MemoEditor = React.memo(({
         break; // 只处理第一张图片
       }
     }
-  }, [uploadAttachment]);
+  }, [uploadAttachment, setPastedAttachments]);
 
   // 处理键盘事件 - 使用 useCallback 优化
   const handleKeyDown = useCallback((e) => {
@@ -918,7 +919,8 @@ const MemoEditor = React.memo(({
     prevProps.showCharCount === nextProps.showCharCount &&
     prevProps.autoFocus === nextProps.autoFocus &&
     prevProps.backlinks?.length === nextProps.backlinks?.length &&
-    prevProps.memosList?.length === nextProps.memosList?.length
+    prevProps.memosList?.length === nextProps.memosList?.length &&
+    prevProps.attachments?.length === nextProps.attachments?.length
   );
 });
 
