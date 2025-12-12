@@ -7,9 +7,12 @@
     "dev": "next dev -p 8081",
     "dev:remote": "NEXT_PUBLIC_API_MODE=remote next dev -p 8081",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start -p 8081",
     "lint": "next lint",
     "export": "next export",
+    "test": "vitest --run",
+    "test:watch": "vitest",
     "diagnose": "node scripts/diagnose-nas.js",
     "db:init": "node scripts/init-db.js",
     "db:migrate": "node scripts/migrate-data.js",
@@ -96,12 +99,15 @@
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "autoprefixer": "^10.4.19",
+    "critters": "^0.0.23",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.2.32",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "fast-check": "^4.3.0",
     "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4"
+    "tailwindcss": "^3.4.4",
+    "vitest": "^4.0.15"
   },
   "description": "MeowNocode - 完整的 Next.js 版本，支持跨浏览器数据共享"
 }
