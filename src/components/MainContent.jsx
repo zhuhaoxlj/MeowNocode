@@ -93,7 +93,7 @@ const MainContent = React.memo(({
   // });  
 
   return (
-    <div className={`flex-1 flex flex-col w-full relative h-full overflow-hidden ${
+    <div className={`flex-1 flex flex-col w-full relative h-full ${
       isLeftSidebarPinned && isRightSidebarPinned
         ? 'lg:max-w-2xl lg:mx-auto'
         : isLeftSidebarPinned || isRightSidebarPinned

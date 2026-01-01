@@ -165,11 +165,10 @@ const MemoList = ({
   }, [activeMenuId, onMenuButtonClick]);
 
   return (
-    <div className="flex-1 overflow-hidden h-full">
+    <div className="flex-1 overflow-y-auto scrollbar-hidden h-full" ref={memosContainerRef}>
       {/* 统一的大滚动容器 - 包含所有内容 */}
       <div
-        ref={memosContainerRef}
-        className="h-full overflow-y-auto scrollbar-hidden"
+        className="min-h-full"
         style={{ minHeight: '600px' }} // 防止 CLS，为内容预留空间
       >
         {/* 归档视图 */}
@@ -744,7 +743,7 @@ const MemoList = ({
         {showScrollToTop && (
           <button
             onClick={onScrollToTop}
-            className="absolute bottom-6 right-6 z-30 flex items-center justify-center w-12 h-12 rounded-full bg-gray-200/90 dark:bg-gray-700/90 text-gray-700 dark:text-gray-300 transition-all duration-300 hover:bg-gray-300/90 dark:hover:bg-gray-600/90 hover:scale-110 shadow-lg backdrop-blur-sm border border-gray-300/20 dark:border-gray-600/20"
+            className="fixed bottom-6 right-6 z-30 flex items-center justify-center w-12 h-12 rounded-full bg-gray-200/90 dark:bg-gray-700/90 text-gray-700 dark:text-gray-300 transition-all duration-300 hover:bg-gray-300/90 dark:hover:bg-gray-600/90 hover:scale-110 shadow-lg backdrop-blur-sm border border-gray-300/20 dark:border-gray-600/20"
             aria-label="回到顶部"
             title="回到顶部"
           >

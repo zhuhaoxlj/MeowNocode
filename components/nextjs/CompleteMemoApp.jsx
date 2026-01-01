@@ -867,15 +867,15 @@ export default function CompleteMemoApp() {
             onFavoriteRandomBackground={onFavoriteRandomBackground}
           />
         )}
-        
+
         {/* 移动端侧边栏 */}
         {isMobile && showMobileSidebar && (
-          <MobileSidebar 
+          <MobileSidebar
             isOpen={showMobileSidebar}
             onClose={() => setShowMobileSidebar(false)}
           />
         )}
-        
+
         {/* 主内容区域 */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 flex overflow-hidden">
